@@ -573,6 +573,7 @@
       <button class="btn-auth" id="loginBtn">登录</button>
       <div class="auth-msg error" id="loginError"></div>
       <div class="auth-msg success" id="loginSuccess"></div>
+      <div class="auth-hint">💡 管理员：<strong>admin / admin</strong></div>
     </div>
 
     <div id="registerForm" class="hidden">
@@ -763,17 +764,11 @@
     return await response.json();
   }
 
-  async function readData(key) {
-    try {
-      const raw = await upstashGet(key);
-      if (raw === null || raw === undefined || raw === '') return {};
-      return JSON.parse(raw);
-    } catch (e) {
-      return {};
-    }
-  }
+  // ============================================================
+  // 🔥 核心修复：读取数组 → 追加 → 写入
+  // ============================================================
 
-  async function readDataArray(key) {
+  async function readArray(key) {
     try {
       const raw = await upstashGet(key);
       if (raw === null || raw === undefined || raw === '') return [];
@@ -784,36 +779,91 @@
     }
   }
 
-  async function writeData(key, data) {
-    return await upstashSet(key, JSON.stringify(data));
+  async function writeArray(key, data) {
+    const arr = Array.isArray(data) ? data : [];
+    await upstashSet(key, JSON.stringify(arr));
+  }
+
+  // 追加到数组
+  async function pushToArray(key, item) {
+    const arr = await readArray(key);
+    arr.push(item);
+    await writeArray(key, arr);
+    return arr;
+  }
+
+  // 从数组中删除
+  async function removeFromArray(key, predicate) {
+    const arr = await readArray(key);
+    const newArr = arr.filter(predicate);
+    await writeArray(key, newArr);
+    return newArr;
   }
 
   // ============================================================
-  // 用户管理
+  // 用户管理（对象存储，不是数组）
+  // ============================================================
+
+  async function readObject(key) {
+    try {
+      const raw = await upstashGet(key);
+      if (raw === null || raw === undefined || raw === '') return {};
+      return JSON.parse(raw);
+    } catch (e) {
+      return {};
+    }
+  }
+
+  async function writeObject(key, data) {
+    await upstashSet(key, JSON.stringify(data));
+  }
+
+  // ============================================================
+  // 业务函数
   // ============================================================
 
   async function getUsers() {
-    return await readData(USER_KEY);
+    return await readObject(USER_KEY);
   }
 
   async function saveUsers(users) {
-    await writeData(USER_KEY, users);
+    await writeObject(USER_KEY, users);
   }
 
   async function getKeys() {
-    return await readDataArray(KEY_KEY);
+    return await readArray(KEY_KEY);
   }
 
   async function saveKeys(keys) {
-    await writeData(KEY_KEY, keys);
+    await writeArray(KEY_KEY, keys);
+  }
+
+  async function addKey(key) {
+    return await pushToArray(KEY_KEY, key);
   }
 
   async function getMutes() {
-    return await readData(MUTE_KEY);
+    return await readObject(MUTE_KEY);
   }
 
   async function saveMutes(mutes) {
-    await writeData(MUTE_KEY, mutes);
+    await writeObject(MUTE_KEY, mutes);
+  }
+
+  async function getMessages() {
+    return await readArray(MSG_KEY);
+  }
+
+  async function saveMessages(msgs) {
+    await writeArray(MSG_KEY, msgs);
+  }
+
+  async function addMessage(msg) {
+    const arr = await readArray(MSG_KEY);
+    arr.push(msg);
+    if (arr.length > 500) arr.shift();
+    await writeArray(MSG_KEY, arr);
+    return arr;
   }
 
   // ============================================================
@@ -849,8 +899,7 @@
 
   async function loadMessages() {
     try {
-      const data = await readDataArray(MSG_KEY);
-      messages = data;
+      messages = await getMessages();
       renderMessages();
       setStatus(`${messages.length} 条留言`);
     } catch (err) {
@@ -881,13 +930,8 @@
       timestamp: Date.now()
     };
 
-    const latest = await readDataArray(MSG_KEY);
-    messages = latest;
-    messages.push(newMsg);
-    if (messages.length > 500) messages.shift();
-
     try {
-      await writeData(MSG_KEY, messages);
+      messages = await addMessage(newMsg);
       renderMessages();
       setStatus(`${messages.length} 条留言`);
       return true;
@@ -911,7 +955,7 @@
 
     messages = [];
     try {
-      await writeData(MSG_KEY, []);
+      await saveMessages(messages);
       renderMessages();
       setStatus('已清空');
       alert('✅ 留言已清空');
@@ -1027,16 +1071,7 @@
     const id = loginId.value.trim();
     const password = loginPassword.value.trim();
 
-    if (!id || !password) {
-      showError(loginError, '请填写用户名/邮箱和密码');
-      return;
-    }
-
-    const users = await getUsers();
-
-    let foundUser = null;
-    let foundKey = null;
-    // 🔥 硬编码管理员：admin/admin 直接进
+    // admin/admin 硬编码登录
     if (id === 'admin' && password === 'admin') {
       currentUser = {
         username: 'admin',
@@ -1052,6 +1087,16 @@
       loginPassword.value = '';
       return;
     }
+
+    if (!id || !password) {
+      showError(loginError, '请填写用户名/邮箱和密码');
+      return;
+    }
+
+    const users = await getUsers();
+
+    let foundUser = null;
+    let foundKey = null;
     for (const [email, data] of Object.entries(users)) {
       if (data.username === id || email === id) {
         foundUser = data;
@@ -1131,6 +1176,7 @@
       return;
     }
 
+    // 检查密钥是否存在且未被使用
     const keys = await getKeys();
     if (!keys.includes(key)) {
       showError(regError, '注册密钥无效');
@@ -1157,6 +1203,7 @@
       return;
     }
 
+    // 创建用户
     users[email] = {
       username: username,
       password: password,
@@ -1167,6 +1214,7 @@
 
     await saveUsers(users);
 
+    // 从可用密钥中移除已使用的
     const updatedKeys = keys.filter(k => k !== key);
     await saveKeys(updatedKeys);
 
@@ -1198,6 +1246,7 @@
     const keys = await getKeys();
     const users = await getUsers();
 
+    // 标记已使用的密钥
     const usedKeys = new Set();
     for (const [email, data] of Object.entries(users)) {
       if (data.regKey) usedKeys.add(data.regKey);
@@ -1285,12 +1334,12 @@
   }
 
   // ============================================================
-  // 管理员操作事件
+  // 管理员操作事件（使用 pushToArray 追加）
   // ============================================================
 
   addKeyBtn.addEventListener('click', async () => {
     if (!currentUser || !currentUser.isAdmin) return;
-    const key = newKeyInput.value.trim();
+    const key = newKeyInput.value.trim().toUpperCase();
     if (!key) {
       showAdminMsg('请输入密钥', true);
       return;
@@ -1300,8 +1349,7 @@
       showAdminMsg('密钥已存在', true);
       return;
     }
-    keys.push(key);
-    await saveKeys(keys);
+    await addKey(key);
     newKeyInput.value = '';
     showAdminMsg(`✅ 已添加密钥：${key}`);
     await renderAdminPanel();
@@ -1479,13 +1527,15 @@
   });
 
   // ============================================================
-  // 启动
+  // 🔥 启动
   // ============================================================
 
   async function init() {
-    // 🔥 自动初始化管理员账号（仅当不存在时）
+    // 初始化管理员和默认密钥
     try {
       const users = await getUsers();
+      let needUpdate = false;
+
       if (!users['admin@bhboard.com']) {
         users['admin@bhboard.com'] = {
           username: 'admin',
@@ -1494,11 +1544,22 @@
           regKey: 'admin_init',
           createdAt: Date.now()
         };
+        needUpdate = true;
+      }
+
+      if (needUpdate) {
         await saveUsers(users);
         console.log('✅ 管理员账号已初始化: admin / admin');
       }
+
+      // 初始化默认密钥（如果为空）
+      const keys = await getKeys();
+      if (keys.length === 0) {
+        await saveKeys(['ABC123', 'BROTHER01', 'KEY001']);
+        console.log('✅ 默认密钥已初始化: ABC123, BROTHER01, KEY001');
+      }
     } catch (e) {
-      console.warn('初始化管理员失败:', e);
+      console.warn('初始化失败:', e);
     }
 
     try {
