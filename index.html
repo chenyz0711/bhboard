@@ -429,8 +429,8 @@
     <!-- 登录表单 -->
     <div id="loginBox">
       <div class="field">
-        <label>邮箱（管理员填 admin）</label>
-        <input type="email" id="loginEmail" placeholder="输入注册时的邮箱" autocomplete="email" />
+        <label>用户名（管理员填 admin）</label>
+        <input type="text" id="loginName" placeholder="输入注册时的用户名" autocomplete="username" />
       </div>
       <div class="field">
         <label>密码</label>
@@ -443,12 +443,8 @@
     <!-- 注册表单 -->
     <div id="registerBox" class="hidden">
       <div class="field">
-        <label>你的名字（留言里显示）</label>
-        <input type="text" id="regUsername" placeholder="输入你想显示的名字" maxlength="20" />
-      </div>
-      <div class="field">
-        <label>邮箱</label>
-        <input type="email" id="regEmail" placeholder="输入邮箱" autocomplete="email" />
+        <label>用户名（留言里显示，也用它登录）</label>
+        <input type="text" id="regUsername" placeholder="输入用户名" maxlength="20" />
       </div>
       <div class="field">
         <label>密码（至少 4 位）</label>
@@ -459,7 +455,7 @@
     </div>
 
     <div class="auth-hint">
-      💡 第一次来？先点「注册」建个账号，之后用邮箱密码登录
+      💡 第一次来？先点「注册」建个账号，之后用用户名和密码登录
     </div>
   </div>
 
@@ -505,7 +501,7 @@
   const USERS_KEY = 'bh_users';       // 注册账号
   // ============================================================
 
-  let currentUser = null;   // { email, username }
+  let currentUser = null;   // { username }
   let isAdmin = false;
   let messages = [];
 
@@ -515,12 +511,11 @@
   const tabRegister = document.getElementById('tabRegister');
   const loginBox = document.getElementById('loginBox');
   const registerBox = document.getElementById('registerBox');
-  const loginEmail = document.getElementById('loginEmail');
+  const loginName = document.getElementById('loginName');
   const loginPassword = document.getElementById('loginPassword');
   const loginBtn = document.getElementById('loginBtn');
   const loginError = document.getElementById('loginError');
   const regUsername = document.getElementById('regUsername');
-  const regEmail = document.getElementById('regEmail');
   const regPassword = document.getElementById('regPassword');
   const registerBtn = document.getElementById('registerBtn');
   const registerError = document.getElementById('registerError');
@@ -554,8 +549,6 @@
     el.textContent = msg;
     if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 4000);
   }
-
-  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   // ============================================================
   // 🔥 Upstash 读写
@@ -611,7 +604,7 @@
   }
 
   // ============================================================
-  // 🔥 账号读写（对象：邮箱 -> 用户信息）
+  // 🔥 账号读写（对象：用户名小写 -> 用户信息）
   // ============================================================
 
   function parseObj(raw) {
@@ -646,6 +639,21 @@
   }
 
   // ============================================================
+  // 🔥 按用户名查找账户（不区分大小写，兼容旧的邮箱键数据）
+  // ============================================================
+
+  function findUserByUsername(users, username) {
+    const target = String(username || '').toLowerCase();
+    if (!target) return null;
+    if (users[target]) return users[target];
+    for (const k in users) {
+      if (k.toLowerCase() === target) return users[k];
+      if (String(users[k].username).toLowerCase() === target) return users[k];
+    }
+    return null;
+  }
+
+  // ============================================================
   // 🔥 会话进入 / 退出
   // ============================================================
 
@@ -670,17 +678,16 @@
     if (!isAdmin) {
       try {
         const users = await readUsersStrict();
-        const u = users[user.email];
+        const u = findUserByUsername(users, user.username);
         if (u && u.mutedUntil && u.mutedUntil > Date.now()) {
           setStatus(`你已被禁言，解禁时间：${formatTime(u.mutedUntil)}`);
         }
       } catch (e) {}
     }
 
-    loginEmail.value = '';
+    loginName.value = '';
     loginPassword.value = '';
     regUsername.value = '';
-    regEmail.value = '';
     regPassword.value = '';
     msgInput.focus();
   }
@@ -701,37 +708,29 @@
   // ============================================================
 
   async function handleRegister() {
-    const username = regUsername.value.trim();
-    const email = regEmail.value.trim().toLowerCase();
+    const username = regUsername.value.trim().slice(0, 20);
     const password = regPassword.value;
 
-    if (!username) { showError(registerError, '请填写你的名字'); return; }
-    if (email === 'admin') { showError(registerError, '该名称不可注册'); return; }
-    if (!EMAIL_RE.test(email)) { showError(registerError, '邮箱格式不正确'); return; }
+    if (!username) { showError(registerError, '请填写用户名'); return; }
+    if (username.toLowerCase() === 'admin') { showError(registerError, '该名称不可注册'); return; }
     if (password.length < 4) { showError(registerError, '密码至少 4 位'); return; }
 
     registerBtn.disabled = true;
     try {
       const users = await readUsersStrict();
-      if (users[email]) {
-        showError(registerError, '该邮箱已注册，请直接登录');
+      if (findUserByUsername(users, username)) {
+        showError(registerError, '该用户名已被使用，请直接登录');
         return;
       }
-      for (const k in users) {
-        if (String(users[k].username).toLowerCase() === username.toLowerCase()) {
-          showError(registerError, '该用户名已被使用');
-          return;
-        }
-      }
 
-      users[email] = {
-        username: username.slice(0, 20),
+      users[username.toLowerCase()] = {
+        username: username,
         password: password, // 简易版：明文存储
         createdAt: Date.now()
       };
       await writeUsers(users);
 
-      startSession({ email, username: users[email].username }, false);
+      startSession({ username: username }, false);
     } catch (err) {
       console.error('注册失败:', err);
       showError(registerError, '注册失败：' + err.message);
@@ -741,18 +740,18 @@
   }
 
   async function handleLogin() {
-    const email = loginEmail.value.trim().toLowerCase();
+    const username = loginName.value.trim();
     const password = loginPassword.value;
 
-    if (!email || !password) {
-      showError(loginError, '邮箱和密码不能为空');
+    if (!username || !password) {
+      showError(loginError, '用户名和密码不能为空');
       return;
     }
 
     // 管理员账号
-    if (email === 'admin') {
+    if (username.toLowerCase() === 'admin') {
       if (password === 'admin') {
-        startSession({ email: 'admin', username: '管理员' }, true);
+        startSession({ username: '管理员', admin: true }, true);
       } else {
         showError(loginError, '密码错误');
       }
@@ -762,10 +761,10 @@
     loginBtn.disabled = true;
     try {
       const users = await readUsersStrict();
-      const user = users[email];
+      const user = findUserByUsername(users, username);
 
       if (!user) {
-        showError(loginError, '该邮箱未注册，请先注册');
+        showError(loginError, '该用户名未注册，请先注册');
         return;
       }
       if (user.password !== password) {
@@ -773,7 +772,7 @@
         return;
       }
 
-      startSession({ email, username: user.username }, false);
+      startSession({ username: user.username }, false);
     } catch (err) {
       console.error('登录失败:', err);
       showError(loginError, '登录失败：' + err.message);
@@ -826,7 +825,7 @@
     if (!isAdmin) {
       try {
         const users = await readUsersStrict();
-        const u = users[currentUser.email];
+        const u = findUserByUsername(users, currentUser.username);
         if (!u) {
           alert('你的账户已被管理员注销');
           doLogout();
@@ -951,14 +950,14 @@
     const users = await readUsers();
     adminUserList.innerHTML = '';
 
-    const emails = Object.keys(users);
-    if (emails.length === 0) {
+    const keys = Object.keys(users);
+    if (keys.length === 0) {
       adminUserList.innerHTML = '<div class="admin-empty">暂无注册账户</div>';
       return;
     }
 
-    for (const email of emails) {
-      const u = users[email];
+    for (const key of keys) {
+      const u = users[key];
       const muted = u.mutedUntil && u.mutedUntil > Date.now();
 
       const row = document.createElement('div');
@@ -968,12 +967,12 @@
       main.className = 'admin-row-main';
       const nameSpan = document.createElement('span');
       nameSpan.className = 'admin-row-name';
-      nameSpan.textContent = u.username || '（无名）';
-      const emailSpan = document.createElement('span');
-      emailSpan.className = 'admin-row-email';
-      emailSpan.textContent = email;
+      nameSpan.textContent = u.username || key;
+      const keySpan = document.createElement('span');
+      keySpan.className = 'admin-row-email';
+      keySpan.textContent = key;
       main.appendChild(nameSpan);
-      main.appendChild(emailSpan);
+      main.appendChild(keySpan);
 
       const sub = document.createElement('div');
       sub.className = 'admin-row-sub';
@@ -994,13 +993,13 @@
         const unmuteBtn = document.createElement('button');
         unmuteBtn.textContent = '解除禁言';
         unmuteBtn.dataset.action = 'unmute';
-        unmuteBtn.dataset.email = email;
+        unmuteBtn.dataset.userkey = key;
         actions.appendChild(unmuteBtn);
       } else {
         const muteBtn = document.createElement('button');
         muteBtn.textContent = '禁言';
         muteBtn.dataset.action = 'mute';
-        muteBtn.dataset.email = email;
+        muteBtn.dataset.userkey = key;
         actions.appendChild(muteBtn);
       }
 
@@ -1008,7 +1007,7 @@
       delBtn.textContent = '注销账户';
       delBtn.className = 'danger';
       delBtn.dataset.action = 'delete';
-      delBtn.dataset.email = email;
+      delBtn.dataset.userkey = key;
       actions.appendChild(delBtn);
 
       row.appendChild(main);
@@ -1022,29 +1021,30 @@
   adminUserList.addEventListener('click', async (e) => {
     const btn = e.target.closest('button[data-action]');
     if (!btn) return;
-    const email = btn.dataset.email;
+    const key = btn.dataset.userkey;
     const action = btn.dataset.action;
 
     try {
       const users = await readUsersStrict();
+      const target = users[key];
+      if (!target) { alert('该账户不存在'); return; }
+      const displayName = target.username || key;
 
       if (action === 'mute') {
-        const input = prompt(`禁言 ${email} 多久？\n输入分钟数（60 = 1小时，1440 = 1天，10080 = 7天）：`, '60');
+        const input = prompt(`禁言「${displayName}」多久？\n输入分钟数（60 = 1小时，1440 = 1天，10080 = 7天）：`, '60');
         if (input === null) return;
         const mins = parseInt(input, 10);
         if (!mins || mins <= 0) { alert('请输入有效的分钟数'); return; }
-        if (!users[email]) { alert('该账户不存在'); return; }
-        users[email].mutedUntil = Date.now() + mins * 60000;
+        target.mutedUntil = Date.now() + mins * 60000;
         await writeUsers(users);
         await renderAdminUsers();
       } else if (action === 'unmute') {
-        if (!users[email]) { alert('该账户不存在'); return; }
-        users[email].mutedUntil = 0;
+        target.mutedUntil = 0;
         await writeUsers(users);
         await renderAdminUsers();
       } else if (action === 'delete') {
-        if (!confirm(`确定注销账户 ${email} 吗？\n注销后该用户将无法登录。`)) return;
-        delete users[email];
+        if (!confirm(`确定注销账户「${displayName}」吗？\n注销后该用户将无法登录。`)) return;
+        delete users[key];
         await writeUsers(users);
         await renderAdminUsers();
       }
@@ -1206,14 +1206,12 @@
       const saved = localStorage.getItem('bh_user');
       if (saved) {
         const user = JSON.parse(saved);
-        // 旧版本只存了用户名、没有邮箱：视为未登录，清掉重新登录
-        if (user && user.username && user.email) {
-          const adminFlag = user.email === 'admin' && user.admin === true;
-          await startSession({ email: user.email, username: user.username }, adminFlag);
+        if (user && user.username) {
+          const adminFlag = user.admin === true;
+          await startSession({ username: user.username }, adminFlag);
           setStatus(adminFlag ? '管理员模式' : `欢迎回来，${user.username}`);
           return;
         }
-        localStorage.removeItem('bh_user');
       }
     } catch (e) {}
     updateUI();
