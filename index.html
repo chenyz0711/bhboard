@@ -432,17 +432,7 @@
     if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 3000);
   }
 
-  // 简单哈希
-  function hash(str) {
-    let h = 0;
-    for (let i = 0; i < str.length; i++) {
-      h = (h << 5) - h + str.charCodeAt(i);
-      h |= 0;
-    }
-    return 'h' + h.toString(36);
-  }
-
-  // ---------- Upstash 读写 (直接存储字符串) ----------
+  // ---------- Upstash 读写 ----------
   async function upstashGet(key) {
     const res = await fetch(`${UPSTASH_URL}/get/${key}`, {
       headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
@@ -467,7 +457,7 @@
     return await response.json();
   }
 
-  // 深度解析JSON（处理多次序列化）
+  // 深度解析JSON
   function deepParseJSON(str) {
     if (str === null || str === undefined || str === '') {
       return null;
@@ -477,19 +467,16 @@
     let attempts = 0;
     const maxAttempts = 10;
     
-    // 如果已经是对象，直接返回
     if (typeof result === 'object') {
       return result;
     }
     
-    // 尝试多次解析
     while (typeof result === 'string' && attempts < maxAttempts) {
       try {
         const parsed = JSON.parse(result);
         result = parsed;
         attempts++;
       } catch (e) {
-        // 如果解析失败，返回当前值
         break;
       }
     }
@@ -497,7 +484,7 @@
     return result;
   }
 
-  // 读取用户数据
+  // 读取用户数据 - 直接用数组存储 [{username: 'xxx', password: 'xxx'}]
   async function loadUsers() {
     try {
       const raw = await upstashGet(USERS_KEY);
@@ -505,40 +492,37 @@
       
       if (raw === null || raw === undefined || raw === '') {
         console.log('📭 用户数据为空');
-        return {};
+        return [];
       }
       
-      // 深度解析JSON
       const parsed = deepParseJSON(raw);
       console.log('🔍 深度解析后:', parsed);
       
-      // 如果是对象，直接返回
-      if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+      // 如果是数组，直接返回
+      if (Array.isArray(parsed)) {
         return parsed;
       }
       
-      // 如果是数组，转换为对象
-      if (Array.isArray(parsed)) {
-        const obj = {};
-        for (const item of parsed) {
-          if (typeof item === 'object' && item !== null) {
-            Object.assign(obj, item);
-          }
+      // 如果是对象，转换为数组
+      if (typeof parsed === 'object' && parsed !== null) {
+        const arr = [];
+        for (const [key, value] of Object.entries(parsed)) {
+          arr.push({ username: key, password: value });
         }
-        return obj;
+        return arr;
       }
       
-      return {};
+      return [];
     } catch (e) {
       console.error('❌ 加载用户失败:', e);
-      return {};
+      return [];
     }
   }
 
-  // 保存用户数据（直接保存为对象）
-  async function saveUsers(usersObj) {
-    console.log('✍️ 保存用户数据:', usersObj);
-    const jsonStr = JSON.stringify(usersObj);
+  // 保存用户数据
+  async function saveUsers(usersArray) {
+    console.log('✍️ 保存用户数据:', usersArray);
+    const jsonStr = JSON.stringify(usersArray);
     await upstashSet(USERS_KEY, jsonStr);
     console.log('✅ 用户数据已保存');
   }
@@ -573,7 +557,7 @@
     await upstashSet(MSG_KEY, jsonStr);
   }
 
-  // ---------- 用户管理 ----------
+  // ---------- 用户管理 (明文存储) ----------
   async function registerUser(username, password) {
     if (!username || username.length < 1) { 
       regError.textContent = '用户名不能为空'; 
@@ -587,12 +571,15 @@
     const users = await loadUsers();
     console.log('📋 当前用户列表:', users);
     
-    if (users[username]) {
+    // 检查用户名是否已存在
+    const exists = users.some(u => u.username === username);
+    if (exists) {
       regError.textContent = '用户名已存在';
       return false;
     }
     
-    users[username] = hash(password);
+    // 直接存储明文密码
+    users.push({ username: username, password: password });
     await saveUsers(users);
     
     console.log('✅ 注册成功:', username);
@@ -604,18 +591,20 @@
     console.log('📋 登录时用户列表:', users);
     console.log('🔍 尝试登录:', username);
     
-    // 检查用户是否存在
-    if (!users[username]) {
+    // 查找用户
+    const user = users.find(u => u.username === username);
+    
+    if (!user) {
       loginError.textContent = '密码错误';
       console.log('❌ 用户不存在:', username);
       return false;
     }
     
-    const inputHash = hash(password);
-    console.log('🔑 存储的哈希:', users[username]);
-    console.log('🔑 输入的哈希:', inputHash);
+    console.log('🔑 存储的密码:', user.password);
+    console.log('🔑 输入的密码:', password);
     
-    if (users[username] !== inputHash) {
+    // 直接对比明文密码
+    if (user.password !== password) {
       loginError.textContent = '密码错误';
       console.log('❌ 密码错误');
       return false;
@@ -635,7 +624,7 @@
     if (!confirm('确定重置所有数据吗？这将删除所有用户和留言！')) return;
     
     try {
-      await upstashSet(USERS_KEY, JSON.stringify({}));
+      await upstashSet(USERS_KEY, JSON.stringify([]));
       await upstashSet(MSG_KEY, JSON.stringify([]));
       alert('✅ 数据已重置');
       location.reload();
@@ -863,7 +852,8 @@
         const user = JSON.parse(saved);
         if (user && user.username) {
           const users = await loadUsers();
-          if (users[user.username]) {
+          const exists = users.some(u => u.username === user.username);
+          if (exists) {
             currentUser = user;
             updateUI();
             await loadMessages();
