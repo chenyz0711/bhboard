@@ -232,15 +232,16 @@
     .input-area .btn-clear {
       padding: 10px 18px;
       background: transparent;
-      color: #ccc;
-      border: 1px solid #eee;
+      color: #999;
+      border: 1px solid #ddd;
       border-radius: 8px;
       font-size: 13px;
       cursor: pointer;
+      transition: 0.15s;
     }
     .input-area .btn-clear:hover {
-      color: #999;
-      border-color: #ddd;
+      color: #e74c3c;
+      border-color: #e74c3c;
     }
     .footer {
       text-align: center;
@@ -313,8 +314,12 @@
 </div>
 
 <script>
+  // ============================================================
+  // 🔥 Upstash 配置
   const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
   const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
+  // ============================================================
+
   const MSG_KEY = 'bh_messages';
 
   let currentUser = null;
@@ -358,7 +363,7 @@
   }
 
   // ============================================================
-  // Upstash 读写
+  // Upstash 读写（读写格式完全一致）
   // ============================================================
 
   async function upstashGetRaw(key) {
@@ -385,21 +390,33 @@
     return await response.json();
   }
 
-  // ✅ 读取：正确解析双层数据
+  // ============================================================
+  // 🔥 核心：读写格式完全一致
+  // 存储格式：{ value: "[{...}]" }
+  // ============================================================
+
   async function getMessages() {
     try {
       const raw = await upstashGetRaw(MSG_KEY);
-      console.log('📦 Upstash 原始数据:', raw);
-      
-      if (raw === null || raw === undefined || raw === '') return [];
-      
+      console.log('📦 原始数据:', raw);
+
+      if (raw === null || raw === undefined || raw === '') {
+        console.log('📦 数据为空，返回 []');
+        return [];
+      }
+
+      // 第一层解析：raw 是字符串
       const firstParse = JSON.parse(raw);
       console.log('📦 第一层解析:', firstParse);
-      
-      const rawData = firstParse.value || firstParse;
+
+      // 取出 value 字段
+      const rawData = firstParse.value;
+      console.log('📦 value 字段:', rawData);
+
+      // 如果 value 是字符串，解析成数组
       let msgs = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
       msgs = Array.isArray(msgs) ? msgs : [];
-      
+
       console.log('✅ 解析成功，共', msgs.length, '条留言');
       return msgs;
     } catch (e) {
@@ -408,10 +425,12 @@
     }
   }
 
-  // ✅ 写入：存双层数据，与读取格式一致
+  // ✅ 写入格式：和读取格式一致
   async function saveMessages(msgs) {
     const data = Array.isArray(msgs) ? msgs : [];
-    const result = await upstashSetRaw(MSG_KEY, JSON.stringify({ value: JSON.stringify(data) }));
+    // 存储格式：{ value: "[{...}]" }
+    const valueToStore = JSON.stringify({ value: JSON.stringify(data) });
+    const result = await upstashSetRaw(MSG_KEY, valueToStore);
     console.log('📦 写入结果:', result);
     return result;
   }
@@ -443,12 +462,12 @@
   // 留言
   // ============================================================
 
-  // ✅ 修复：把 getMessages() 的结果赋值给全局 messages
   async function loadMessages() {
     try {
       messages = await getMessages();
       renderMessages();
       setStatus(`${messages.length} 条留言`);
+      console.log('✅ 加载完成，共', messages.length, '条留言');
     } catch (err) {
       console.error('加载失败:', err);
       setStatus('加载失败，刷新重试');
@@ -476,6 +495,7 @@
       await saveMessages(messages);
       renderMessages();
       setStatus(`${messages.length} 条留言`);
+      console.log('✅ 发送成功，共', messages.length, '条留言');
       return true;
     } catch (err) {
       console.error('❌ 发送失败:', err);
@@ -485,18 +505,37 @@
     }
   }
 
+  // ============================================================
+  // 🔥 清空：需要密码 admin
+  // ============================================================
+
   async function clearAllMessages() {
-    if (!confirm('确定清空所有留言？')) return;
+    const password = prompt('⚠️ 清空所有留言需要密码：');
+    if (password !== 'admin') {
+      if (password !== null) {
+        alert('❌ 密码错误，清空已取消');
+      }
+      return;
+    }
+
+    if (!confirm('确定清空所有留言吗？此操作不可恢复！')) return;
+
     messages = [];
     try {
       await saveMessages(messages);
       renderMessages();
       setStatus('已清空');
+      alert('✅ 留言已清空');
     } catch (err) {
       console.error('清空失败:', err);
       setStatus('清空失败');
+      alert('❌ 清空失败，请重试');
     }
   }
+
+  // ============================================================
+  // 渲染
+  // ============================================================
 
   function renderMessages() {
     const items = msgList.querySelectorAll('.msg-item');
