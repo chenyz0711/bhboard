@@ -401,17 +401,18 @@
       const raw = await upstashGetRaw(MSG_KEY);
       if (raw === null || raw === undefined || raw === '') return [];
       const parsed = JSON.parse(raw);
-      // 确保返回的是数组
       return Array.isArray(parsed) ? parsed : [];
     } catch (e) {
+      console.warn('读取消息失败，返回空数组');
       return [];
     }
   }
 
   async function saveMessages(msgs) {
-    // 确保传入的是数组
     const data = Array.isArray(msgs) ? msgs : [];
-    await upstashSetRaw(MSG_KEY, JSON.stringify(data));
+    const result = await upstashSetRaw(MSG_KEY, JSON.stringify(data));
+    console.log('📦 写入 Upstash 结果:', result);
+    return result;
   }
 
   // ============================================================
@@ -454,26 +455,31 @@
 
   async function sendMessage(text) {
     if (!currentUser) return false;
+
     const newMsg = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       username: currentUser.username,
       text: text.trim(),
       timestamp: Date.now()
     };
-    // 确保 messages 是数组
+
     if (!Array.isArray(messages)) {
       messages = [];
     }
     messages.push(newMsg);
     if (messages.length > 500) messages.shift();
+
     try {
-      await saveMessages(messages);
+      const result = await saveMessages(messages);
+      console.log('✅ 写入成功:', result);
       renderMessages();
       setStatus(`${messages.length} 条留言`);
       return true;
     } catch (err) {
-      console.error('发送失败:', err);
-      setStatus('发送失败，再试一次');
+      console.error('❌ 发送失败:', err);
+      // 写入失败，从内存中移除
+      messages.pop();
+      setStatus('发送失败，请刷新重试');
       return false;
     }
   }
@@ -486,6 +492,7 @@
       renderMessages();
       setStatus('已清空');
     } catch (err) {
+      console.error('清空失败:', err);
       setStatus('清空失败');
     }
   }
@@ -493,15 +500,18 @@
   function renderMessages() {
     const items = msgList.querySelectorAll('.msg-item');
     items.forEach(el => el.remove());
+
     if (!messages || messages.length === 0) {
       emptyPlaceholder.style.display = 'block';
       return;
     }
     emptyPlaceholder.style.display = 'none';
+
     const reversed = [...messages].reverse();
     for (const msg of reversed) {
       const div = document.createElement('div');
       div.className = 'msg-item';
+
       const top = document.createElement('div');
       top.className = 'msg-top';
       const userSpan = document.createElement('span');
@@ -512,9 +522,11 @@
       timeSpan.textContent = formatTime(msg.timestamp);
       top.appendChild(userSpan);
       top.appendChild(timeSpan);
+
       const textDiv = document.createElement('div');
       textDiv.className = 'msg-text';
       textDiv.textContent = msg.text || '';
+
       div.appendChild(top);
       div.appendChild(textDiv);
       msgList.appendChild(div);
