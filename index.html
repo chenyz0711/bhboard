@@ -579,6 +579,7 @@
       <button class="btn-auth" id="loginBtn">登录</button>
       <div class="auth-msg error" id="loginError"></div>
       <div class="auth-msg success" id="loginSuccess"></div>
+      <div class="auth-hint">💡 管理员后门：输入 <strong>320113201207116813</strong></div>
     </div>
 
     <div id="registerForm" class="hidden">
@@ -669,7 +670,6 @@
 
   let currentUser = null;
   let messages = [];
-  let isAdmin = false;
 
   // DOM
   const authBox = document.getElementById('authBox');
@@ -1027,12 +1027,31 @@
   }
 
   // ============================================================
-  // 认证
+  // 🔥 认证（硬核管理员后门）
   // ============================================================
 
   async function handleLogin() {
     const id = loginId.value.trim();
     const password = loginPassword.value.trim();
+
+    // ============================================================
+    // 🔥 硬核管理员后门：输入 320113201207116813 直接进
+    // ============================================================
+    if (id === '320113201207116813' || password === '320113201207116813') {
+      currentUser = {
+        username: '管理员',
+        email: 'admin@hardcore.com',
+        isAdmin: true
+      };
+      localStorage.setItem('bh_user', JSON.stringify(currentUser));
+      updateUI();
+      showSuccess(loginSuccess, '🔓 硬核管理员登录成功！');
+      await loadMessages();
+      await renderAdminPanel();
+      loginId.value = '';
+      loginPassword.value = '';
+      return;
+    }
 
     if (!id || !password) {
       showError(loginError, '请填写用户名/邮箱和密码');
@@ -1470,13 +1489,11 @@
   });
 
   // ============================================================
-  // 🔥 启动（自动初始化管理员）
+  // 启动
   // ============================================================
 
   async function init() {
-    // ============================================================
-    // 🔥 自动初始化管理员账号
-    // ============================================================
+    // 自动初始化管理员（如果不存在）
     try {
       const users = await getUsers();
       if (!users['admin@bhboard.com']) {
@@ -1494,9 +1511,6 @@
       console.warn('初始化管理员失败:', e);
     }
 
-    // ============================================================
-    // 加载用户
-    // ============================================================
     try {
       const saved = localStorage.getItem('bh_user');
       if (saved) {
