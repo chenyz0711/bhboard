@@ -557,7 +557,7 @@
     await upstashSet(MSG_KEY, jsonStr);
   }
 
-  // ---------- 用户管理 (明文存储) ----------
+  // ---------- 用户管理 (明文存储，直接比对) ----------
   async function registerUser(username, password) {
     if (!username || username.length < 1) { 
       regError.textContent = '用户名不能为空'; 
@@ -571,7 +571,7 @@
     const users = await loadUsers();
     console.log('📋 当前用户列表:', users);
     
-    // 检查用户名是否已存在
+    // 检查用户名是否已存在 - 已存在的用户不让再存
     const exists = users.some(u => u.username === username);
     if (exists) {
       regError.textContent = '用户名已存在';
@@ -583,6 +583,8 @@
     await saveUsers(users);
     
     console.log('✅ 注册成功:', username);
+    regSuccess.textContent = '注册成功！';
+    setTimeout(() => regSuccess.textContent = '', 3000);
     return true;
   }
 
@@ -594,19 +596,10 @@
     // 查找用户
     const user = users.find(u => u.username === username);
     
-    if (!user) {
+    // 如果用户不存在或密码不匹配，都显示密码错误
+    if (!user || user.password !== password) {
       loginError.textContent = '密码错误';
-      console.log('❌ 用户不存在:', username);
-      return false;
-    }
-    
-    console.log('🔑 存储的密码:', user.password);
-    console.log('🔑 输入的密码:', password);
-    
-    // 直接对比明文密码
-    if (user.password !== password) {
-      loginError.textContent = '密码错误';
-      console.log('❌ 密码错误');
+      console.log('❌ 登录失败:', username);
       return false;
     }
     
@@ -799,6 +792,7 @@
     showSuccess(regSuccess, `注册成功！请切换到登录`);
     regUsername.value = '';
     regPassword.value = '';
+    // 自动切换到登录
     document.querySelector('.auth-tab[data-tab="login"]').click();
   }
 
