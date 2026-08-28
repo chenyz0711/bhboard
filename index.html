@@ -201,6 +201,21 @@
       line-height: 1.6;
       word-break: break-word;
     }
+    .msg-del-btn {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: #ccc;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: 0.15s;
+    }
+    .msg-del-btn:hover {
+      color: #e74c3c;
+      background: #fdecea;
+    }
     .empty {
       text-align: center;
       color: #ccc;
@@ -376,6 +391,10 @@
       outline: none;
       background: #fafafa;
     }
+    .key-add-row input.key-max-input {
+      flex: 0 0 90px;
+      width: 90px;
+    }
     .key-add-row input:focus {
       border-color: #1a1a1a;
       background: #fff;
@@ -481,7 +500,7 @@
         <input type="password" id="regPassword" placeholder="设置密码" autocomplete="new-password" />
       </div>
       <div class="field">
-        <label>注册密钥（管理员发放，一码一户）</label>
+        <label>注册密钥（管理员发放）</label>
         <input type="text" id="regKey" placeholder="输入注册密钥" autocomplete="off" />
       </div>
       <button class="btn-auth" id="registerBtn">注册并进入</button>
@@ -489,7 +508,7 @@
     </div>
 
     <div class="auth-hint">
-      💡 注册需要管理员发放的密钥，每个密钥只能用一次
+      💡 注册需要管理员发放的密钥，每个密钥有使用次数限制
     </div>
   </div>
 
@@ -508,6 +527,7 @@
     <div id="adminKeysPane" class="hidden">
       <div class="key-add-row">
         <input type="text" id="newKeyInput" placeholder="新密钥（留空自动生成）" maxlength="20" />
+        <input type="number" id="newKeyMax" class="key-max-input" placeholder="可用次数" min="1" />
         <button id="addKeyBtn">添加密钥</button>
       </div>
       <div id="adminKeyList"></div>
@@ -584,6 +604,7 @@
   const adminUserList = document.getElementById('adminUserList');
   const adminKeyList = document.getElementById('adminKeyList');
   const newKeyInput = document.getElementById('newKeyInput');
+  const newKeyMax = document.getElementById('newKeyMax');
   const addKeyBtn = document.getElementById('addKeyBtn');
 
   function formatTime(ts) {
@@ -798,8 +819,8 @@
     try {
       const keys = await readKeysStrict();
       const keyItem = keys.find(k => String(k.key).toUpperCase() === keyInput.toUpperCase());
-      if (!keyItem || keyItem.used) {
-        showError(registerError, '密钥无效或已被使用');
+      if (!keyItem || keyItem.usedCount >= keyItem.maxUses) {
+        showError(registerError, '密钥无效或已用完');
         return;
       }
 
@@ -809,7 +830,7 @@
         return;
       }
       for (const k in users) {
-        if (users[k].username === username) {
+        if (String(users[k].username).toLowerCase() === username.toLowerCase()) {
           showError(registerError, '该用户名已被使用');
           return;
         }
@@ -822,8 +843,9 @@
       };
       await writeUsers(users);
 
-      // 密钥标记为已使用
-      keyItem.used = true;
+      // 密钥使用次数 +1，记录使用者
+      keyItem.usedCount = (keyItem.usedCount || 0) + 1;
+      keyItem.used = true; // 兼容旧逻辑
       keyItem.usedBy = email;
       keyItem.usedAt = Date.now();
       await writeKeys(keys);
@@ -1149,10 +1171,14 @@
       codeSpan.className = 'key-code';
       codeSpan.textContent = k.key;
       const statusSpan = document.createElement('span');
-      statusSpan.className = 'key-status' + (k.used ? ' used' : '');
-      statusSpan.textContent = k.used
-        ? `已使用 · ${k.usedBy || '未知'} · ${formatTime(k.usedAt || Date.now())}`
-        : '未使用';
+      const maxUses = k.maxUses || 1;
+      const usedCount = k.usedCount || 0;
+      const remaining = Math.max(0, maxUses - usedCount);
+      statusSpan.className = 'key-status' + (remaining === 0 ? ' used' : '');
+      let statusText = `已用 ${usedCount}/${maxUses} 次`;
+      if (k.usedBy) statusText += ` · 最近：${k.usedBy}`;
+      if (remaining === 0) statusText += '（已用完）';
+      statusSpan.textContent = statusText;
       main.appendChild(codeSpan);
       main.appendChild(statusSpan);
 
@@ -1226,15 +1252,19 @@
   addKeyBtn.addEventListener('click', async () => {
     let keyVal = newKeyInput.value.trim().toUpperCase();
     if (!keyVal) keyVal = generateKey();
+    let maxVal = parseInt(newKeyMax.value, 10);
+    if (!maxVal || maxVal < 1) maxVal = 1;
+    if (maxVal > 10000) maxVal = 10000;
     try {
       const keys = await readKeysStrict();
       if (keys.some(k => String(k.key).toUpperCase() === keyVal)) {
         alert('该密钥已存在');
         return;
       }
-      keys.push({ key: keyVal, used: false, createdAt: Date.now() });
+      keys.push({ key: keyVal, maxUses: maxVal, usedCount: 0, createdAt: Date.now() });
       await writeKeys(keys);
       newKeyInput.value = '';
+      newKeyMax.value = '';
       await renderAdminKeys();
     } catch (err) {
       console.error('添加失败:', err);
@@ -1275,6 +1305,14 @@
       timeSpan.textContent = formatTime(msg.timestamp);
       top.appendChild(userSpan);
       top.appendChild(timeSpan);
+
+      if (isAdmin) {
+        const delBtn = document.createElement('button');
+        delBtn.className = 'msg-del-btn';
+        delBtn.textContent = '删除';
+        delBtn.dataset.msgId = msg.id || '';
+        top.appendChild(delBtn);
+      }
 
       const textDiv = document.createElement('div');
       textDiv.className = 'msg-text';
@@ -1350,6 +1388,37 @@
   });
 
   clearBtn.addEventListener('click', clearAllMessages);
+
+  // ============================================================
+  // 🔥 管理员删除任意留言
+  // ============================================================
+
+  async function deleteMessage(msgId) {
+    if (!isAdmin || !msgId) return;
+    if (!confirm('确定删除这条留言吗？')) return;
+    try {
+      // 重新读取最新留言再删除，避免误删期间的新消息
+      const latest = await readData(MSG_KEY);
+      const filtered = latest.filter(m => m.id !== msgId);
+      if (filtered.length === latest.length) {
+        alert('该留言已不存在');
+        await loadMessages();
+        return;
+      }
+      await writeData(MSG_KEY, filtered);
+      messages = filtered;
+      renderMessages();
+      setStatus(`管理员模式 · ${messages.length} 条留言`);
+    } catch (err) {
+      console.error('删除失败:', err);
+      alert('删除失败：' + err.message);
+    }
+  }
+
+  msgList.addEventListener('click', (e) => {
+    const btn = e.target.closest('.msg-del-btn');
+    if (btn && btn.dataset.msgId) deleteMessage(btn.dataset.msgId);
+  });
 
   // ============================================================
   // 启动
