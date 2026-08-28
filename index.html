@@ -74,31 +74,6 @@
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
       margin-bottom: 20px;
     }
-    .auth-box .tabs {
-      display: flex;
-      gap: 0;
-      margin-bottom: 24px;
-      border-bottom: 1px solid #eee;
-    }
-    .auth-box .tabs button {
-      flex: 1;
-      padding: 10px 0;
-      background: none;
-      border: none;
-      font-size: 15px;
-      font-weight: 500;
-      color: #bbb;
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-      transition: 0.15s;
-    }
-    .auth-box .tabs button.active {
-      color: #1a1a1a;
-      border-bottom-color: #1a1a1a;
-    }
-    .auth-box .tabs button:hover {
-      color: #666;
-    }
     .auth-box .field {
       margin-bottom: 14px;
     }
@@ -148,6 +123,17 @@
     }
     .auth-box .auth-msg.success {
       color: #27ae60;
+    }
+    .auth-hint {
+      text-align: center;
+      font-size: 13px;
+      color: #999;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #eee;
+    }
+    .auth-hint strong {
+      color: #333;
     }
     .msg-list {
       display: flex;
@@ -288,48 +274,34 @@
     </div>
   </div>
   <div class="status" id="statusText">加载中...</div>
+
+  <!-- 登录框 -->
   <div class="auth-box" id="authBox">
-    <div class="tabs">
-      <button class="active" data-tab="login">登录</button>
-      <button data-tab="register">注册</button>
+    <div class="field">
+      <label>你的名字（随便填）</label>
+      <input type="text" id="loginName" placeholder="输入你想显示的名字" value="兄弟" />
     </div>
-    <div id="loginForm">
-      <div class="field">
-        <label>邮箱</label>
-        <input type="email" id="loginEmail" placeholder="your@email.com" />
-      </div>
-      <div class="field">
-        <label>密码</label>
-        <input type="password" id="loginPassword" placeholder="密码" />
-      </div>
-      <button class="btn-auth" id="loginBtn">登录</button>
-      <div class="auth-msg error" id="loginError"></div>
-      <div class="auth-msg success" id="loginSuccess"></div>
+    <div class="field">
+      <label>通行密码</label>
+      <input type="password" id="loginPassword" placeholder="输入密码" />
     </div>
-    <div id="registerForm" class="hidden">
-      <div class="field">
-        <label>用户名</label>
-        <input type="text" id="regUsername" placeholder="兄弟怎么称呼" maxlength="20" />
-      </div>
-      <div class="field">
-        <label>邮箱</label>
-        <input type="email" id="regEmail" placeholder="your@email.com" />
-      </div>
-      <div class="field">
-        <label>密码</label>
-        <input type="password" id="regPassword" placeholder="密码（至少4位）" />
-      </div>
-      <button class="btn-auth" id="registerBtn">注册</button>
-      <div class="auth-msg error" id="regError"></div>
-      <div class="auth-msg success" id="regSuccess"></div>
+    <button class="btn-auth" id="loginBtn">进入留言板</button>
+    <div class="auth-msg error" id="loginError"></div>
+    <div class="auth-msg success" id="loginSuccess"></div>
+    <div class="auth-hint">
+      💡 统一密码：<strong>1234</strong> · 随便填名字就能进
     </div>
   </div>
+
+  <!-- 留言列表 -->
   <div class="msg-list" id="msgList">
     <div class="empty" id="emptyPlaceholder">
       <span class="icon">💬</span>
       还没有留言，兄弟你先来
     </div>
   </div>
+
+  <!-- 输入区 -->
   <div class="input-area hidden" id="inputArea">
     <div class="input-row">
       <input type="text" id="msgInput" placeholder="说点什么..." maxlength="500" />
@@ -339,6 +311,7 @@
       <button class="btn-clear" id="clearBtn">清空</button>
     </div>
   </div>
+
   <div class="footer">BHBoard · 兄弟们畅聊</div>
 </div>
 
@@ -350,26 +323,17 @@
   // ============================================================
 
   const MSG_KEY = 'bh_messages';
-  const USER_KEY = 'bh_users';
 
   let currentUser = null;
   let messages = [];
 
   // DOM
   const authBox = document.getElementById('authBox');
-  const loginForm = document.getElementById('loginForm');
-  const registerForm = document.getElementById('registerForm');
-  const loginEmail = document.getElementById('loginEmail');
+  const loginName = document.getElementById('loginName');
   const loginPassword = document.getElementById('loginPassword');
   const loginBtn = document.getElementById('loginBtn');
   const loginError = document.getElementById('loginError');
   const loginSuccess = document.getElementById('loginSuccess');
-  const regUsername = document.getElementById('regUsername');
-  const regEmail = document.getElementById('regEmail');
-  const regPassword = document.getElementById('regPassword');
-  const registerBtn = document.getElementById('registerBtn');
-  const regError = document.getElementById('regError');
-  const regSuccess = document.getElementById('regSuccess');
   const msgList = document.getElementById('msgList');
   const emptyPlaceholder = document.getElementById('emptyPlaceholder');
   const msgInput = document.getElementById('msgInput');
@@ -379,7 +343,6 @@
   const userInfo = document.getElementById('userInfo');
   const logoutBtn = document.getElementById('logoutBtn');
   const inputArea = document.getElementById('inputArea');
-  const tabBtns = document.querySelectorAll('.tabs button');
 
   function formatTime(ts) {
     const d = new Date(ts);
@@ -402,22 +365,18 @@
   }
 
   // ============================================================
-  // ✅ 核心修复：直接读写字符串，不做多余解析
+  // Upstash 原始读写
   // ============================================================
 
-  // 读取：直接返回字符串，由调用方 parse
   async function upstashGetRaw(key) {
     const res = await fetch(`${UPSTASH_URL}/get/${key}`, {
       headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
     });
     const data = await res.json();
-    // data.result 就是存进去的原始字符串，可能是 null
     return data.result;
   }
 
-  // 写入：直接传字符串，不要 JSON.stringify 两次
   async function upstashSetRaw(key, value) {
-    // value 必须是字符串
     const response = await fetch(`${UPSTASH_URL}/set/${key}`, {
       method: 'POST',
       headers: {
@@ -437,23 +396,6 @@
   // 业务函数
   // ============================================================
 
-  // 读取用户数据（对象）
-  async function getUsers() {
-    try {
-      const raw = await upstashGetRaw(USER_KEY);
-      if (raw === null || raw === undefined) return {};
-      return JSON.parse(raw);
-    } catch (e) {
-      return {};
-    }
-  }
-
-  // 保存用户数据（对象转字符串）
-  async function saveUsers(users) {
-    await upstashSetRaw(USER_KEY, JSON.stringify(users));
-  }
-
-  // 读取消息（数组）
   async function getMessages() {
     try {
       const raw = await upstashGetRaw(MSG_KEY);
@@ -464,88 +406,38 @@
     }
   }
 
-  // 保存消息（数组转字符串）
   async function saveMessages(msgs) {
     await upstashSetRaw(MSG_KEY, JSON.stringify(msgs));
   }
 
-  // 用户管理
-  function saveUser(user, password) {
-    currentUser = user;
-    localStorage.setItem('bh_user', JSON.stringify(user));
-    localStorage.setItem('bh_password', password);
-  }
+  // ============================================================
+  // 🔥 硬核登录：统一密码 1234
+  // ============================================================
 
-  function loadUser() {
-    try {
-      const raw = localStorage.getItem('bh_user');
-      if (raw) {
-        const user = JSON.parse(raw);
-        if (user && user.email) return user;
-      }
-    } catch (e) {}
-    return null;
-  }
+  function handleLogin() {
+    const name = loginName.value.trim() || '兄弟';
+    const password = loginPassword.value.trim();
 
-  function loadPassword() {
-    return localStorage.getItem('bh_password') || '';
-  }
-
-  function clearUser() {
-    currentUser = null;
-    localStorage.removeItem('bh_user');
-    localStorage.removeItem('bh_password');
-  }
-
-  // 认证
-  async function handleLogin(email, password) {
-    const users = await getUsers();
-    const user = users[email];
-    if (!user) {
-      showError(loginError, '邮箱未注册');
-      return false;
+    if (password !== '1234') {
+      showError(loginError, '密码错误，统一密码是 1234');
+      return;
     }
-    if (user.password !== password) {
-      showError(loginError, '密码错误');
-      return false;
-    }
-    saveUser({ email, username: user.username }, password);
+
+    // 登录成功
+    currentUser = { username: name };
+    localStorage.setItem('bh_user', JSON.stringify(currentUser));
+
     updateUI();
-    showSuccess(loginSuccess, '登录成功！');
-    await loadMessages();
-    return true;
+    showSuccess(loginSuccess, `欢迎，${name}！`);
+    loadMessages();
+    loginName.value = '';
+    loginPassword.value = '';
   }
 
-  async function handleRegister(username, email, password) {
-    const users = await getUsers();
-    if (users[email]) {
-      showError(regError, '该邮箱已注册');
-      return false;
-    }
-    for (const key in users) {
-      if (users[key].username === username) {
-        showError(regError, '该用户名已被使用');
-        return false;
-      }
-    }
-    users[email] = { username, password, createdAt: Date.now() };
-    try {
-      await saveUsers(users);
-      showSuccess(regSuccess, '注册成功！请登录');
-      tabBtns.forEach(b => b.classList.remove('active'));
-      document.querySelector('[data-tab="login"]').classList.add('active');
-      loginForm.classList.remove('hidden');
-      registerForm.classList.add('hidden');
-      loginEmail.value = email;
-      loginPassword.focus();
-      return true;
-    } catch (err) {
-      showError(regError, '注册失败：' + err.message);
-      return false;
-    }
-  }
-
+  // ============================================================
   // 留言
+  // ============================================================
+
   async function loadMessages() {
     try {
       messages = await getMessages();
@@ -627,59 +519,18 @@
   }
 
   // ============================================================
-  // 事件绑定
+  // 事件
   // ============================================================
 
-  tabBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      tabBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const tab = btn.dataset.tab;
-      if (tab === 'login') {
-        loginForm.classList.remove('hidden');
-        registerForm.classList.add('hidden');
-      } else {
-        loginForm.classList.add('hidden');
-        registerForm.classList.remove('hidden');
-      }
-    });
-  });
-
-  loginBtn.addEventListener('click', async () => {
-    const email = loginEmail.value.trim();
-    const password = loginPassword.value.trim();
-    if (!email || !password) {
-      showError(loginError, '请填写邮箱和密码');
-      return;
-    }
-    await handleLogin(email, password);
-  });
+  loginBtn.addEventListener('click', handleLogin);
 
   loginPassword.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') loginBtn.click();
-  });
-
-  registerBtn.addEventListener('click', async () => {
-    const username = regUsername.value.trim();
-    const email = regEmail.value.trim();
-    const password = regPassword.value.trim();
-    if (!username || !email || !password) {
-      showError(regError, '请填写完整信息');
-      return;
-    }
-    if (password.length < 4) {
-      showError(regError, '密码至少4位');
-      return;
-    }
-    await handleRegister(username, email, password);
-  });
-
-  regPassword.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') registerBtn.click();
+    if (e.key === 'Enter') handleLogin();
   });
 
   logoutBtn.addEventListener('click', () => {
-    clearUser();
+    currentUser = null;
+    localStorage.removeItem('bh_user');
     updateUI();
     setStatus('已退出');
     messages = [];
@@ -717,26 +568,20 @@
   // ============================================================
 
   async function init() {
-    const saved = loadUser();
-    if (saved) {
-      const pwd = loadPassword();
-      try {
-        const users = await getUsers();
-        const user = users[saved.email];
-        if (user && user.password === pwd) {
-          currentUser = saved;
+    try {
+      const saved = localStorage.getItem('bh_user');
+      if (saved) {
+        const user = JSON.parse(saved);
+        if (user && user.username) {
+          currentUser = user;
           updateUI();
           await loadMessages();
-          setStatus(`欢迎回来，${saved.username}`);
+          setStatus(`欢迎回来，${user.username}`);
           msgInput.focus();
           return;
-        } else {
-          clearUser();
         }
-      } catch (e) {
-        clearUser();
       }
-    }
+    } catch (e) {}
     updateUI();
     await loadMessages();
   }
