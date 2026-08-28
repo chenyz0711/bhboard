@@ -76,7 +76,6 @@
     }
     .auth-tabs {
       display: flex;
-      gap: 0;
       margin-bottom: 20px;
       border-bottom: 1px solid #eee;
     }
@@ -149,6 +148,14 @@
     }
     .auth-box .auth-msg.success {
       color: #27ae60;
+    }
+    .auth-hint {
+      text-align: center;
+      font-size: 13px;
+      color: #999;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #eee;
     }
     .msg-list {
       display: flex;
@@ -296,21 +303,42 @@
       <button id="tabLogin" class="active">登录</button>
       <button id="tabRegister">注册</button>
     </div>
-    <div class="field hidden" id="usernameField">
-      <label>你的名字（留言里显示）</label>
-      <input type="text" id="regUsername" placeholder="输入你想显示的名字" />
+
+    <!-- 登录表单 -->
+    <div id="loginBox">
+      <div class="field">
+        <label>邮箱</label>
+        <input type="email" id="loginEmail" placeholder="输入注册时的邮箱" autocomplete="email" />
+      </div>
+      <div class="field">
+        <label>密码</label>
+        <input type="password" id="loginPassword" placeholder="输入密码" autocomplete="current-password" />
+      </div>
+      <button class="btn-auth" id="loginBtn">进入留言板</button>
+      <div class="auth-msg error" id="loginError"></div>
     </div>
-    <div class="field">
-      <label>邮箱</label>
-      <input type="email" id="authEmail" placeholder="输入邮箱" autocomplete="email" />
+
+    <!-- 注册表单 -->
+    <div id="registerBox" class="hidden">
+      <div class="field">
+        <label>你的名字（留言里显示）</label>
+        <input type="text" id="regUsername" placeholder="输入你想显示的名字" maxlength="20" />
+      </div>
+      <div class="field">
+        <label>邮箱</label>
+        <input type="email" id="regEmail" placeholder="输入邮箱" autocomplete="email" />
+      </div>
+      <div class="field">
+        <label>密码（至少 4 位）</label>
+        <input type="password" id="regPassword" placeholder="设置密码" autocomplete="new-password" />
+      </div>
+      <button class="btn-auth" id="registerBtn">注册并进入</button>
+      <div class="auth-msg error" id="registerError"></div>
     </div>
-    <div class="field">
-      <label>密码</label>
-      <input type="password" id="authPassword" placeholder="输入密码" autocomplete="current-password" />
+
+    <div class="auth-hint">
+      💡 第一次来？先点「注册」建个账号，之后用邮箱密码登录
     </div>
-    <button class="btn-auth" id="authBtn">进入留言板</button>
-    <div class="auth-msg error" id="authError"></div>
-    <div class="auth-msg success" id="authSuccess"></div>
   </div>
 
   <div class="msg-list" id="msgList">
@@ -334,26 +362,33 @@
 </div>
 
 <script>
-  // 所有数据读写都走 /api 后端接口，前端不再直连数据库
-  const API_AUTH = '/api/auth';
-  const API_MESSAGES = '/api/messages';
+  // ============================================================
+  // 🔥 Upstash 配置
+  const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
+  const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
+  const MSG_KEY = 'bh_messages';      // 聊天记录
+  const PENDING_KEY = 'bh_pending';   // 待处理消息（备份）
+  const USERS_KEY = 'bh_users';       // 注册账号
+  // ============================================================
 
   let currentUser = null;   // { email, username }
-  let token = null;         // 会话凭证
   let messages = [];
-  let authMode = 'login';   // 'login' | 'register'
 
   // DOM
   const authBox = document.getElementById('authBox');
   const tabLogin = document.getElementById('tabLogin');
   const tabRegister = document.getElementById('tabRegister');
-  const usernameField = document.getElementById('usernameField');
+  const loginBox = document.getElementById('loginBox');
+  const registerBox = document.getElementById('registerBox');
+  const loginEmail = document.getElementById('loginEmail');
+  const loginPassword = document.getElementById('loginPassword');
+  const loginBtn = document.getElementById('loginBtn');
+  const loginError = document.getElementById('loginError');
   const regUsername = document.getElementById('regUsername');
-  const authEmail = document.getElementById('authEmail');
-  const authPassword = document.getElementById('authPassword');
-  const authBtn = document.getElementById('authBtn');
-  const authError = document.getElementById('authError');
-  const authSuccess = document.getElementById('authSuccess');
+  const regEmail = document.getElementById('regEmail');
+  const regPassword = document.getElementById('regPassword');
+  const registerBtn = document.getElementById('registerBtn');
+  const registerError = document.getElementById('registerError');
   const msgList = document.getElementById('msgList');
   const emptyPlaceholder = document.getElementById('emptyPlaceholder');
   const msgInput = document.getElementById('msgInput');
@@ -379,100 +414,324 @@
     if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 4000);
   }
 
-  function showSuccess(el, msg) {
-    el.textContent = msg;
-    if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 3000);
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  // ============================================================
+  // 🔥 Upstash 读写
+  // ============================================================
+
+  async function upstashGet(key) {
+    const res = await fetch(`${UPSTASH_URL}/get/${key}`, {
+      headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
+    });
+    const data = await res.json();
+    return data.result;
   }
 
-  // ============================================================
-  // API 请求
-  // ============================================================
-
-  async function apiRequest(url, options = {}) {
-    const res = await fetch(url, options);
-    let data = null;
-    try { data = await res.json(); } catch (e) {}
-    if (!res.ok) {
-      const msg = (data && data.error) ? data.error : `请求失败（${res.status}）`;
-      throw new Error(msg);
+  async function upstashSet(key, value) {
+    const response = await fetch(`${UPSTASH_URL}/set/${key}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${UPSTASH_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ value: value })
+    });
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error('写入失败: ' + err);
     }
-    return data;
+    return await response.json();
   }
 
   // ============================================================
-  // 加载聊天记录
+  // 🔥 读取数据（自动解析）
+  // ============================================================
+
+  async function readData(key) {
+    try {
+      const raw = await upstashGet(key);
+      if (raw === null || raw === undefined || raw === '') return [];
+      let data = JSON.parse(raw);
+      if (Array.isArray(data)) return data;
+      if (data && data.value) {
+        if (Array.isArray(data.value)) return data.value;
+        try { return JSON.parse(data.value); } catch (e) {}
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // ============================================================
+  // 🔥 写入数据（直接存数组）
+  // ============================================================
+
+  async function writeData(key, data) {
+    const arr = Array.isArray(data) ? data : [];
+    return await upstashSet(key, JSON.stringify(arr));
+  }
+
+  // ============================================================
+  // 🔥 账号读写（存对象：邮箱 -> 用户信息）
+  // ============================================================
+
+  async function readUsers() {
+    try {
+      const raw = await upstashGet(USERS_KEY);
+      if (raw === null || raw === undefined || raw === '') return {};
+      let data = JSON.parse(raw);
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        if (data.value && typeof data.value === 'object' && !Array.isArray(data.value)) {
+          return data.value;
+        }
+        return data;
+      }
+      return {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  async function writeUsers(users) {
+    const obj = (users && typeof users === 'object' && !Array.isArray(users)) ? users : {};
+    return await upstashSet(USERS_KEY, JSON.stringify(obj));
+  }
+
+  // ============================================================
+  // 🔥 注册 / 登录
+  // ============================================================
+
+  function enterBoard(user) {
+    currentUser = user;
+    localStorage.setItem('bh_user', JSON.stringify(user));
+    updateUI();
+    setStatus(`欢迎，${user.username}`);
+    loadMessages();
+    loginEmail.value = '';
+    loginPassword.value = '';
+    regEmail.value = '';
+    regPassword.value = '';
+    msgInput.focus();
+  }
+
+  async function handleRegister() {
+    const username = regUsername.value.trim();
+    const email = regEmail.value.trim().toLowerCase();
+    const password = regPassword.value;
+
+    if (!username) { showError(registerError, '请填写你的名字'); return; }
+    if (!EMAIL_RE.test(email)) { showError(registerError, '邮箱格式不正确'); return; }
+    if (password.length < 4) { showError(registerError, '密码至少 4 位'); return; }
+
+    registerBtn.disabled = true;
+    try {
+      const users = await readUsers();
+
+      if (users[email]) {
+        showError(registerError, '该邮箱已注册，请直接登录');
+        return;
+      }
+      for (const key in users) {
+        if (users[key].username === username) {
+          showError(registerError, '该用户名已被使用');
+          return;
+        }
+      }
+
+      users[email] = {
+        username: username.slice(0, 20),
+        password: password, // 简易版：明文存储
+        createdAt: Date.now()
+      };
+      await writeUsers(users);
+
+      enterBoard({ email, username: users[email].username });
+    } catch (err) {
+      console.error('注册失败:', err);
+      showError(registerError, '注册失败：' + err.message);
+    } finally {
+      registerBtn.disabled = false;
+    }
+  }
+
+  async function handleLogin() {
+    const email = loginEmail.value.trim().toLowerCase();
+    const password = loginPassword.value;
+
+    if (!email || !password) {
+      showError(loginError, '邮箱和密码不能为空');
+      return;
+    }
+
+    loginBtn.disabled = true;
+    try {
+      const users = await readUsers();
+      const user = users[email];
+
+      if (!user) {
+        showError(loginError, '该邮箱未注册，请先注册');
+        return;
+      }
+      if (user.password !== password) {
+        showError(loginError, '密码错误');
+        return;
+      }
+
+      enterBoard({ email, username: user.username });
+    } catch (err) {
+      console.error('登录失败:', err);
+      showError(loginError, '登录失败：' + err.message);
+    } finally {
+      loginBtn.disabled = false;
+    }
+  }
+
+  function switchTab(mode) {
+    if (mode === 'login') {
+      tabLogin.classList.add('active');
+      tabRegister.classList.remove('active');
+      loginBox.classList.remove('hidden');
+      registerBox.classList.add('hidden');
+    } else {
+      tabRegister.classList.add('active');
+      tabLogin.classList.remove('active');
+      registerBox.classList.remove('hidden');
+      loginBox.classList.add('hidden');
+    }
+    loginError.textContent = '';
+    registerError.textContent = '';
+  }
+
+  // ============================================================
+  // 🔥 加载聊天记录
   // ============================================================
 
   async function loadMessages() {
     try {
-      const data = await apiRequest(API_MESSAGES);
-      messages = Array.isArray(data) ? data : [];
+      messages = await readData(MSG_KEY);
       renderMessages();
       setStatus(`${messages.length} 条留言`);
+      console.log('✅ 加载完成，共', messages.length, '条留言');
     } catch (err) {
       console.error('加载失败:', err);
-      setStatus('加载失败：' + err.message);
+      setStatus('加载失败，刷新重试');
       messages = [];
     }
   }
 
   // ============================================================
-  // 发送留言
+  // 🔥 发送留言（双存储保障）
   // ============================================================
 
   async function sendMessage(text) {
-    if (!currentUser || !token) return false;
+    if (!currentUser) return false;
+
+    const newMsg = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      username: currentUser.username,
+      text: text.trim(),
+      timestamp: Date.now()
+    };
+
+    // ============================================================
+    // 第 1 步：先备份到 pending（防止丢失）
+    // ============================================================
 
     try {
-      const newMsg = await apiRequest(API_MESSAGES, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ text })
+      let pending = await readData(PENDING_KEY);
+      pending.push({
+        ...newMsg,
+        _backup: true,
+        _time: Date.now()
       });
+      if (pending.length > 100) pending = pending.slice(-100);
+      await writeData(PENDING_KEY, pending);
+      console.log('📦 已备份到 pending');
+    } catch (err) {
+      console.warn('⚠️ pending 备份失败:', err);
+    }
+
+    // ============================================================
+    // 第 2 步：读取最新聊天记录，追加，写回
+    // ============================================================
+
+    try {
+      const latest = await readData(MSG_KEY);
+      messages = latest;
+
       messages.push(newMsg);
       if (messages.length > 500) messages.shift();
+
+      await writeData(MSG_KEY, messages);
+      console.log('✅ 写入聊天记录成功');
+
+      try {
+        await writeData(PENDING_KEY, []);
+        console.log('📦 已清空 pending');
+      } catch (e) {}
+
       renderMessages();
       setStatus(`${messages.length} 条留言`);
       return true;
     } catch (err) {
-      console.error('发送失败:', err);
-      if (String(err.message).includes('登录')) {
-        handleSessionExpired();
+      console.error('❌ 写入失败:', err);
+
+      // ============================================================
+      // 第 3 步：如果失败，尝试从 pending 恢复
+      // ============================================================
+
+      try {
+        const pendingData = await readData(PENDING_KEY);
+        if (pendingData.length > 0) {
+          console.log('🔄 尝试从 pending 恢复数据...');
+          const existingIds = new Set(messages.map(m => m.id));
+          for (const p of pendingData) {
+            if (!existingIds.has(p.id)) {
+              messages.push(p);
+              existingIds.add(p.id);
+            }
+          }
+          if (messages.length > 500) messages = messages.slice(-500);
+          await writeData(MSG_KEY, messages);
+          await writeData(PENDING_KEY, []);
+          renderMessages();
+          setStatus(`${messages.length} 条留言 (已恢复)`);
+          console.log('✅ 数据已从 pending 恢复');
+        }
+      } catch (recoverErr) {
+        console.error('❌ 恢复失败:', recoverErr);
       }
-      setStatus('发送失败：' + err.message);
+
+      setStatus('发送失败，请重试');
       return false;
     }
   }
 
   // ============================================================
-  // 清空（需要确认）
+  // 🔥 清空（需要密码 admin）
   // ============================================================
 
   async function clearAllMessages() {
-    if (!currentUser || !token) return;
+    const password = prompt('⚠️ 清空所有留言需要密码：');
+    if (password !== 'admin') {
+      if (password !== null) alert('❌ 密码错误');
+      return;
+    }
     if (!confirm('确定清空所有留言吗？此操作不可恢复！')) return;
 
+    messages = [];
     try {
-      await apiRequest(API_MESSAGES, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      messages = [];
+      await writeData(MSG_KEY, []);
+      await writeData(PENDING_KEY, []);
       renderMessages();
       setStatus('已清空');
+      alert('✅ 留言已清空');
     } catch (err) {
       console.error('清空失败:', err);
-      if (String(err.message).includes('登录')) {
-        handleSessionExpired();
-        return;
-      }
-      setStatus('清空失败：' + err.message);
+      setStatus('清空失败');
+      alert('❌ 清空失败');
     }
   }
 
@@ -531,117 +790,30 @@
     }
   }
 
-  function handleSessionExpired() {
-    currentUser = null;
-    token = null;
-    localStorage.removeItem('bh_user');
-    localStorage.removeItem('bh_token');
-    updateUI();
-    setStatus('登录已过期，请重新登录');
-  }
-
-  // ============================================================
-  // 登录 / 注册
-  // ============================================================
-
-  function switchAuthMode(mode) {
-    authMode = mode;
-    if (mode === 'login') {
-      tabLogin.classList.add('active');
-      tabRegister.classList.remove('active');
-      usernameField.classList.add('hidden');
-      authBtn.textContent = '进入留言板';
-    } else {
-      tabRegister.classList.add('active');
-      tabLogin.classList.remove('active');
-      usernameField.classList.remove('hidden');
-      authBtn.textContent = '注册并进入';
-    }
-    authError.textContent = '';
-    authSuccess.textContent = '';
-  }
-
-  async function handleAuth() {
-    const email = authEmail.value.trim();
-    const password = authPassword.value;
-    const username = regUsername.value.trim();
-
-    if (!email || !password) {
-      showError(authError, '邮箱和密码不能为空');
-      return;
-    }
-    if (authMode === 'register' && !username) {
-      showError(authError, '请填写你的名字');
-      return;
-    }
-
-    authBtn.disabled = true;
-    try {
-      const body = authMode === 'register'
-        ? { action: 'register', email, password, username }
-        : { action: 'login', email, password };
-
-      const data = await apiRequest(API_AUTH, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-
-      currentUser = data.user;
-      token = data.token;
-      localStorage.setItem('bh_user', JSON.stringify(currentUser));
-      localStorage.setItem('bh_token', token);
-
-      updateUI();
-      showSuccess(authSuccess, `欢迎，${currentUser.username}！`);
-      setStatus('加载中...');
-      await loadMessages();
-      setStatus(`欢迎，${currentUser.username}`);
-      authEmail.value = '';
-      authPassword.value = '';
-      regUsername.value = '';
-      msgInput.focus();
-    } catch (err) {
-      showError(authError, err.message);
-    } finally {
-      authBtn.disabled = false;
-    }
-  }
-
   // ============================================================
   // 事件
   // ============================================================
 
-  tabLogin.addEventListener('click', () => switchAuthMode('login'));
-  tabRegister.addEventListener('click', () => switchAuthMode('register'));
-  authBtn.addEventListener('click', handleAuth);
-  authPassword.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') handleAuth();
-  });
-  authEmail.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') authPassword.focus();
+  tabLogin.addEventListener('click', () => switchTab('login'));
+  tabRegister.addEventListener('click', () => switchTab('register'));
+
+  loginBtn.addEventListener('click', handleLogin);
+  loginPassword.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleLogin();
   });
 
-  logoutBtn.addEventListener('click', async () => {
-    const oldToken = token;
+  registerBtn.addEventListener('click', handleRegister);
+  regPassword.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleRegister();
+  });
+
+  logoutBtn.addEventListener('click', () => {
     currentUser = null;
-    token = null;
     localStorage.removeItem('bh_user');
-    localStorage.removeItem('bh_token');
     updateUI();
     setStatus('已退出');
     messages = [];
     renderMessages();
-    // 通知服务端销毁会话（失败也不影响本地退出）
-    if (oldToken) {
-      try {
-        await apiRequest(API_AUTH, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'logout', token: oldToken })
-        });
-      } catch (e) {}
-    }
   });
 
   sendBtn.addEventListener('click', async () => {
@@ -679,12 +851,10 @@
   async function init() {
     try {
       const saved = localStorage.getItem('bh_user');
-      const savedToken = localStorage.getItem('bh_token');
-      if (saved && savedToken) {
+      if (saved) {
         const user = JSON.parse(saved);
         if (user && user.username) {
           currentUser = user;
-          token = savedToken;
           updateUI();
           await loadMessages();
           setStatus(`欢迎回来，${user.username}`);
