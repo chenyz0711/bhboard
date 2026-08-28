@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BHBoard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: #f5f5f5;
+      font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 600px;
+      width: 100%;
+    }
+
+    .header {
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1a1a1a;
+    }
+    .header h1 span {
+      color: #999;
+      font-weight: 400;
+      font-size: 14px;
+      margin-left: 8px;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .header-right .user-info {
+      font-size: 14px;
+      color: #333;
+    }
+    .header-right .logout-btn {
+      font-size: 13px;
+      color: #999;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: 0.15s;
+    }
+    .header-right .logout-btn:hover {
+      background: #f0f0f0;
+      color: #666;
+    }
+    .status {
+      color: #999;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+
+    /* ===== 登录/注册 ===== */
+    .auth-box {
+      background: #fff;
+      border-radius: 12px;
+      padding: 32px 28px;
+      border: 1px solid #eee;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+      margin-bottom: 20px;
+    }
+    .auth-box .tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 24px;
+      border-bottom: 1px solid #eee;
+    }
+    .auth-box .tabs button {
+      flex: 1;
+      padding: 10px 0;
+      background: none;
+      border: none;
+      font-size: 15px;
+      font-weight: 500;
+      color: #bbb;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: 0.15s;
+    }
+    .auth-box .tabs button.active {
+      color: #1a1a1a;
+      border-bottom-color: #1a1a1a;
+    }
+    .auth-box .tabs button:hover {
+      color: #666;
+    }
+    .auth-box .field {
+      margin-bottom: 14px;
+    }
+    .auth-box .field label {
+      display: block;
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+    .auth-box .field input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      background: #fafafa;
+      transition: 0.15s;
+    }
+    .auth-box .field input:focus {
+      border-color: #1a1a1a;
+      background: #fff;
+    }
+    .auth-box .btn-auth {
+      width: 100%;
+      padding: 11px;
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: 0.15s;
+      margin-top: 4px;
+    }
+    .auth-box .btn-auth:hover {
+      background: #333;
+    }
+    .auth-box .auth-error {
+      color: #e74c3c;
+      font-size: 13px;
+      margin-top: 10px;
+      text-align: center;
+    }
+    .auth-box .auth-success {
+      color: #27ae60;
+      font-size: 13px;
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    /* ===== 留言列表 ===== */
+    .msg-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 20px;
+      min-height: 200px;
+    }
+    .msg-item {
+      background: #fff;
+      border-radius: 12px;
+      padding: 14px 18px;
+      border: 1px solid #eee;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+    .msg-top {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 2px;
+    }
+    .msg-user {
+      font-weight: 600;
+      color: #1a1a1a;
+      font-size: 14px;
+    }
+    .msg-time {
+      color: #bbb;
+      font-size: 12px;
+    }
+    .msg-text {
+      color: #333;
+      font-size: 15px;
+      line-height: 1.6;
+      word-break: break-word;
+      padding-left: 4px;
+    }
+    .empty {
+      text-align: center;
+      color: #ccc;
+      padding: 50px 0;
+      font-size: 14px;
+    }
+    .empty .icon {
+      font-size: 32px;
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    /* ===== 输入区（登录后显示） ===== */
+    .input-area {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px 18px 18px;
+      border: 1px solid #eee;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+    .input-area .input-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .input-area .input-row input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      background: #fafafa;
+      transition: 0.15s;
+    }
+    .input-area .input-row input:focus {
+      border-color: #1a1a1a;
+      background: #fff;
+    }
+    .input-area .input-row input::placeholder {
+      color: #ccc;
+    }
+    .input-area .btn-row {
+      display: flex;
+      gap: 10px;
+    }
+    .input-area .btn-send {
+      flex: 1;
+      padding: 10px;
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+    .input-area .btn-send:hover {
+      background: #333;
+    }
+    .input-area .btn-send:active {
+      transform: scale(0.97);
+    }
+    .input-area .btn-clear {
+      padding: 10px 18px;
+      background: transparent;
+      color: #ccc;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+    .input-area .btn-clear:hover {
+      color: #999;
+      border-color: #ddd;
+    }
+
+    .footer {
+      text-align: center;
+      color: #ddd;
+      font-size: 12px;
+      margin-top: 20px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 16px 12px;
+      }
+      .auth-box {
+        padding: 24px 18px;
+      }
+      .msg-item {
+        padding: 12px 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- 头部 -->
+  <div class="header">
+    <h1>BHBoard <span># 兄弟留言板</span></h1>
+    <div class="header-right" id="headerRight">
+      <span class="user-info hidden" id="userInfo"></span>
+      <button class="logout-btn hidden" id="logoutBtn">退出</button>
+    </div>
+  </div>
+
+  <div class="status" id="statusText">加载中...</div>
+
+  <!-- ===== 登录/注册 ===== -->
+  <div class="auth-box" id="authBox">
+    <div class="tabs">
+      <button class="active" data-tab="login">登录</button>
+      <button data-tab="register">注册</button>
+    </div>
+
+    <!-- 登录 -->
+    <div id="loginForm">
+      <div class="field">
+        <label>邮箱</label>
+        <input type="email" id="loginEmail" placeholder="your@email.com" />
+      </div>
+      <div class="field">
+        <label>密码</label>
+        <input type="password" id="loginPassword" placeholder="密码" />
+      </div>
+      <button class="btn-auth" id="loginBtn">登录</button>
+      <div class="auth-error" id="authError"></div>
+      <div class="auth-success" id="authSuccess"></div>
+    </div>
+
+    <!-- 注册 -->
+    <div id="registerForm" class="hidden">
+      <div class="field">
+        <label>用户名</label>
+        <input type="text" id="regUsername" placeholder="兄弟怎么称呼" maxlength="20" />
+      </div>
+      <div class="field">
+        <label>邮箱</label>
+        <input type="email" id="regEmail" placeholder="your@email.com" />
+      </div>
+      <div class="field">
+        <label>密码</label>
+        <input type="password" id="regPassword" placeholder="密码（至少4位）" />
+      </div>
+      <button class="btn-auth" id="registerBtn">注册</button>
+      <div class="auth-error" id="regError"></div>
+      <div class="auth-success" id="regSuccess"></div>
+    </div>
+  </div>
+
+  <!-- ===== 留言列表 ===== -->
+  <div class="msg-list" id="msgList">
+    <div class="empty" id="emptyPlaceholder">
+      <span class="icon">💬</span>
+      还没有留言，兄弟你先来
+    </div>
+  </div>
+
+  <!-- ===== 输入区 ===== -->
+  <div class="input-area hidden" id="inputArea">
+    <div class="input-row">
+      <input type="text" id="msgInput" placeholder="说点什么..." maxlength="500" autofocus />
+    </div>
+    <div class="btn-row">
+      <button class="btn-send" id="sendBtn">发送</button>
+      <button class="btn-clear" id="clearBtn">清空</button>
+    </div>
+  </div>
+
+  <div class="footer">BHBoard · 兄弟们畅聊</div>
+</div>
+
+<script>
+  // ============================================================
+  const API_AUTH = '/api/auth';
+  const API_MSG = '/api/messages';
+
+  // ============================================================
+  // 状态
+  let currentUser = null; // { email, username }
+  let messages = [];
+
+  // ============================================================
+  // DOM
+  const authBox = document.getElementById('authBox');
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+  const loginEmail = document.getElementById('loginEmail');
+  const loginPassword = document.getElementById('loginPassword');
+  const loginBtn = document.getElementById('loginBtn');
+  const regUsername = document.getElementById('regUsername');
+  const regEmail = document.getElementById('regEmail');
+  const regPassword = document.getElementById('regPassword');
+  const registerBtn = document.getElementById('registerBtn');
+  const authError = document.getElementById('authError');
+  const authSuccess = document.getElementById('authSuccess');
+  const regError = document.getElementById('regError');
+  const regSuccess = document.getElementById('regSuccess');
+
+  const msgList = document.getElementById('msgList');
+  const emptyPlaceholder = document.getElementById('emptyPlaceholder');
+  const msgInput = document.getElementById('msgInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const statusText = document.getElementById('statusText');
+  const userInfo = document.getElementById('userInfo');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const inputArea = document.getElementById('inputArea');
+  const headerRight = document.getElementById('headerRight');
+
+  const tabBtns = document.querySelectorAll('.tabs button');
+
+  // ============================================================
+  // 工具
+  function formatTime(ts) {
+    const d = new Date(ts);
+    const pad = n => String(n).padStart(2, '0');
+    return `${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function setStatus(text) {
+    statusText.textContent = text;
+  }
+
+  function showError(el, msg) {
+    el.textContent = msg;
+    if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 4000);
+  }
+
+  function showSuccess(el, msg) {
+    el.textContent = msg;
+    if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 3000);
+  }
+
+  // ============================================================
+  // 认证
+  function saveUser(user) {
+    currentUser = user;
+    localStorage.setItem('bh_user', JSON.stringify(user));
+  }
+
+  function loadUser() {
+    try {
+      const raw = localStorage.getItem('bh_user');
+      if (raw) {
+        const user = JSON.parse(raw);
+        if (user && user.email) return user;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function clearUser() {
+    currentUser = null;
+    localStorage.removeItem('bh_user');
+  }
+
+  function updateUI() {
+    if (currentUser) {
+      authBox.classList.add('hidden');
+      inputArea.classList.remove('hidden');
+      userInfo.textContent = `👤 ${currentUser.username}`;
+      userInfo.classList.remove('hidden');
+      logoutBtn.classList.remove('hidden');
+    } else {
+      authBox.classList.remove('hidden');
+      inputArea.classList.add('hidden');
+      userInfo.classList.add('hidden');
+      logoutBtn.classList.add('hidden');
+    }
+  }
+
+  // ============================================================
+  // API 调用
+  async function authRequest(action, email, password, username) {
+    const body = { action, email, password };
+    if (username) body.username = username;
+    const res = await fetch(API_AUTH, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    return await res.json();
+  }
+
+  async function fetchMessages() {
+    try {
+      const res = await fetch(API_MSG);
+      if (!res.ok) throw new Error('网络错误');
+      const data = await res.json();
+      messages = Array.isArray(data) ? data : [];
+      renderMessages();
+      setStatus(`${messages.length} 条留言`);
+    } catch (err) {
+      setStatus('加载失败，刷新重试');
+    }
+  }
+
+  async function sendMessage(text) {
+    if (!currentUser) return;
+    try {
+      const res = await fetch(API_MSG, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: currentUser.email,
+          password: localStorage.getItem('bh_password') || '',
+          text
+        })
+      });
+      if (res.status === 401) {
+        clearUser();
+        updateUI();
+        setStatus('登录已过期，请重新登录');
+        return false;
+      }
+      if (!res.ok) throw new Error('发送失败');
+      const newMsg = await res.json();
+      messages.push(newMsg);
+      renderMessages();
+      setStatus(`${messages.length} 条留言`);
+      return true;
+    } catch (err) {
+      setStatus('发送失败，再试一次');
+      return false;
+    }
+  }
+
+  async function clearMessages() {
+    if (!currentUser) return;
+    if (!confirm('确定清空所有留言？')) return;
+    try {
+      const res = await fetch(API_MSG, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: currentUser.email,
+          password: localStorage.getItem('bh_password') || ''
+        })
+      });
+      if (res.status === 401) {
+        clearUser();
+        updateUI();
+        setStatus('登录已过期，请重新登录');
+        return;
+      }
+      messages = [];
+      renderMessages();
+      setStatus('已清空');
+    } catch (err) {
+      setStatus('清空失败');
+    }
+  }
+
+  // ============================================================
+  // 渲染留言
+  function renderMessages() {
+    const items = msgList.querySelectorAll('.msg-item');
+    items.forEach(el => el.remove());
+
+    if (messages.length === 0) {
+      emptyPlaceholder.style.display = 'block';
+      return;
+    }
+    emptyPlaceholder.style.display = 'none';
+
+    const reversed = [...messages].reverse();
+    for (const msg of reversed) {
+      const div = document.createElement('div');
+      div.className = 'msg-item';
+
+      const top = document.createElement('div');
+      top.className = 'msg-top';
+      const userSpan = document.createElement('span');
+      userSpan.className = 'msg-user';
+      userSpan.textContent = msg.username || '兄弟';
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'msg-time';
+      timeSpan.textContent = formatTime(msg.timestamp);
+      top.appendChild(userSpan);
+      top.appendChild(timeSpan);
+
+      const textDiv = document.createElement('div');
+      textDiv.className = 'msg-text';
+      textDiv.textContent = msg.text || '';
+
+      div.appendChild(top);
+      div.appendChild(textDiv);
+      msgList.appendChild(div);
+    }
+  }
+
+  // ============================================================
+  // 事件绑定
+
+  // Tab 切换
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.dataset.tab;
+      if (tab === 'login') {
+        loginForm.classList.remove('hidden');
+        registerForm.classList.add('hidden');
+        authError.textContent = '';
+        regError.textContent = '';
+        authSuccess.textContent = '';
+        regSuccess.textContent = '';
+      } else {
+        loginForm.classList.add('hidden');
+        registerForm.classList.remove('hidden');
+        authError.textContent = '';
+        regError.textContent = '';
+        authSuccess.textContent = '';
+        regSuccess.textContent = '';
+      }
+    });
+  });
+
+  // 登录
+  loginBtn.addEventListener('click', async () => {
+    const email = loginEmail.value.trim();
+    const password = loginPassword.value.trim();
+    if (!email || !password) {
+      showError(authError, '请填写邮箱和密码');
+      return;
+    }
+    const result = await authRequest('login', email, password);
+    if (result.success) {
+      saveUser(result.user);
+      localStorage.setItem('bh_password', password);
+      updateUI();
+      showSuccess(authSuccess, '登录成功！');
+      fetchMessages();
+      setStatus(`欢迎回来，${result.user.username}`);
+      loginEmail.value = '';
+      loginPassword.value = '';
+    } else {
+      showError(authError, result.error || '登录失败');
+    }
+  });
+
+  // 回车登录
+  loginPassword.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') loginBtn.click();
+  });
+  loginEmail.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') loginBtn.click();
+  });
+
+  // 注册
+  registerBtn.addEventListener('click', async () => {
+    const username = regUsername.value.trim();
+    const email = regEmail.value.trim();
+    const password = regPassword.value.trim();
+    if (!username || !email || !password) {
+      showError(regError, '请填写完整信息');
+      return;
+    }
+    if (password.length < 4) {
+      showError(regError, '密码至少4位');
+      return;
+    }
+    const result = await authRequest('register', email, password, username);
+    if (result.success) {
+      showSuccess(regSuccess, '注册成功！请登录');
+      regUsername.value = '';
+      regEmail.value = '';
+      regPassword.value = '';
+      // 切换到登录
+      tabBtns.forEach(b => b.classList.remove('active'));
+      document.querySelector('[data-tab="login"]').classList.add('active');
+      loginForm.classList.remove('hidden');
+      registerForm.classList.add('hidden');
+      loginEmail.value = email;
+      loginPassword.focus();
+    } else {
+      showError(regError, result.error || '注册失败');
+    }
+  });
+
+  // 回车注册
+  regPassword.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') registerBtn.click();
+  });
+
+  // 退出
+  logoutBtn.addEventListener('click', () => {
+    clearUser();
+    localStorage.removeItem('bh_password');
+    updateUI();
+    setStatus('已退出');
+    messages = [];
+    renderMessages();
+  });
+
+  // 发送留言
+  sendBtn.addEventListener('click', async () => {
+    if (!currentUser) return;
+    const text = msgInput.value.trim();
+    if (!text) {
+      msgInput.focus();
+      msgInput.style.borderColor = '#e74c3c';
+      setTimeout(() => msgInput.style.borderColor = '', 500);
+      return;
+    }
+    const ok = await sendMessage(text);
+    if (ok) {
+      msgInput.value = '';
+      msgInput.focus();
+    }
+  });
+
+  msgInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      sendBtn.click();
+    }
+  });
+
+  clearBtn.addEventListener('click', clearMessages);
+
+  // 点击列表聚焦输入
+  msgList.addEventListener('click', () => {
+    if (currentUser) msgInput.focus();
+  });
+
+  // ============================================================
+  // 启动
+  async function init() {
+    const saved = loadUser();
+    if (saved) {
+      // 尝试用保存的密码自动登录验证
+      const pwd = localStorage.getItem('bh_password');
+      if (pwd) {
+        const result = await authRequest('login', saved.email, pwd);
+        if (result.success) {
+          saveUser(result.user);
+          updateUI();
+          fetchMessages();
+          setStatus(`欢迎回来，${result.user.username}`);
+          msgInput.focus();
+          return;
+        } else {
+          clearUser();
+          localStorage.removeItem('bh_password');
+        }
+      }
+    }
+    updateUI();
+    fetchMessages();
+  }
+
+  init();
+</script>
+</body>
+</html>
