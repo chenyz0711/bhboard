@@ -424,7 +424,7 @@
     return 'h' + h.toString(36);
   }
 
-  // ---------- Upstash 读写 (修复版) ----------
+  // ---------- Upstash 读写 (简化版，直接读写数组) ----------
   async function upstashGet(key) {
     const res = await fetch(`${UPSTASH_URL}/get/${key}`, {
       headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
@@ -449,73 +449,88 @@
     return await response.json();
   }
 
-  // 关键修复：统一处理读取的数据格式
-  async function readData(key) {
+  // 读取用户数据：返回数组 [{username: 'xxx', password: 'hash'}]
+  async function loadUsers() {
     try {
-      const raw = await upstashGet(key);
-      console.log(`🔍 读取 ${key} 原始数据:`, raw);
+      const raw = await upstashGet(USERS_KEY);
+      console.log('🔍 原始用户数据:', raw);
       
       if (raw === null || raw === undefined || raw === '') {
-        return {};
+        return [];
       }
       
-      // 尝试解析 JSON
       let parsed;
       try {
         parsed = JSON.parse(raw);
       } catch (e) {
-        console.warn(`⚠️ ${key} 数据不是有效JSON:`, raw);
-        return {};
+        console.warn('⚠️ 用户数据不是有效JSON:', raw);
+        return [];
       }
       
-      // 如果是对象且不是数组，直接返回
-      if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+      // 如果是数组，直接返回
+      if (Array.isArray(parsed)) {
         return parsed;
       }
       
-      // 如果是数组，返回对象（用户数据需要是对象）
-      if (Array.isArray(parsed)) {
-        // 如果数组为空，返回空对象
-        if (parsed.length === 0) return {};
-        // 如果数组第一个元素是对象，尝试合并（针对用户数据）
-        if (typeof parsed[0] === 'object' && parsed[0] !== null) {
-          // 如果是用户数据格式 [{username: hash}]
-          const obj = {};
-          for (const item of parsed) {
-            if (item && typeof item === 'object') {
-              Object.assign(obj, item);
-            }
-          }
-          return obj;
+      // 如果是对象，转换为数组
+      if (typeof parsed === 'object' && parsed !== null) {
+        const arr = [];
+        for (const [key, value] of Object.entries(parsed)) {
+          arr.push({ username: key, password: value });
         }
-        return {};
+        return arr;
       }
       
-      return parsed;
+      return [];
     } catch (e) {
-      console.error(`❌ 读取 ${key} 失败:`, e);
-      return {};
+      console.error('❌ 加载用户失败:', e);
+      return [];
     }
   }
 
-  async function writeData(key, data) {
-    console.log(`✍️ 写入 ${key}:`, data);
-    // 确保数据是字符串
-    const jsonStr = JSON.stringify(data);
-    return await upstashSet(key, jsonStr);
+  // 保存用户数据：接收数组 [{username, password}]
+  async function saveUsers(usersArray) {
+    console.log('✍️ 保存用户数据:', usersArray);
+    const jsonStr = JSON.stringify(usersArray);
+    await upstashSet(USERS_KEY, jsonStr);
+  }
+
+  // 读取留言数据
+  async function loadAllMessages() {
+    try {
+      const raw = await upstashGet(MSG_KEY);
+      console.log('🔍 原始留言数据:', raw);
+      
+      if (raw === null || raw === undefined || raw === '') {
+        return [];
+      }
+      
+      let parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch (e) {
+        console.warn('⚠️ 留言数据不是有效JSON:', raw);
+        return [];
+      }
+      
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+      
+      return [];
+    } catch (e) {
+      console.error('❌ 加载留言失败:', e);
+      return [];
+    }
+  }
+
+  async function saveAllMessages(messagesArray) {
+    console.log('✍️ 保存留言数据:', messagesArray);
+    const jsonStr = JSON.stringify(messagesArray);
+    await upstashSet(MSG_KEY, jsonStr);
   }
 
   // ---------- 用户管理 ----------
-  async function loadUsers() {
-    const users = await readData(USERS_KEY);
-    console.log('📋 当前用户列表:', users);
-    return users;
-  }
-
-  async function saveUsers(users) {
-    await writeData(USERS_KEY, users);
-  }
-
   async function registerUser(username, password) {
     if (!username || username.length < 1) { 
       regError.textContent = '用户名不能为空'; 
@@ -527,64 +542,57 @@
     }
     
     const users = await loadUsers();
-    console.log('🔍 注册前用户列表:', users);
+    console.log('📋 当前用户列表:', users);
     
-    if (users[username]) {
+    // 检查用户名是否已存在
+    const exists = users.some(u => u.username === username);
+    if (exists) {
       regError.textContent = '用户名已存在';
       return false;
     }
     
-    users[username] = hash(password);
-    console.log('✅ 注册新用户:', username, '哈希:', users[username]);
+    // 添加新用户
+    users.push({ username: username, password: hash(password) });
     await saveUsers(users);
     
-    // 验证是否保存成功
-    const verifyUsers = await loadUsers();
-    if (verifyUsers[username]) {
-      console.log('✅ 注册验证成功');
-      return true;
-    } else {
-      console.error('❌ 注册验证失败');
-      regError.textContent = '注册失败，请重试';
-      return false;
-    }
+    console.log('✅ 注册成功:', username);
+    return true;
   }
 
   async function loginUser(username, password) {
     const users = await loadUsers();
-    console.log('🔍 登录时用户列表:', users);
-    console.log('🔍 查找用户:', username);
+    console.log('📋 登录时用户列表:', users);
+    console.log('🔍 尝试登录:', username);
     
-    if (!users[username]) {
-      loginError.textContent = '用户不存在';
+    // 查找用户
+    const user = users.find(u => u.username === username);
+    
+    if (!user) {
+      loginError.textContent = '密码错误';
       console.log('❌ 用户不存在:', username);
       return false;
     }
     
-    const expectedHash = users[username];
     const inputHash = hash(password);
-    console.log('🔑 存储的哈希:', expectedHash);
+    console.log('🔑 存储的哈希:', user.password);
     console.log('🔑 输入的哈希:', inputHash);
     
-    if (expectedHash !== inputHash) {
+    if (user.password !== inputHash) {
       loginError.textContent = '密码错误';
+      console.log('❌ 密码错误');
       return false;
     }
     
+    console.log('✅ 登录成功:', username);
     return true;
   }
 
   // ---------- 留言操作 ----------
   async function loadMessages() {
     try {
-      const data = await readData(MSG_KEY);
-      if (Array.isArray(data)) {
-        messages = data;
-      } else {
-        messages = [];
-      }
+      const allMessages = await loadAllMessages();
       if (currentUser) {
-        messages = messages.filter(m => m.username === currentUser.username);
+        messages = allMessages.filter(m => m.username === currentUser.username);
       } else {
         messages = [];
       }
@@ -607,12 +615,11 @@
       timestamp: Date.now()
     };
     try {
-      let all = await readData(MSG_KEY);
-      if (!Array.isArray(all)) all = [];
-      all.push(newMsg);
-      if (all.length > 500) all = all.slice(-500);
-      await writeData(MSG_KEY, all);
-      messages = all.filter(m => m.username === currentUser.username);
+      const allMessages = await loadAllMessages();
+      allMessages.push(newMsg);
+      if (allMessages.length > 500) allMessages = allMessages.slice(-500);
+      await saveAllMessages(allMessages);
+      messages = allMessages.filter(m => m.username === currentUser.username);
       renderMessages();
       setStatus(`${messages.length} 条留言`);
       return true;
@@ -631,7 +638,7 @@
     }
     if (!confirm('确定清空所有留言吗？此操作不可恢复！')) return;
     try {
-      await writeData(MSG_KEY, []);
+      await saveAllMessages([]);
       messages = [];
       renderMessages();
       setStatus('已清空');
@@ -797,7 +804,8 @@
         const user = JSON.parse(saved);
         if (user && user.username) {
           const users = await loadUsers();
-          if (users[user.username]) {
+          const exists = users.some(u => u.username === user.username);
+          if (exists) {
             currentUser = user;
             updateUI();
             await loadMessages();
