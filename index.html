@@ -329,7 +329,6 @@
       margin-top: 20px;
     }
 
-    /* Admin Panel */
     .admin-panel {
       background: #fff;
       border-radius: 12px;
@@ -449,6 +448,8 @@
       align-items: center;
       padding: 6px 0;
       border-bottom: 1px solid #f0f0f0;
+      flex-wrap: wrap;
+      gap: 6px;
     }
     .admin-panel .user-list .user-item .user-info {
       display: flex;
@@ -550,7 +551,6 @@
 </head>
 <body>
 <div class="container">
-  <!-- Header -->
   <div class="header">
     <h1>BHBoard <span># 兄弟留言板</span></h1>
     <div class="header-right" id="headerRight">
@@ -561,7 +561,6 @@
   </div>
   <div class="status" id="statusText">加载中...</div>
 
-  <!-- Auth -->
   <div class="auth-box" id="authBox">
     <div class="tabs">
       <button class="active" data-tab="login">登录</button>
@@ -606,17 +605,14 @@
     </div>
   </div>
 
-  <!-- Admin Panel -->
   <div class="admin-panel hidden" id="adminPanel">
     <h3>⚙️ 管理面板 <span>仅管理员可见</span></h3>
 
-    <!-- 添加密钥 -->
     <div class="row">
       <input type="text" id="newKeyInput" placeholder="输入新注册密钥（如：ABC123）" />
       <button id="addKeyBtn">添加密钥</button>
     </div>
 
-    <!-- 禁言用户 -->
     <div class="row">
       <input type="text" id="muteUserInput" placeholder="要禁言的用户名" />
       <input type="number" id="muteDuration" placeholder="时长" value="1" style="min-width:60px;flex:0.5;" />
@@ -628,22 +624,16 @@
       <button id="muteBtn" class="danger">禁言</button>
     </div>
 
-    <!-- 注销用户 -->
     <div class="row">
       <input type="text" id="deleteUserInput" placeholder="要注销的用户名" />
       <button id="deleteUserBtn" class="danger">注销账户</button>
     </div>
 
     <div class="admin-msg" id="adminMsg"></div>
-
-    <!-- 密钥列表 -->
     <div class="key-list" id="keyList"></div>
-
-    <!-- 用户列表 -->
     <div class="user-list" id="userList"></div>
   </div>
 
-  <!-- Messages -->
   <div class="msg-list" id="msgList">
     <div class="empty" id="emptyPlaceholder">
       <span class="icon">💬</span>
@@ -651,7 +641,6 @@
     </div>
   </div>
 
-  <!-- Input -->
   <div class="input-area hidden" id="inputArea">
     <div class="input-row">
       <input type="text" id="msgInput" placeholder="说点什么..." maxlength="500" />
@@ -673,13 +662,12 @@
   const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
   // ============================================================
 
-  // 数据 Keys
   const MSG_KEY = 'bh_messages';
   const USER_KEY = 'bh_users';
   const KEY_KEY = 'bh_reg_keys';
   const MUTE_KEY = 'bh_mutes';
 
-  let currentUser = null; // { username, email, isAdmin, muted }
+  let currentUser = null;
   let messages = [];
   let isAdmin = false;
 
@@ -844,7 +832,6 @@
     const muteData = mutes[username];
     if (muteData.permanent) return true;
     if (muteData.until && Date.now() < muteData.until) return true;
-    // 过期了，清理
     delete mutes[username];
     return false;
   }
@@ -887,7 +874,6 @@
   async function sendMessage(text) {
     if (!currentUser) return false;
 
-    // 检查禁言
     const mutes = await getMutes();
     if (isUserMuted(currentUser.username, mutes)) {
       const remaining = getMuteRemaining(currentUser.username, mutes);
@@ -902,7 +888,6 @@
       timestamp: Date.now()
     };
 
-    // 读取最新数据
     const latest = await readDataArray(MSG_KEY);
     messages = latest;
     messages.push(newMsg);
@@ -965,7 +950,6 @@
       const div = document.createElement('div');
       div.className = 'msg-item';
 
-      // 检查发送者是否被禁言
       if (isUserMuted(msg.username, mutes)) {
         div.classList.add('muted-msg');
       }
@@ -976,7 +960,6 @@
       userSpan.className = 'msg-user';
       userSpan.textContent = msg.username || '兄弟';
 
-      // 如果被禁言，显示徽章
       if (isUserMuted(msg.username, mutes)) {
         const badge = document.createElement('span');
         badge.className = 'muted-badge';
@@ -1018,7 +1001,6 @@
         adminPanel.classList.add('hidden');
       }
 
-      // 检查禁言
       getMutes().then(mutes => {
         if (isUserMuted(currentUser.username, mutes)) {
           const remaining = getMuteRemaining(currentUser.username, mutes);
@@ -1059,7 +1041,6 @@
 
     const users = await getUsers();
 
-    // 查找用户（用户名或邮箱匹配）
     let foundUser = null;
     let foundKey = null;
     for (const [email, data] of Object.entries(users)) {
@@ -1080,13 +1061,11 @@
       return;
     }
 
-    // 检查是否被注销
     if (foundUser.deleted) {
       showError(loginError, '账户已被注销');
       return;
     }
 
-    // 检查禁言
     const mutes = await getMutes();
     if (isUserMuted(foundUser.username, mutes)) {
       const remaining = getMuteRemaining(foundUser.username, mutes);
@@ -1138,20 +1117,17 @@
       return;
     }
 
-    // 检查用户名是否包含非法字符
     if (!/^[a-zA-Z0-9_\u4e00-\u9fa5]+$/.test(username)) {
       showError(regError, '用户名只能包含字母、数字、下划线或中文');
       return;
     }
 
-    // 检查密钥
     const keys = await getKeys();
     if (!keys.includes(key)) {
       showError(regError, '注册密钥无效');
       return;
     }
 
-    // 检查密钥是否已被使用
     const users = await getUsers();
     for (const [emailKey, data] of Object.entries(users)) {
       if (data.regKey === key) {
@@ -1160,7 +1136,6 @@
       }
     }
 
-    // 检查用户名是否已存在
     for (const [emailKey, data] of Object.entries(users)) {
       if (data.username === username) {
         showError(regError, '用户名已被占用');
@@ -1168,13 +1143,11 @@
       }
     }
 
-    // 检查邮箱是否已存在
     if (users[email]) {
       showError(regError, '邮箱已被注册');
       return;
     }
 
-    // 创建用户
     users[email] = {
       username: username,
       password: password,
@@ -1185,7 +1158,6 @@
 
     await saveUsers(users);
 
-    // 从可用密钥中移除
     const updatedKeys = keys.filter(k => k !== key);
     await saveKeys(updatedKeys);
 
@@ -1195,7 +1167,6 @@
     regPassword.value = '';
     regKey.value = '';
 
-    // 切换到登录
     tabBtns.forEach(b => b.classList.remove('active'));
     document.querySelector('[data-tab="login"]').classList.add('active');
     loginForm.classList.remove('hidden');
@@ -1215,11 +1186,9 @@
   async function renderAdminPanel() {
     if (!currentUser || !currentUser.isAdmin) return;
 
-    // 渲染密钥列表
     const keys = await getKeys();
     const users = await getUsers();
 
-    // 标记已使用的密钥
     const usedKeys = new Set();
     for (const [email, data] of Object.entries(users)) {
       if (data.regKey) usedKeys.add(data.regKey);
@@ -1239,7 +1208,6 @@
     }
     keyList.innerHTML = keyHtml;
 
-    // 渲染用户列表
     let userHtml = '<strong>用户列表：</strong><br/>';
     const mutes = await getMutes();
 
@@ -1268,7 +1236,6 @@
     }
     userList.innerHTML = userHtml;
 
-    // 绑定用户操作事件
     userList.querySelectorAll('.btn-mute').forEach(btn => {
       btn.addEventListener('click', () => {
         const username = btn.dataset.username;
@@ -1312,7 +1279,6 @@
   // 管理员操作事件
   // ============================================================
 
-  // 添加密钥
   addKeyBtn.addEventListener('click', async () => {
     if (!currentUser || !currentUser.isAdmin) return;
     const key = newKeyInput.value.trim();
@@ -1332,7 +1298,6 @@
     await renderAdminPanel();
   });
 
-  // 禁言
   muteBtn.addEventListener('click', async () => {
     if (!currentUser || !currentUser.isAdmin) return;
     const username = muteUserInput.value.trim();
@@ -1341,7 +1306,6 @@
       return;
     }
 
-    // 不能禁言管理员
     const users = await getUsers();
     let targetUser = null;
     for (const [email, data] of Object.entries(users)) {
@@ -1379,13 +1343,11 @@
     await renderAdminPanel();
     await loadMessages();
 
-    // 如果当前用户就是被禁言的用户，刷新UI
     if (currentUser && currentUser.username === username) {
       updateUI();
     }
   });
 
-  // 注销用户
   deleteUserBtn.addEventListener('click', async () => {
     if (!currentUser || !currentUser.isAdmin) return;
     const username = deleteUserInput.value.trim();
@@ -1508,16 +1470,38 @@
   });
 
   // ============================================================
-  // 启动
+  // 🔥 启动（自动初始化管理员）
   // ============================================================
 
   async function init() {
+    // ============================================================
+    // 🔥 自动初始化管理员账号
+    // ============================================================
+    try {
+      const users = await getUsers();
+      if (!users['admin@bhboard.com']) {
+        users['admin@bhboard.com'] = {
+          username: 'admin',
+          password: 'admin',
+          isAdmin: true,
+          regKey: 'admin_init',
+          createdAt: Date.now()
+        };
+        await saveUsers(users);
+        console.log('✅ 管理员账号已初始化: admin / admin');
+      }
+    } catch (e) {
+      console.warn('初始化管理员失败:', e);
+    }
+
+    // ============================================================
+    // 加载用户
+    // ============================================================
     try {
       const saved = localStorage.getItem('bh_user');
       if (saved) {
         const user = JSON.parse(saved);
         if (user && user.username) {
-          // 验证用户是否还存在
           const users = await getUsers();
           let valid = false;
           for (const [email, data] of Object.entries(users)) {
