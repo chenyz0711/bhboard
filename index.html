@@ -399,15 +399,19 @@
   async function getMessages() {
     try {
       const raw = await upstashGetRaw(MSG_KEY);
-      if (raw === null || raw === undefined) return [];
-      return JSON.parse(raw);
+      if (raw === null || raw === undefined || raw === '') return [];
+      const parsed = JSON.parse(raw);
+      // 确保返回的是数组
+      return Array.isArray(parsed) ? parsed : [];
     } catch (e) {
       return [];
     }
   }
 
   async function saveMessages(msgs) {
-    await upstashSetRaw(MSG_KEY, JSON.stringify(msgs));
+    // 确保传入的是数组
+    const data = Array.isArray(msgs) ? msgs : [];
+    await upstashSetRaw(MSG_KEY, JSON.stringify(data));
   }
 
   // ============================================================
@@ -423,7 +427,6 @@
       return;
     }
 
-    // 登录成功
     currentUser = { username: name };
     localStorage.setItem('bh_user', JSON.stringify(currentUser));
 
@@ -444,6 +447,7 @@
       renderMessages();
       setStatus(`${messages.length} 条留言`);
     } catch (err) {
+      console.error('加载失败:', err);
       setStatus('加载失败，刷新重试');
     }
   }
@@ -456,26 +460,40 @@
       text: text.trim(),
       timestamp: Date.now()
     };
+    // 确保 messages 是数组
+    if (!Array.isArray(messages)) {
+      messages = [];
+    }
     messages.push(newMsg);
     if (messages.length > 500) messages.shift();
-    await saveMessages(messages);
-    renderMessages();
-    setStatus(`${messages.length} 条留言`);
-    return true;
+    try {
+      await saveMessages(messages);
+      renderMessages();
+      setStatus(`${messages.length} 条留言`);
+      return true;
+    } catch (err) {
+      console.error('发送失败:', err);
+      setStatus('发送失败，再试一次');
+      return false;
+    }
   }
 
   async function clearAllMessages() {
     if (!confirm('确定清空所有留言？')) return;
     messages = [];
-    await saveMessages(messages);
-    renderMessages();
-    setStatus('已清空');
+    try {
+      await saveMessages(messages);
+      renderMessages();
+      setStatus('已清空');
+    } catch (err) {
+      setStatus('清空失败');
+    }
   }
 
   function renderMessages() {
     const items = msgList.querySelectorAll('.msg-item');
     items.forEach(el => el.remove());
-    if (messages.length === 0) {
+    if (!messages || messages.length === 0) {
       emptyPlaceholder.style.display = 'block';
       return;
     }
