@@ -15,14 +15,14 @@
       font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
       display: flex;
       justify-content: center;
-      padding: 40px 20px;
+      padding: 24px 20px;
     }
     .container {
       max-width: 600px;
       width: 100%;
     }
     .header {
-      margin-bottom: 20px;
+      margin-bottom: 14px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -64,19 +64,19 @@
     .status {
       color: #999;
       font-size: 13px;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
     }
     .auth-box {
       background: #fff;
       border-radius: 12px;
-      padding: 32px 28px;
+      padding: 28px 26px;
       border: 1px solid #eee;
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
     .auth-tabs {
       display: flex;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
       border-bottom: 1px solid #eee;
     }
     .auth-tabs button {
@@ -146,9 +146,6 @@
     .auth-box .auth-msg.error {
       color: #e74c3c;
     }
-    .auth-box .auth-msg.success {
-      color: #27ae60;
-    }
     .auth-hint {
       text-align: center;
       font-size: 13px;
@@ -157,12 +154,23 @@
       padding-top: 12px;
       border-top: 1px solid #eee;
     }
+    /* ============ 聊天式留言区：固定高度只滚留言 ============ */
     .msg-list {
       display: flex;
       flex-direction: column;
       gap: 14px;
-      margin-bottom: 20px;
-      min-height: 200px;
+      margin-bottom: 16px;
+      height: 430px; /* 约放下 5 条留言 */
+      max-height: calc(100vh - 300px);
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .msg-list::-webkit-scrollbar {
+      width: 6px;
+    }
+    .msg-list::-webkit-scrollbar-thumb {
+      background: #ddd;
+      border-radius: 3px;
     }
     .msg-item {
       background: #fff;
@@ -170,6 +178,7 @@
       padding: 14px 18px;
       border: 1px solid #eee;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      flex-shrink: 0;
     }
     .msg-top {
       display: flex;
@@ -265,11 +274,146 @@
       color: #e74c3c;
       border-color: #e74c3c;
     }
+    /* ============ 管理员面板 ============ */
+    .admin-panel {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px 18px;
+      border: 1px solid #eee;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      margin-bottom: 16px;
+    }
+    .admin-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .admin-tabs button {
+      padding: 6px 14px;
+      border: 1px solid #ddd;
+      background: #fafafa;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      color: #666;
+      transition: 0.15s;
+    }
+    .admin-tabs button.active {
+      background: #1a1a1a;
+      color: #fff;
+      border-color: #1a1a1a;
+    }
+    .admin-row {
+      border: 1px solid #eee;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      background: #fafafa;
+    }
+    .admin-row-main {
+      display: flex;
+      gap: 10px;
+      align-items: baseline;
+      flex-wrap: wrap;
+    }
+    .admin-row-name {
+      font-weight: 600;
+      font-size: 14px;
+      color: #1a1a1a;
+    }
+    .admin-row-email {
+      color: #999;
+      font-size: 12px;
+    }
+    .admin-row-sub {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+      word-break: break-all;
+    }
+    .admin-row-sub .muted {
+      color: #e74c3c;
+      font-weight: 600;
+    }
+    .admin-row-actions {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .admin-row-actions button {
+      font-size: 12px;
+      padding: 4px 10px;
+      border: 1px solid #ddd;
+      background: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #333;
+      transition: 0.15s;
+    }
+    .admin-row-actions button:hover {
+      border-color: #999;
+    }
+    .admin-row-actions button.danger {
+      color: #e74c3c;
+      border-color: #f3c1bc;
+    }
+    .admin-row-actions button.danger:hover {
+      background: #fdecea;
+    }
+    .key-add-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .key-add-row input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+      background: #fafafa;
+    }
+    .key-add-row input:focus {
+      border-color: #1a1a1a;
+      background: #fff;
+    }
+    .key-add-row button {
+      padding: 8px 14px;
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .key-code {
+      font-family: Consolas, Menlo, monospace;
+      font-weight: 600;
+      font-size: 14px;
+      color: #1a1a1a;
+    }
+    .key-status {
+      font-size: 12px;
+      color: #27ae60;
+    }
+    .key-status.used {
+      color: #999;
+    }
+    .admin-empty {
+      text-align: center;
+      color: #ccc;
+      font-size: 13px;
+      padding: 20px 0;
+    }
     .footer {
       text-align: center;
       color: #ddd;
       font-size: 12px;
-      margin-top: 20px;
+      margin-top: 16px;
     }
     .hidden {
       display: none !important;
@@ -279,7 +423,11 @@
         padding: 16px 12px;
       }
       .auth-box {
-        padding: 24px 18px;
+        padding: 22px 18px;
+      }
+      .msg-list {
+        height: 360px;
+        max-height: calc(100vh - 280px);
       }
       .msg-item {
         padding: 12px 14px;
@@ -307,7 +455,7 @@
     <!-- 登录表单 -->
     <div id="loginBox">
       <div class="field">
-        <label>邮箱</label>
+        <label>邮箱（管理员填 admin）</label>
         <input type="email" id="loginEmail" placeholder="输入注册时的邮箱" autocomplete="email" />
       </div>
       <div class="field">
@@ -332,12 +480,37 @@
         <label>密码（至少 4 位）</label>
         <input type="password" id="regPassword" placeholder="设置密码" autocomplete="new-password" />
       </div>
+      <div class="field">
+        <label>注册密钥（管理员发放，一码一户）</label>
+        <input type="text" id="regKey" placeholder="输入注册密钥" autocomplete="off" />
+      </div>
       <button class="btn-auth" id="registerBtn">注册并进入</button>
       <div class="auth-msg error" id="registerError"></div>
     </div>
 
     <div class="auth-hint">
-      💡 第一次来？先点「注册」建个账号，之后用邮箱密码登录
+      💡 注册需要管理员发放的密钥，每个密钥只能用一次
+    </div>
+  </div>
+
+  <!-- 管理员面板 -->
+  <div class="admin-panel hidden" id="adminPanel">
+    <div class="admin-tabs">
+      <button id="adminTabUsers" class="active">账户管理</button>
+      <button id="adminTabKeys">密钥管理</button>
+      <button id="adminRefreshBtn">刷新</button>
+    </div>
+
+    <div id="adminUsersPane">
+      <div id="adminUserList"></div>
+    </div>
+
+    <div id="adminKeysPane" class="hidden">
+      <div class="key-add-row">
+        <input type="text" id="newKeyInput" placeholder="新密钥（留空自动生成）" maxlength="20" />
+        <button id="addKeyBtn">添加密钥</button>
+      </div>
+      <div id="adminKeyList"></div>
     </div>
   </div>
 
@@ -369,9 +542,11 @@
   const MSG_KEY = 'bh_messages';      // 聊天记录
   const PENDING_KEY = 'bh_pending';   // 待处理消息（备份）
   const USERS_KEY = 'bh_users';       // 注册账号
+  const KEYS_KEY = 'bh_keys';         // 注册密钥
   // ============================================================
 
   let currentUser = null;   // { email, username }
+  let isAdmin = false;
   let messages = [];
 
   // DOM
@@ -387,6 +562,7 @@
   const regUsername = document.getElementById('regUsername');
   const regEmail = document.getElementById('regEmail');
   const regPassword = document.getElementById('regPassword');
+  const regKey = document.getElementById('regKey');
   const registerBtn = document.getElementById('registerBtn');
   const registerError = document.getElementById('registerError');
   const msgList = document.getElementById('msgList');
@@ -398,6 +574,17 @@
   const userInfo = document.getElementById('userInfo');
   const logoutBtn = document.getElementById('logoutBtn');
   const inputArea = document.getElementById('inputArea');
+  // 管理员面板 DOM
+  const adminPanel = document.getElementById('adminPanel');
+  const adminTabUsers = document.getElementById('adminTabUsers');
+  const adminTabKeys = document.getElementById('adminTabKeys');
+  const adminRefreshBtn = document.getElementById('adminRefreshBtn');
+  const adminUsersPane = document.getElementById('adminUsersPane');
+  const adminKeysPane = document.getElementById('adminKeysPane');
+  const adminUserList = document.getElementById('adminUserList');
+  const adminKeyList = document.getElementById('adminKeyList');
+  const newKeyInput = document.getElementById('newKeyInput');
+  const addKeyBtn = document.getElementById('addKeyBtn');
 
   function formatTime(ts) {
     const d = new Date(ts);
@@ -445,7 +632,7 @@
   }
 
   // ============================================================
-  // 🔥 读取数据（自动解析）
+  // 🔥 读取数据（数组，自动解析）
   // ============================================================
 
   async function readData(key) {
@@ -464,31 +651,36 @@
     }
   }
 
-  // ============================================================
-  // 🔥 写入数据（直接存数组）
-  // ============================================================
-
   async function writeData(key, data) {
     const arr = Array.isArray(data) ? data : [];
     return await upstashSet(key, JSON.stringify(arr));
   }
 
   // ============================================================
-  // 🔥 账号读写（存对象：邮箱 -> 用户信息）
+  // 🔥 账号读写（对象：邮箱 -> 用户信息）
   // ============================================================
 
+  function parseObj(raw) {
+    if (raw === null || raw === undefined || raw === '') return {};
+    let data = JSON.parse(raw);
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      if (data.value && typeof data.value === 'object' && !Array.isArray(data.value)) {
+        return data.value;
+      }
+      return data;
+    }
+    return {};
+  }
+
+  // 严格版：读取失败会抛错（注册、发消息校验用）
+  async function readUsersStrict() {
+    return parseObj(await upstashGet(USERS_KEY));
+  }
+
+  // 宽松版：读取失败返回空（管理面板展示用）
   async function readUsers() {
     try {
-      const raw = await upstashGet(USERS_KEY);
-      if (raw === null || raw === undefined || raw === '') return {};
-      let data = JSON.parse(raw);
-      if (data && typeof data === 'object' && !Array.isArray(data)) {
-        if (data.value && typeof data.value === 'object' && !Array.isArray(data.value)) {
-          return data.value;
-        }
-        return data;
-      }
-      return {};
+      return await readUsersStrict();
     } catch (e) {
       return {};
     }
@@ -500,41 +692,124 @@
   }
 
   // ============================================================
-  // 🔥 注册 / 登录
+  // 🔥 密钥读写（数组）
   // ============================================================
 
-  function enterBoard(user) {
+  async function readKeysStrict() {
+    const raw = await upstashGet(KEYS_KEY);
+    if (raw === null || raw === undefined || raw === '') return [];
+    let data = JSON.parse(raw);
+    if (Array.isArray(data)) return data;
+    if (data && data.value && Array.isArray(data.value)) return data.value;
+    return [];
+  }
+
+  async function readKeys() {
+    try {
+      return await readKeysStrict();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async function writeKeys(keys) {
+    const arr = Array.isArray(keys) ? keys : [];
+    return await upstashSet(KEYS_KEY, JSON.stringify(arr));
+  }
+
+  function generateKey() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const arr = new Uint32Array(8);
+    crypto.getRandomValues(arr);
+    let s = '';
+    for (let i = 0; i < 8; i++) s += chars[arr[i] % chars.length];
+    return s.slice(0, 4) + '-' + s.slice(4);
+  }
+
+  // ============================================================
+  // 🔥 会话进入 / 退出
+  // ============================================================
+
+  async function startSession(user, adminFlag) {
+    isAdmin = adminFlag;
     currentUser = user;
-    localStorage.setItem('bh_user', JSON.stringify(user));
+    localStorage.setItem('bh_user', JSON.stringify({ ...user, admin: adminFlag }));
     updateUI();
-    setStatus(`欢迎，${user.username}`);
-    loadMessages();
+
+    if (isAdmin) {
+      adminPanel.classList.remove('hidden');
+      setStatus('管理员模式');
+      loadAdminData();
+    } else {
+      adminPanel.classList.add('hidden');
+      setStatus(`欢迎，${user.username}`);
+    }
+
+    await loadMessages();
+
+    // 普通用户：检查是否被禁言
+    if (!isAdmin) {
+      try {
+        const users = await readUsersStrict();
+        const u = users[user.email];
+        if (u && u.mutedUntil && u.mutedUntil > Date.now()) {
+          setStatus(`你已被禁言，解禁时间：${formatTime(u.mutedUntil)}`);
+        }
+      } catch (e) {}
+    }
+
     loginEmail.value = '';
     loginPassword.value = '';
+    regUsername.value = '';
     regEmail.value = '';
     regPassword.value = '';
+    regKey.value = '';
     msgInput.focus();
   }
+
+  function doLogout() {
+    currentUser = null;
+    isAdmin = false;
+    localStorage.removeItem('bh_user');
+    adminPanel.classList.add('hidden');
+    updateUI();
+    setStatus('已退出');
+    messages = [];
+    renderMessages();
+  }
+
+  // ============================================================
+  // 🔥 注册 / 登录
+  // ============================================================
 
   async function handleRegister() {
     const username = regUsername.value.trim();
     const email = regEmail.value.trim().toLowerCase();
     const password = regPassword.value;
+    const keyInput = regKey.value.trim();
 
     if (!username) { showError(registerError, '请填写你的名字'); return; }
+    if (email === 'admin') { showError(registerError, '该名称不可注册'); return; }
     if (!EMAIL_RE.test(email)) { showError(registerError, '邮箱格式不正确'); return; }
     if (password.length < 4) { showError(registerError, '密码至少 4 位'); return; }
+    if (!keyInput) { showError(registerError, '请输入注册密钥'); return; }
 
     registerBtn.disabled = true;
     try {
-      const users = await readUsers();
+      const keys = await readKeysStrict();
+      const keyItem = keys.find(k => String(k.key).toUpperCase() === keyInput.toUpperCase());
+      if (!keyItem || keyItem.used) {
+        showError(registerError, '密钥无效或已被使用');
+        return;
+      }
 
+      const users = await readUsersStrict();
       if (users[email]) {
         showError(registerError, '该邮箱已注册，请直接登录');
         return;
       }
-      for (const key in users) {
-        if (users[key].username === username) {
+      for (const k in users) {
+        if (users[k].username === username) {
           showError(registerError, '该用户名已被使用');
           return;
         }
@@ -547,7 +822,13 @@
       };
       await writeUsers(users);
 
-      enterBoard({ email, username: users[email].username });
+      // 密钥标记为已使用
+      keyItem.used = true;
+      keyItem.usedBy = email;
+      keyItem.usedAt = Date.now();
+      await writeKeys(keys);
+
+      startSession({ email, username: users[email].username }, false);
     } catch (err) {
       console.error('注册失败:', err);
       showError(registerError, '注册失败：' + err.message);
@@ -565,9 +846,19 @@
       return;
     }
 
+    // 管理员账号
+    if (email === 'admin') {
+      if (password === 'admin') {
+        startSession({ email: 'admin', username: '管理员' }, true);
+      } else {
+        showError(loginError, '密码错误');
+      }
+      return;
+    }
+
     loginBtn.disabled = true;
     try {
-      const users = await readUsers();
+      const users = await readUsersStrict();
       const user = users[email];
 
       if (!user) {
@@ -579,7 +870,7 @@
         return;
       }
 
-      enterBoard({ email, username: user.username });
+      startSession({ email, username: user.username }, false);
     } catch (err) {
       console.error('登录失败:', err);
       showError(loginError, '登录失败：' + err.message);
@@ -612,7 +903,7 @@
     try {
       messages = await readData(MSG_KEY);
       renderMessages();
-      setStatus(`${messages.length} 条留言`);
+      setStatus(isAdmin ? `管理员模式 · ${messages.length} 条留言` : `${messages.length} 条留言`);
       console.log('✅ 加载完成，共', messages.length, '条留言');
     } catch (err) {
       console.error('加载失败:', err);
@@ -628,6 +919,25 @@
   async function sendMessage(text) {
     if (!currentUser) return false;
 
+    // 普通用户：发送前校验账户状态（是否被注销 / 禁言）
+    if (!isAdmin) {
+      try {
+        const users = await readUsersStrict();
+        const u = users[currentUser.email];
+        if (!u) {
+          alert('你的账户已被管理员注销');
+          doLogout();
+          return false;
+        }
+        if (u.mutedUntil && u.mutedUntil > Date.now()) {
+          setStatus(`禁言中，解禁时间：${formatTime(u.mutedUntil)}`);
+          return false;
+        }
+      } catch (e) {
+        console.warn('状态校验失败，跳过:', e);
+      }
+    }
+
     const newMsg = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       username: currentUser.username,
@@ -635,10 +945,7 @@
       timestamp: Date.now()
     };
 
-    // ============================================================
     // 第 1 步：先备份到 pending（防止丢失）
-    // ============================================================
-
     try {
       let pending = await readData(PENDING_KEY);
       pending.push({
@@ -653,10 +960,7 @@
       console.warn('⚠️ pending 备份失败:', err);
     }
 
-    // ============================================================
     // 第 2 步：读取最新聊天记录，追加，写回
-    // ============================================================
-
     try {
       const latest = await readData(MSG_KEY);
       messages = latest;
@@ -673,15 +977,12 @@
       } catch (e) {}
 
       renderMessages();
-      setStatus(`${messages.length} 条留言`);
+      setStatus(isAdmin ? `管理员模式 · ${messages.length} 条留言` : `${messages.length} 条留言`);
       return true;
     } catch (err) {
       console.error('❌ 写入失败:', err);
 
-      // ============================================================
       // 第 3 步：如果失败，尝试从 pending 恢复
-      // ============================================================
-
       try {
         const pendingData = await readData(PENDING_KEY);
         if (pendingData.length > 0) {
@@ -736,6 +1037,216 @@
   }
 
   // ============================================================
+  // 🔥 管理员面板
+  // ============================================================
+
+  function switchAdminTab(tab) {
+    if (tab === 'users') {
+      adminTabUsers.classList.add('active');
+      adminTabKeys.classList.remove('active');
+      adminUsersPane.classList.remove('hidden');
+      adminKeysPane.classList.add('hidden');
+    } else {
+      adminTabKeys.classList.add('active');
+      adminTabUsers.classList.remove('active');
+      adminKeysPane.classList.remove('hidden');
+      adminUsersPane.classList.add('hidden');
+    }
+  }
+
+  function loadAdminData() {
+    renderAdminUsers();
+    renderAdminKeys();
+  }
+
+  async function renderAdminUsers() {
+    const users = await readUsers();
+    adminUserList.innerHTML = '';
+
+    const emails = Object.keys(users);
+    if (emails.length === 0) {
+      adminUserList.innerHTML = '<div class="admin-empty">暂无注册账户</div>';
+      return;
+    }
+
+    for (const email of emails) {
+      const u = users[email];
+      const muted = u.mutedUntil && u.mutedUntil > Date.now();
+
+      const row = document.createElement('div');
+      row.className = 'admin-row';
+
+      const main = document.createElement('div');
+      main.className = 'admin-row-main';
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'admin-row-name';
+      nameSpan.textContent = u.username || '（无名）';
+      const emailSpan = document.createElement('span');
+      emailSpan.className = 'admin-row-email';
+      emailSpan.textContent = email;
+      main.appendChild(nameSpan);
+      main.appendChild(emailSpan);
+
+      const sub = document.createElement('div');
+      sub.className = 'admin-row-sub';
+      sub.textContent = `密码：${u.password || '（无）'} ｜ 注册时间：${formatTime(u.createdAt || Date.now())} ｜ `;
+      const stateSpan = document.createElement('span');
+      if (muted) {
+        stateSpan.className = 'muted';
+        stateSpan.textContent = `禁言中，至 ${formatTime(u.mutedUntil)}`;
+      } else {
+        stateSpan.textContent = '状态正常';
+      }
+      sub.appendChild(stateSpan);
+
+      const actions = document.createElement('div');
+      actions.className = 'admin-row-actions';
+
+      if (muted) {
+        const unmuteBtn = document.createElement('button');
+        unmuteBtn.textContent = '解除禁言';
+        unmuteBtn.dataset.action = 'unmute';
+        unmuteBtn.dataset.email = email;
+        actions.appendChild(unmuteBtn);
+      } else {
+        const muteBtn = document.createElement('button');
+        muteBtn.textContent = '禁言';
+        muteBtn.dataset.action = 'mute';
+        muteBtn.dataset.email = email;
+        actions.appendChild(muteBtn);
+      }
+
+      const delBtn = document.createElement('button');
+      delBtn.textContent = '注销账户';
+      delBtn.className = 'danger';
+      delBtn.dataset.action = 'delete';
+      delBtn.dataset.email = email;
+      actions.appendChild(delBtn);
+
+      row.appendChild(main);
+      row.appendChild(sub);
+      row.appendChild(actions);
+      adminUserList.appendChild(row);
+    }
+  }
+
+  async function renderAdminKeys() {
+    const keys = await readKeys();
+    adminKeyList.innerHTML = '';
+
+    if (keys.length === 0) {
+      adminKeyList.innerHTML = '<div class="admin-empty">暂无密钥，请在上方添加</div>';
+      return;
+    }
+
+    for (const k of keys) {
+      const row = document.createElement('div');
+      row.className = 'admin-row';
+
+      const main = document.createElement('div');
+      main.className = 'admin-row-main';
+      const codeSpan = document.createElement('span');
+      codeSpan.className = 'key-code';
+      codeSpan.textContent = k.key;
+      const statusSpan = document.createElement('span');
+      statusSpan.className = 'key-status' + (k.used ? ' used' : '');
+      statusSpan.textContent = k.used
+        ? `已使用 · ${k.usedBy || '未知'} · ${formatTime(k.usedAt || Date.now())}`
+        : '未使用';
+      main.appendChild(codeSpan);
+      main.appendChild(statusSpan);
+
+      const actions = document.createElement('div');
+      actions.className = 'admin-row-actions';
+      const delBtn = document.createElement('button');
+      delBtn.textContent = '删除';
+      delBtn.className = 'danger';
+      delBtn.dataset.action = 'deleteKey';
+      delBtn.dataset.key = k.key;
+      actions.appendChild(delBtn);
+
+      row.appendChild(main);
+      row.appendChild(actions);
+      adminKeyList.appendChild(row);
+    }
+  }
+
+  // 账户管理操作
+  adminUserList.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const email = btn.dataset.email;
+    const action = btn.dataset.action;
+
+    try {
+      const users = await readUsersStrict();
+
+      if (action === 'mute') {
+        const input = prompt(`禁言 ${email} 多久？\n输入分钟数（60 = 1小时，1440 = 1天，10080 = 7天）：`, '60');
+        if (input === null) return;
+        const mins = parseInt(input, 10);
+        if (!mins || mins <= 0) { alert('请输入有效的分钟数'); return; }
+        if (!users[email]) { alert('该账户不存在'); return; }
+        users[email].mutedUntil = Date.now() + mins * 60000;
+        await writeUsers(users);
+        await renderAdminUsers();
+      } else if (action === 'unmute') {
+        if (!users[email]) { alert('该账户不存在'); return; }
+        users[email].mutedUntil = 0;
+        await writeUsers(users);
+        await renderAdminUsers();
+      } else if (action === 'delete') {
+        if (!confirm(`确定注销账户 ${email} 吗？\n注销后该用户将无法登录。`)) return;
+        delete users[email];
+        await writeUsers(users);
+        await renderAdminUsers();
+      }
+    } catch (err) {
+      console.error('操作失败:', err);
+      alert('操作失败：' + err.message);
+    }
+  });
+
+  // 密钥管理操作
+  adminKeyList.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-action="deleteKey"]');
+    if (!btn) return;
+    const key = btn.dataset.key;
+    if (!confirm(`确定删除密钥 ${key} 吗？`)) return;
+    try {
+      const keys = await readKeysStrict();
+      await writeKeys(keys.filter(k => k.key !== key));
+      await renderAdminKeys();
+    } catch (err) {
+      console.error('删除失败:', err);
+      alert('删除失败：' + err.message);
+    }
+  });
+
+  addKeyBtn.addEventListener('click', async () => {
+    let keyVal = newKeyInput.value.trim().toUpperCase();
+    if (!keyVal) keyVal = generateKey();
+    try {
+      const keys = await readKeysStrict();
+      if (keys.some(k => String(k.key).toUpperCase() === keyVal)) {
+        alert('该密钥已存在');
+        return;
+      }
+      keys.push({ key: keyVal, used: false, createdAt: Date.now() });
+      await writeKeys(keys);
+      newKeyInput.value = '';
+      await renderAdminKeys();
+    } catch (err) {
+      console.error('添加失败:', err);
+      alert('添加失败：' + err.message);
+    }
+  });
+
+  adminTabUsers.addEventListener('click', () => switchAdminTab('users'));
+  adminTabKeys.addEventListener('click', () => switchAdminTab('keys'));
+  adminRefreshBtn.addEventListener('click', loadAdminData);
+
+  // ============================================================
   // 渲染
   // ============================================================
 
@@ -749,8 +1260,8 @@
     }
     emptyPlaceholder.style.display = 'none';
 
-    const reversed = [...messages].reverse();
-    for (const msg of reversed) {
+    // 按时间正序显示（像聊天软件），新消息在底部
+    for (const msg of messages) {
       const div = document.createElement('div');
       div.className = 'msg-item';
 
@@ -773,13 +1284,16 @@
       div.appendChild(textDiv);
       msgList.appendChild(div);
     }
+
+    // 自动滚动到最新消息
+    msgList.scrollTop = msgList.scrollHeight;
   }
 
   function updateUI() {
     if (currentUser) {
       authBox.classList.add('hidden');
       inputArea.classList.remove('hidden');
-      userInfo.textContent = currentUser.username;
+      userInfo.textContent = currentUser.username + (isAdmin ? '（管理员）' : '');
       userInfo.classList.remove('hidden');
       logoutBtn.classList.remove('hidden');
     } else {
@@ -804,17 +1318,13 @@
 
   registerBtn.addEventListener('click', handleRegister);
   regPassword.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') regKey.focus();
+  });
+  regKey.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') handleRegister();
   });
 
-  logoutBtn.addEventListener('click', () => {
-    currentUser = null;
-    localStorage.removeItem('bh_user');
-    updateUI();
-    setStatus('已退出');
-    messages = [];
-    renderMessages();
-  });
+  logoutBtn.addEventListener('click', doLogout);
 
   sendBtn.addEventListener('click', async () => {
     if (!currentUser) return;
@@ -840,9 +1350,6 @@
   });
 
   clearBtn.addEventListener('click', clearAllMessages);
-  msgList.addEventListener('click', () => {
-    if (currentUser) msgInput.focus();
-  });
 
   // ============================================================
   // 启动
@@ -853,14 +1360,14 @@
       const saved = localStorage.getItem('bh_user');
       if (saved) {
         const user = JSON.parse(saved);
-        if (user && user.username) {
-          currentUser = user;
-          updateUI();
-          await loadMessages();
-          setStatus(`欢迎回来，${user.username}`);
-          msgInput.focus();
+        // 旧版本只存了用户名、没有邮箱：视为未登录，清掉重新登录
+        if (user && user.username && user.email) {
+          const adminFlag = user.email === 'admin' && user.admin === true;
+          await startSession({ email: user.email, username: user.username }, adminFlag);
+          setStatus(adminFlag ? '管理员模式' : `欢迎回来，${user.username}`);
           return;
         }
+        localStorage.removeItem('bh_user');
       }
     } catch (e) {}
     updateUI();
