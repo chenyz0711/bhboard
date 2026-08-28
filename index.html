@@ -18,16 +18,16 @@
       padding: 40px 20px;
     }
     .container {
-      max-width: 600px;
+      max-width: 700px;
       width: 100%;
     }
     .header {
-      margin-bottom: 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
       gap: 10px;
+      margin-bottom: 16px;
     }
     .header h1 {
       font-size: 24px;
@@ -44,10 +44,26 @@
       display: flex;
       align-items: center;
       gap: 12px;
+      flex-wrap: wrap;
     }
     .header-right .user-info {
       font-size: 14px;
       color: #333;
+      font-weight: 500;
+    }
+    .header-right .user-info .badge {
+      font-size: 11px;
+      background: #1a1a1a;
+      color: #fff;
+      padding: 2px 10px;
+      border-radius: 20px;
+      margin-left: 6px;
+    }
+    .header-right .user-info .badge.admin {
+      background: #e74c3c;
+    }
+    .header-right .user-info .badge.muted {
+      background: #f39c12;
     }
     .header-right .logout-btn {
       font-size: 13px;
@@ -55,7 +71,7 @@
       background: none;
       border: none;
       cursor: pointer;
-      padding: 4px 8px;
+      padding: 4px 10px;
       border-radius: 4px;
     }
     .header-right .logout-btn:hover {
@@ -66,16 +82,42 @@
       font-size: 13px;
       margin-bottom: 16px;
     }
+
     .auth-box {
       background: #fff;
       border-radius: 12px;
-      padding: 32px 28px;
+      padding: 28px 24px;
       border: 1px solid #eee;
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
       margin-bottom: 20px;
     }
+    .auth-box .tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #eee;
+    }
+    .auth-box .tabs button {
+      flex: 1;
+      padding: 8px 0;
+      background: none;
+      border: none;
+      font-size: 14px;
+      font-weight: 500;
+      color: #bbb;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: 0.15s;
+    }
+    .auth-box .tabs button.active {
+      color: #1a1a1a;
+      border-bottom-color: #1a1a1a;
+    }
+    .auth-box .tabs button:hover {
+      color: #666;
+    }
     .auth-box .field {
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
     .auth-box .field label {
       display: block;
@@ -124,21 +166,23 @@
     .auth-box .auth-msg.success {
       color: #27ae60;
     }
-    .auth-hint {
+    .auth-box .auth-hint {
+      font-size: 12px;
+      color: #bbb;
+      margin-top: 10px;
       text-align: center;
-      font-size: 13px;
+    }
+    .auth-box .auth-hint strong {
       color: #999;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid #eee;
     }
-    .auth-hint strong {
-      color: #333;
+    .hidden {
+      display: none !important;
     }
+
     .msg-list {
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
       margin-bottom: 20px;
       min-height: 200px;
     }
@@ -148,17 +192,37 @@
       padding: 14px 18px;
       border: 1px solid #eee;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      position: relative;
+    }
+    .msg-item.muted-msg {
+      opacity: 0.5;
+      background: #fafafa;
+    }
+    .msg-item.muted-msg::after {
+      content: '🔇 已禁言';
+      position: absolute;
+      top: 8px;
+      right: 12px;
+      font-size: 11px;
+      color: #f39c12;
     }
     .msg-top {
       display: flex;
       align-items: baseline;
       gap: 12px;
       margin-bottom: 2px;
+      flex-wrap: wrap;
     }
     .msg-user {
       font-weight: 600;
       color: #1a1a1a;
       font-size: 14px;
+    }
+    .msg-user .muted-badge {
+      font-size: 11px;
+      color: #f39c12;
+      font-weight: 400;
+      margin-left: 6px;
     }
     .msg-time {
       color: #bbb;
@@ -181,6 +245,7 @@
       display: block;
       margin-bottom: 10px;
     }
+
     .input-area {
       background: #fff;
       border-radius: 12px;
@@ -213,6 +278,7 @@
     .input-area .btn-row {
       display: flex;
       gap: 10px;
+      flex-wrap: wrap;
     }
     .input-area .btn-send {
       flex: 1;
@@ -229,6 +295,10 @@
     .input-area .btn-send:hover {
       background: #333;
     }
+    .input-area .btn-send:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
     .input-area .btn-clear {
       padding: 10px 18px;
       background: transparent;
@@ -237,62 +307,343 @@
       border-radius: 8px;
       font-size: 13px;
       cursor: pointer;
-      transition: 0.15s;
     }
     .input-area .btn-clear:hover {
       color: #e74c3c;
       border-color: #e74c3c;
     }
+    .mute-notice {
+      font-size: 12px;
+      color: #f39c12;
+      margin-top: 6px;
+      display: none;
+    }
+    .mute-notice.show {
+      display: block;
+    }
+
     .footer {
       text-align: center;
       color: #ddd;
       font-size: 12px;
       margin-top: 20px;
     }
-    .hidden {
-      display: none !important;
+
+    /* Admin Panel */
+    .admin-panel {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px 24px;
+      border: 1px solid #eee;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
+    .admin-panel h3 {
+      font-size: 16px;
+      color: #1a1a1a;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .admin-panel h3 span {
+      font-size: 12px;
+      color: #999;
+      font-weight: 400;
+    }
+    .admin-panel .row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .admin-panel .row input {
+      flex: 1;
+      min-width: 120px;
+      padding: 8px 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+      background: #fafafa;
+    }
+    .admin-panel .row input:focus {
+      border-color: #1a1a1a;
+      background: #fff;
+    }
+    .admin-panel .row select {
+      padding: 8px 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 13px;
+      background: #fafafa;
+      outline: none;
+    }
+    .admin-panel .row button {
+      padding: 8px 18px;
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+    .admin-panel .row button:hover {
+      background: #333;
+    }
+    .admin-panel .row button.danger {
+      background: #e74c3c;
+    }
+    .admin-panel .row button.danger:hover {
+      background: #c0392b;
+    }
+    .admin-panel .admin-msg {
+      font-size: 13px;
+      margin-top: 8px;
+      color: #666;
+    }
+    .admin-panel .admin-msg.error {
+      color: #e74c3c;
+    }
+    .admin-panel .admin-msg.success {
+      color: #27ae60;
+    }
+    .admin-panel .key-list {
+      font-size: 13px;
+      color: #666;
+      margin-top: 8px;
+      max-height: 100px;
+      overflow-y: auto;
+    }
+    .admin-panel .key-list .key-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .admin-panel .key-list .key-item .key-code {
+      font-family: monospace;
+      color: #1a1a1a;
+    }
+    .admin-panel .key-list .key-item .key-status {
+      font-size: 12px;
+      color: #999;
+    }
+    .admin-panel .key-list .key-item .key-status.used {
+      color: #e74c3c;
+    }
+    .admin-panel .key-list .key-item .key-status.available {
+      color: #27ae60;
+    }
+    .admin-panel .user-list {
+      font-size: 13px;
+      color: #666;
+      margin-top: 8px;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    .admin-panel .user-list .user-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .admin-panel .user-list .user-item .user-info {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .admin-panel .user-list .user-item .user-info .uname {
+      font-weight: 500;
+      color: #1a1a1a;
+    }
+    .admin-panel .user-list .user-item .user-info .uemail {
+      color: #999;
+      font-size: 12px;
+    }
+    .admin-panel .user-list .user-item .user-info .ustatus {
+      font-size: 11px;
+      padding: 2px 10px;
+      border-radius: 20px;
+    }
+    .admin-panel .user-list .user-item .user-info .ustatus.active {
+      background: #d4edda;
+      color: #155724;
+    }
+    .admin-panel .user-list .user-item .user-info .ustatus.muted {
+      background: #fff3cd;
+      color: #856404;
+    }
+    .admin-panel .user-list .user-item .user-actions button {
+      padding: 4px 12px;
+      font-size: 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-left: 4px;
+      transition: 0.15s;
+    }
+    .admin-panel .user-list .user-item .user-actions .btn-mute {
+      background: #f39c12;
+      color: #fff;
+    }
+    .admin-panel .user-list .user-item .user-actions .btn-mute:hover {
+      background: #e67e22;
+    }
+    .admin-panel .user-list .user-item .user-actions .btn-unmute {
+      background: #27ae60;
+      color: #fff;
+    }
+    .admin-panel .user-list .user-item .user-actions .btn-unmute:hover {
+      background: #219a52;
+    }
+    .admin-panel .user-list .user-item .user-actions .btn-delete {
+      background: #e74c3c;
+      color: #fff;
+    }
+    .admin-panel .user-list .user-item .user-actions .btn-delete:hover {
+      background: #c0392b;
+    }
+
+    .admin-toggle {
+      background: none;
+      border: none;
+      color: #999;
+      font-size: 13px;
+      cursor: pointer;
+      padding: 4px 12px;
+      border-radius: 4px;
+    }
+    .admin-toggle:hover {
+      background: #f0f0f0;
+    }
+
     @media (max-width: 480px) {
       body {
         padding: 16px 12px;
       }
       .auth-box {
-        padding: 24px 18px;
+        padding: 20px 16px;
       }
       .msg-item {
         padding: 12px 14px;
+      }
+      .admin-panel {
+        padding: 16px;
+      }
+      .admin-panel .row {
+        flex-direction: column;
+      }
+      .admin-panel .row input,
+      .admin-panel .row select,
+      .admin-panel .row button {
+        width: 100%;
+      }
+      .header h1 {
+        font-size: 20px;
       }
     }
   </style>
 </head>
 <body>
 <div class="container">
+  <!-- Header -->
   <div class="header">
     <h1>BHBoard <span># 兄弟留言板</span></h1>
     <div class="header-right" id="headerRight">
       <span class="user-info hidden" id="userInfo"></span>
+      <button class="admin-toggle hidden" id="adminToggle">⚙️ 管理</button>
       <button class="logout-btn hidden" id="logoutBtn">退出</button>
     </div>
   </div>
   <div class="status" id="statusText">加载中...</div>
 
+  <!-- Auth -->
   <div class="auth-box" id="authBox">
-    <div class="field">
-      <label>你的名字（随便填）</label>
-      <input type="text" id="loginName" placeholder="输入你想显示的名字" value="兄弟" />
+    <div class="tabs">
+      <button class="active" data-tab="login">登录</button>
+      <button data-tab="register">注册</button>
     </div>
-    <div class="field">
-      <label>通行密码</label>
-      <input type="password" id="loginPassword" placeholder="输入密码" />
+
+    <div id="loginForm">
+      <div class="field">
+        <label>用户名 或 邮箱</label>
+        <input type="text" id="loginId" placeholder="用户名 或 邮箱" />
+      </div>
+      <div class="field">
+        <label>密码</label>
+        <input type="password" id="loginPassword" placeholder="密码" />
+      </div>
+      <button class="btn-auth" id="loginBtn">登录</button>
+      <div class="auth-msg error" id="loginError"></div>
+      <div class="auth-msg success" id="loginSuccess"></div>
     </div>
-    <button class="btn-auth" id="loginBtn">进入留言板</button>
-    <div class="auth-msg error" id="loginError"></div>
-    <div class="auth-msg success" id="loginSuccess"></div>
-    <div class="auth-hint">
-      💡 统一密码：<strong>1234</strong> · 随便填名字就能进
+
+    <div id="registerForm" class="hidden">
+      <div class="field">
+        <label>用户名</label>
+        <input type="text" id="regUsername" placeholder="设置用户名" maxlength="20" />
+      </div>
+      <div class="field">
+        <label>邮箱</label>
+        <input type="email" id="regEmail" placeholder="your@email.com" />
+      </div>
+      <div class="field">
+        <label>密码</label>
+        <input type="password" id="regPassword" placeholder="密码（至少4位）" />
+      </div>
+      <div class="field">
+        <label>注册密钥（向管理员索取）</label>
+        <input type="text" id="regKey" placeholder="输入注册密钥" />
+      </div>
+      <button class="btn-auth" id="registerBtn">注册</button>
+      <div class="auth-msg error" id="regError"></div>
+      <div class="auth-msg success" id="regSuccess"></div>
+      <div class="auth-hint">💡 需要注册密钥才能注册，联系管理员获取</div>
     </div>
   </div>
 
+  <!-- Admin Panel -->
+  <div class="admin-panel hidden" id="adminPanel">
+    <h3>⚙️ 管理面板 <span>仅管理员可见</span></h3>
+
+    <!-- 添加密钥 -->
+    <div class="row">
+      <input type="text" id="newKeyInput" placeholder="输入新注册密钥（如：ABC123）" />
+      <button id="addKeyBtn">添加密钥</button>
+    </div>
+
+    <!-- 禁言用户 -->
+    <div class="row">
+      <input type="text" id="muteUserInput" placeholder="要禁言的用户名" />
+      <input type="number" id="muteDuration" placeholder="时长" value="1" style="min-width:60px;flex:0.5;" />
+      <select id="muteUnit">
+        <option value="minutes">分钟</option>
+        <option value="hours" selected>小时</option>
+        <option value="days">天</option>
+      </select>
+      <button id="muteBtn" class="danger">禁言</button>
+    </div>
+
+    <!-- 注销用户 -->
+    <div class="row">
+      <input type="text" id="deleteUserInput" placeholder="要注销的用户名" />
+      <button id="deleteUserBtn" class="danger">注销账户</button>
+    </div>
+
+    <div class="admin-msg" id="adminMsg"></div>
+
+    <!-- 密钥列表 -->
+    <div class="key-list" id="keyList"></div>
+
+    <!-- 用户列表 -->
+    <div class="user-list" id="userList"></div>
+  </div>
+
+  <!-- Messages -->
   <div class="msg-list" id="msgList">
     <div class="empty" id="emptyPlaceholder">
       <span class="icon">💬</span>
@@ -300,6 +651,7 @@
     </div>
   </div>
 
+  <!-- Input -->
   <div class="input-area hidden" id="inputArea">
     <div class="input-row">
       <input type="text" id="msgInput" placeholder="说点什么..." maxlength="500" />
@@ -308,6 +660,7 @@
       <button class="btn-send" id="sendBtn">发送</button>
       <button class="btn-clear" id="clearBtn">清空</button>
     </div>
+    <div class="mute-notice" id="muteNotice">🔇 你已被禁言，暂不能发送消息</div>
   </div>
 
   <div class="footer">BHBoard · 兄弟们畅聊</div>
@@ -318,20 +671,32 @@
   // 🔥 Upstash 配置
   const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
   const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
-  const MSG_KEY = 'bh_messages';      // 聊天记录
-  const PENDING_KEY = 'bh_pending';   // 待处理消息（备份）
   // ============================================================
 
-  let currentUser = null;
+  // 数据 Keys
+  const MSG_KEY = 'bh_messages';
+  const USER_KEY = 'bh_users';
+  const KEY_KEY = 'bh_reg_keys';
+  const MUTE_KEY = 'bh_mutes';
+
+  let currentUser = null; // { username, email, isAdmin, muted }
   let messages = [];
+  let isAdmin = false;
 
   // DOM
   const authBox = document.getElementById('authBox');
-  const loginName = document.getElementById('loginName');
+  const loginId = document.getElementById('loginId');
   const loginPassword = document.getElementById('loginPassword');
   const loginBtn = document.getElementById('loginBtn');
   const loginError = document.getElementById('loginError');
   const loginSuccess = document.getElementById('loginSuccess');
+  const regUsername = document.getElementById('regUsername');
+  const regEmail = document.getElementById('regEmail');
+  const regPassword = document.getElementById('regPassword');
+  const regKey = document.getElementById('regKey');
+  const registerBtn = document.getElementById('registerBtn');
+  const regError = document.getElementById('regError');
+  const regSuccess = document.getElementById('regSuccess');
   const msgList = document.getElementById('msgList');
   const emptyPlaceholder = document.getElementById('emptyPlaceholder');
   const msgInput = document.getElementById('msgInput');
@@ -341,6 +706,27 @@
   const userInfo = document.getElementById('userInfo');
   const logoutBtn = document.getElementById('logoutBtn');
   const inputArea = document.getElementById('inputArea');
+  const adminPanel = document.getElementById('adminPanel');
+  const adminToggle = document.getElementById('adminToggle');
+  const adminMsg = document.getElementById('adminMsg');
+  const keyList = document.getElementById('keyList');
+  const userList = document.getElementById('userList');
+  const newKeyInput = document.getElementById('newKeyInput');
+  const addKeyBtn = document.getElementById('addKeyBtn');
+  const muteUserInput = document.getElementById('muteUserInput');
+  const muteDuration = document.getElementById('muteDuration');
+  const muteUnit = document.getElementById('muteUnit');
+  const muteBtn = document.getElementById('muteBtn');
+  const deleteUserInput = document.getElementById('deleteUserInput');
+  const deleteUserBtn = document.getElementById('deleteUserBtn');
+  const muteNotice = document.getElementById('muteNotice');
+  const tabBtns = document.querySelectorAll('.tabs button');
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+
+  // ============================================================
+  // 工具
+  // ============================================================
 
   function formatTime(ts) {
     const d = new Date(ts);
@@ -362,8 +748,14 @@
     if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 3000);
   }
 
+  function showAdminMsg(msg, isError = false) {
+    adminMsg.textContent = msg;
+    adminMsg.className = 'admin-msg' + (isError ? ' error' : ' success');
+    if (msg) setTimeout(() => { if (adminMsg.textContent === msg) adminMsg.textContent = ''; }, 4000);
+  }
+
   // ============================================================
-  // 🔥 Upstash 读写
+  // Upstash 读写
   // ============================================================
 
   async function upstashGet(key) {
@@ -390,46 +782,97 @@
     return await response.json();
   }
 
-  // ============================================================
-  // 🔥 读取数据（自动解析）
-  // ============================================================
-
   async function readData(key) {
     try {
       const raw = await upstashGet(key);
+      if (raw === null || raw === undefined || raw === '') return {};
+      return JSON.parse(raw);
+    } catch (e) {
+      return {};
+    }
+  }
+
+  async function readDataArray(key) {
+    try {
+      const raw = await upstashGet(key);
       if (raw === null || raw === undefined || raw === '') return [];
-      let data = JSON.parse(raw);
-      if (Array.isArray(data)) return data;
-      if (data && data.value) {
-        if (Array.isArray(data.value)) return data.value;
-        try { return JSON.parse(data.value); } catch (e) {}
-      }
-      return [];
+      const data = JSON.parse(raw);
+      return Array.isArray(data) ? data : [];
     } catch (e) {
       return [];
     }
   }
 
-  // ============================================================
-  // 🔥 写入数据（直接存数组）
-  // ============================================================
-
   async function writeData(key, data) {
-    const arr = Array.isArray(data) ? data : [];
-    return await upstashSet(key, JSON.stringify(arr));
+    return await upstashSet(key, JSON.stringify(data));
   }
 
   // ============================================================
-  // 🔥 加载聊天记录
+  // 用户管理
+  // ============================================================
+
+  async function getUsers() {
+    return await readData(USER_KEY);
+  }
+
+  async function saveUsers(users) {
+    await writeData(USER_KEY, users);
+  }
+
+  async function getKeys() {
+    return await readDataArray(KEY_KEY);
+  }
+
+  async function saveKeys(keys) {
+    await writeData(KEY_KEY, keys);
+  }
+
+  async function getMutes() {
+    return await readData(MUTE_KEY);
+  }
+
+  async function saveMutes(mutes) {
+    await writeData(MUTE_KEY, mutes);
+  }
+
+  // ============================================================
+  // 检查禁言状态
+  // ============================================================
+
+  function isUserMuted(username, mutes) {
+    if (!mutes || !mutes[username]) return false;
+    const muteData = mutes[username];
+    if (muteData.permanent) return true;
+    if (muteData.until && Date.now() < muteData.until) return true;
+    // 过期了，清理
+    delete mutes[username];
+    return false;
+  }
+
+  function getMuteRemaining(username, mutes) {
+    if (!mutes || !mutes[username]) return null;
+    const muteData = mutes[username];
+    if (muteData.permanent) return '永久';
+    if (muteData.until) {
+      const remaining = Math.ceil((muteData.until - Date.now()) / 60000);
+      if (remaining <= 0) return null;
+      if (remaining < 60) return `${remaining} 分钟`;
+      if (remaining < 1440) return `${Math.ceil(remaining / 60)} 小时`;
+      return `${Math.ceil(remaining / 1440)} 天`;
+    }
+    return null;
+  }
+
+  // ============================================================
+  // 加载留言
   // ============================================================
 
   async function loadMessages() {
     try {
-      // 先从聊天记录读取
-      messages = await readData(MSG_KEY);
+      const data = await readDataArray(MSG_KEY);
+      messages = data;
       renderMessages();
       setStatus(`${messages.length} 条留言`);
-      console.log('✅ 加载完成，共', messages.length, '条留言');
     } catch (err) {
       console.error('加载失败:', err);
       setStatus('加载失败，刷新重试');
@@ -438,11 +881,19 @@
   }
 
   // ============================================================
-  // 🔥 发送留言（双存储保障）
+  // 发送留言
   // ============================================================
 
   async function sendMessage(text) {
     if (!currentUser) return false;
+
+    // 检查禁言
+    const mutes = await getMutes();
+    if (isUserMuted(currentUser.username, mutes)) {
+      const remaining = getMuteRemaining(currentUser.username, mutes);
+      alert(`🔇 你已被禁言${remaining ? '（剩余：' + remaining + '）' : ''}，暂不能发送消息`);
+      return false;
+    }
 
     const newMsg = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
@@ -451,95 +902,31 @@
       timestamp: Date.now()
     };
 
-    // ============================================================
-    // 第 1 步：先备份到 pending（防止丢失）
-    // ============================================================
+    // 读取最新数据
+    const latest = await readDataArray(MSG_KEY);
+    messages = latest;
+    messages.push(newMsg);
+    if (messages.length > 500) messages.shift();
 
     try {
-      // 读取当前 pending
-      let pending = await readData(PENDING_KEY);
-      pending.push({
-        ...newMsg,
-        _backup: true,
-        _time: Date.now()
-      });
-      // 限制 pending 大小
-      if (pending.length > 100) pending = pending.slice(-100);
-      await writeData(PENDING_KEY, pending);
-      console.log('📦 已备份到 pending');
-    } catch (err) {
-      console.warn('⚠️ pending 备份失败:', err);
-    }
-
-    // ============================================================
-    // 第 2 步：读取最新聊天记录，追加，写回
-    // ============================================================
-
-    try {
-      // 读取最新聊天记录
-      const latest = await readData(MSG_KEY);
-      messages = latest;
-
-      // 追加新消息
-      messages.push(newMsg);
-      if (messages.length > 500) messages.shift();
-
-      // 写入聊天记录
       await writeData(MSG_KEY, messages);
-      console.log('✅ 写入聊天记录成功');
-
-      // 清空 pending（已成功）
-      try {
-        await writeData(PENDING_KEY, []);
-        console.log('📦 已清空 pending');
-      } catch (e) {}
-
       renderMessages();
       setStatus(`${messages.length} 条留言`);
       return true;
     } catch (err) {
-      console.error('❌ 写入失败:', err);
-
-      // ============================================================
-      // 第 3 步：如果失败，尝试从 pending 恢复
-      // ============================================================
-
-      try {
-        const pendingData = await readData(PENDING_KEY);
-        if (pendingData.length > 0) {
-          console.log('🔄 尝试从 pending 恢复数据...');
-          // 合并 pending 中尚未同步的消息
-          const existingIds = new Set(messages.map(m => m.id));
-          for (const p of pendingData) {
-            if (!existingIds.has(p.id)) {
-              messages.push(p);
-              existingIds.add(p.id);
-            }
-          }
-          if (messages.length > 500) messages = messages.slice(-500);
-          await writeData(MSG_KEY, messages);
-          await writeData(PENDING_KEY, []);
-          renderMessages();
-          setStatus(`${messages.length} 条留言 (已恢复)`);
-          console.log('✅ 数据已从 pending 恢复');
-        }
-      } catch (recoverErr) {
-        console.error('❌ 恢复失败:', recoverErr);
-      }
-
+      console.error('发送失败:', err);
       setStatus('发送失败，请重试');
       return false;
     }
   }
 
   // ============================================================
-  // 🔥 清空（需要密码 admin）
+  // 清空（仅管理员）
   // ============================================================
 
   async function clearAllMessages() {
-    const password = prompt('⚠️ 清空所有留言需要密码：');
-    if (password !== 'admin') {
-      if (password !== null) alert('❌ 密码错误');
+    if (!currentUser || !currentUser.isAdmin) {
+      alert('只有管理员可以清空留言');
       return;
     }
     if (!confirm('确定清空所有留言吗？此操作不可恢复！')) return;
@@ -547,7 +934,6 @@
     messages = [];
     try {
       await writeData(MSG_KEY, []);
-      await writeData(PENDING_KEY, []);
       renderMessages();
       setStatus('已清空');
       alert('✅ 留言已清空');
@@ -559,12 +945,14 @@
   }
 
   // ============================================================
-  // 渲染
+  // 渲染留言
   // ============================================================
 
-  function renderMessages() {
+  async function renderMessages() {
     const items = msgList.querySelectorAll('.msg-item');
     items.forEach(el => el.remove());
+
+    const mutes = await getMutes();
 
     if (!messages || messages.length === 0) {
       emptyPlaceholder.style.display = 'block';
@@ -577,11 +965,25 @@
       const div = document.createElement('div');
       div.className = 'msg-item';
 
+      // 检查发送者是否被禁言
+      if (isUserMuted(msg.username, mutes)) {
+        div.classList.add('muted-msg');
+      }
+
       const top = document.createElement('div');
       top.className = 'msg-top';
       const userSpan = document.createElement('span');
       userSpan.className = 'msg-user';
       userSpan.textContent = msg.username || '兄弟';
+
+      // 如果被禁言，显示徽章
+      if (isUserMuted(msg.username, mutes)) {
+        const badge = document.createElement('span');
+        badge.className = 'muted-badge';
+        badge.textContent = '🔇 已禁言';
+        userSpan.appendChild(badge);
+      }
+
       const timeSpan = document.createElement('span');
       timeSpan.className = 'msg-time';
       timeSpan.textContent = formatTime(msg.timestamp);
@@ -598,11 +1000,38 @@
     }
   }
 
+  // ============================================================
+  // UI 更新
+  // ============================================================
+
   function updateUI() {
     if (currentUser) {
       authBox.classList.add('hidden');
       inputArea.classList.remove('hidden');
-      userInfo.textContent = currentUser.username;
+
+      let info = currentUser.username;
+      if (currentUser.isAdmin) {
+        info += ' <span class="badge admin">管理员</span>';
+        adminToggle.classList.remove('hidden');
+      } else {
+        adminToggle.classList.add('hidden');
+        adminPanel.classList.add('hidden');
+      }
+
+      // 检查禁言
+      getMutes().then(mutes => {
+        if (isUserMuted(currentUser.username, mutes)) {
+          const remaining = getMuteRemaining(currentUser.username, mutes);
+          muteNotice.textContent = `🔇 你已被禁言${remaining ? '（剩余：' + remaining + '）' : ''}，暂不能发送消息`;
+          muteNotice.classList.add('show');
+          sendBtn.disabled = true;
+        } else {
+          muteNotice.classList.remove('show');
+          sendBtn.disabled = false;
+        }
+      });
+
+      userInfo.innerHTML = info;
       userInfo.classList.remove('hidden');
       logoutBtn.classList.remove('hidden');
     } else {
@@ -610,35 +1039,427 @@
       inputArea.classList.add('hidden');
       userInfo.classList.add('hidden');
       logoutBtn.classList.add('hidden');
+      adminToggle.classList.add('hidden');
+      adminPanel.classList.add('hidden');
     }
   }
+
+  // ============================================================
+  // 认证
+  // ============================================================
+
+  async function handleLogin() {
+    const id = loginId.value.trim();
+    const password = loginPassword.value.trim();
+
+    if (!id || !password) {
+      showError(loginError, '请填写用户名/邮箱和密码');
+      return;
+    }
+
+    const users = await getUsers();
+
+    // 查找用户（用户名或邮箱匹配）
+    let foundUser = null;
+    let foundKey = null;
+    for (const [email, data] of Object.entries(users)) {
+      if (data.username === id || email === id) {
+        foundUser = data;
+        foundKey = email;
+        break;
+      }
+    }
+
+    if (!foundUser) {
+      showError(loginError, '用户不存在');
+      return;
+    }
+
+    if (foundUser.password !== password) {
+      showError(loginError, '密码错误');
+      return;
+    }
+
+    // 检查是否被注销
+    if (foundUser.deleted) {
+      showError(loginError, '账户已被注销');
+      return;
+    }
+
+    // 检查禁言
+    const mutes = await getMutes();
+    if (isUserMuted(foundUser.username, mutes)) {
+      const remaining = getMuteRemaining(foundUser.username, mutes);
+      if (remaining) {
+        showError(loginError, `你已被禁言${remaining}，无法登录`);
+      } else {
+        showError(loginError, '你已被禁言');
+      }
+      return;
+    }
+
+    currentUser = {
+      username: foundUser.username,
+      email: foundKey,
+      isAdmin: foundUser.isAdmin || false
+    };
+
+    localStorage.setItem('bh_user', JSON.stringify(currentUser));
+    updateUI();
+    showSuccess(loginSuccess, `欢迎，${foundUser.username}！`);
+    await loadMessages();
+
+    if (currentUser.isAdmin) {
+      await renderAdminPanel();
+    }
+
+    loginId.value = '';
+    loginPassword.value = '';
+  }
+
+  async function handleRegister() {
+    const username = regUsername.value.trim();
+    const email = regEmail.value.trim();
+    const password = regPassword.value.trim();
+    const key = regKey.value.trim();
+
+    if (!username || !email || !password || !key) {
+      showError(regError, '请填写完整信息');
+      return;
+    }
+
+    if (password.length < 4) {
+      showError(regError, '密码至少4位');
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showError(regError, '邮箱格式不正确');
+      return;
+    }
+
+    // 检查用户名是否包含非法字符
+    if (!/^[a-zA-Z0-9_\u4e00-\u9fa5]+$/.test(username)) {
+      showError(regError, '用户名只能包含字母、数字、下划线或中文');
+      return;
+    }
+
+    // 检查密钥
+    const keys = await getKeys();
+    if (!keys.includes(key)) {
+      showError(regError, '注册密钥无效');
+      return;
+    }
+
+    // 检查密钥是否已被使用
+    const users = await getUsers();
+    for (const [emailKey, data] of Object.entries(users)) {
+      if (data.regKey === key) {
+        showError(regError, '该注册密钥已被使用');
+        return;
+      }
+    }
+
+    // 检查用户名是否已存在
+    for (const [emailKey, data] of Object.entries(users)) {
+      if (data.username === username) {
+        showError(regError, '用户名已被占用');
+        return;
+      }
+    }
+
+    // 检查邮箱是否已存在
+    if (users[email]) {
+      showError(regError, '邮箱已被注册');
+      return;
+    }
+
+    // 创建用户
+    users[email] = {
+      username: username,
+      password: password,
+      regKey: key,
+      isAdmin: false,
+      createdAt: Date.now()
+    };
+
+    await saveUsers(users);
+
+    // 从可用密钥中移除
+    const updatedKeys = keys.filter(k => k !== key);
+    await saveKeys(updatedKeys);
+
+    showSuccess(regSuccess, '注册成功！请登录');
+    regUsername.value = '';
+    regEmail.value = '';
+    regPassword.value = '';
+    regKey.value = '';
+
+    // 切换到登录
+    tabBtns.forEach(b => b.classList.remove('active'));
+    document.querySelector('[data-tab="login"]').classList.add('active');
+    loginForm.classList.remove('hidden');
+    registerForm.classList.add('hidden');
+    loginId.value = email;
+    loginPassword.focus();
+
+    if (currentUser && currentUser.isAdmin) {
+      await renderAdminPanel();
+    }
+  }
+
+  // ============================================================
+  // 管理员功能
+  // ============================================================
+
+  async function renderAdminPanel() {
+    if (!currentUser || !currentUser.isAdmin) return;
+
+    // 渲染密钥列表
+    const keys = await getKeys();
+    const users = await getUsers();
+
+    // 标记已使用的密钥
+    const usedKeys = new Set();
+    for (const [email, data] of Object.entries(users)) {
+      if (data.regKey) usedKeys.add(data.regKey);
+    }
+
+    let keyHtml = '<strong>注册密钥：</strong><br/>';
+    if (keys.length === 0) {
+      keyHtml += '<span style="color:#999;">暂无密钥</span>';
+    } else {
+      for (const k of keys) {
+        const isUsed = usedKeys.has(k);
+        keyHtml += `<div class="key-item">
+          <span class="key-code">${k}</span>
+          <span class="key-status ${isUsed ? 'used' : 'available'}">${isUsed ? '✅ 已使用' : '🟢 可用'}</span>
+        </div>`;
+      }
+    }
+    keyList.innerHTML = keyHtml;
+
+    // 渲染用户列表
+    let userHtml = '<strong>用户列表：</strong><br/>';
+    const mutes = await getMutes();
+
+    for (const [email, data] of Object.entries(users)) {
+      if (data.deleted) continue;
+      const isMuted = isUserMuted(data.username, mutes);
+      const remaining = getMuteRemaining(data.username, mutes);
+      const isAdminUser = data.isAdmin || false;
+
+      userHtml += `<div class="user-item">
+        <div class="user-info">
+          <span class="uname">${data.username}</span>
+          <span class="uemail">${email}</span>
+          <span class="ustatus ${isMuted ? 'muted' : 'active'}">${isMuted ? '🔇 已禁言' : '🟢 正常'}</span>
+          ${isAdminUser ? '<span style="color:#e74c3c;font-size:12px;">👑 管理员</span>' : ''}
+          ${remaining ? `<span style="color:#f39c12;font-size:12px;">剩余：${remaining}</span>` : ''}
+        </div>
+        <div class="user-actions">
+          ${!isAdminUser ? `
+            ${isMuted ? `<button class="btn-unmute" data-username="${data.username}">解除禁言</button>` :
+              `<button class="btn-mute" data-username="${data.username}">禁言</button>`}
+            <button class="btn-delete" data-username="${data.username}">注销</button>
+          ` : '<span style="color:#999;font-size:12px;">不可操作管理员</span>'}
+        </div>
+      </div>`;
+    }
+    userList.innerHTML = userHtml;
+
+    // 绑定用户操作事件
+    userList.querySelectorAll('.btn-mute').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const username = btn.dataset.username;
+        muteUserInput.value = username;
+        muteBtn.click();
+      });
+    });
+
+    userList.querySelectorAll('.btn-unmute').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const username = btn.dataset.username;
+        const mutes = await getMutes();
+        delete mutes[username];
+        await saveMutes(mutes);
+        showAdminMsg(`✅ 已解除 ${username} 的禁言`);
+        await renderAdminPanel();
+        await loadMessages();
+      });
+    });
+
+    userList.querySelectorAll('.btn-delete').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const username = btn.dataset.username;
+        if (!confirm(`确定要注销用户 "${username}" 吗？此操作不可恢复！`)) return;
+        const users = await getUsers();
+        for (const [email, data] of Object.entries(users)) {
+          if (data.username === username) {
+            data.deleted = true;
+            break;
+          }
+        }
+        await saveUsers(users);
+        showAdminMsg(`✅ 已注销用户 ${username}`);
+        await renderAdminPanel();
+        await loadMessages();
+      });
+    });
+  }
+
+  // ============================================================
+  // 管理员操作事件
+  // ============================================================
+
+  // 添加密钥
+  addKeyBtn.addEventListener('click', async () => {
+    if (!currentUser || !currentUser.isAdmin) return;
+    const key = newKeyInput.value.trim();
+    if (!key) {
+      showAdminMsg('请输入密钥', true);
+      return;
+    }
+    const keys = await getKeys();
+    if (keys.includes(key)) {
+      showAdminMsg('密钥已存在', true);
+      return;
+    }
+    keys.push(key);
+    await saveKeys(keys);
+    newKeyInput.value = '';
+    showAdminMsg(`✅ 已添加密钥：${key}`);
+    await renderAdminPanel();
+  });
+
+  // 禁言
+  muteBtn.addEventListener('click', async () => {
+    if (!currentUser || !currentUser.isAdmin) return;
+    const username = muteUserInput.value.trim();
+    if (!username) {
+      showAdminMsg('请输入要禁言的用户名', true);
+      return;
+    }
+
+    // 不能禁言管理员
+    const users = await getUsers();
+    let targetUser = null;
+    for (const [email, data] of Object.entries(users)) {
+      if (data.username === username) {
+        targetUser = data;
+        break;
+      }
+    }
+    if (!targetUser) {
+      showAdminMsg('用户不存在', true);
+      return;
+    }
+    if (targetUser.isAdmin) {
+      showAdminMsg('不能禁言管理员', true);
+      return;
+    }
+    if (targetUser.username === currentUser.username) {
+      showAdminMsg('不能禁言自己', true);
+      return;
+    }
+
+    const duration = parseInt(muteDuration.value) || 1;
+    const unit = muteUnit.value;
+    let until = Date.now();
+    if (unit === 'minutes') until += duration * 60 * 1000;
+    else if (unit === 'hours') until += duration * 60 * 60 * 1000;
+    else if (unit === 'days') until += duration * 24 * 60 * 60 * 1000;
+
+    const mutes = await getMutes();
+    mutes[username] = { until, setBy: currentUser.username, setAt: Date.now() };
+    await saveMutes(mutes);
+
+    muteUserInput.value = '';
+    showAdminMsg(`✅ 已禁言 ${username} ${duration} ${unit}`);
+    await renderAdminPanel();
+    await loadMessages();
+
+    // 如果当前用户就是被禁言的用户，刷新UI
+    if (currentUser && currentUser.username === username) {
+      updateUI();
+    }
+  });
+
+  // 注销用户
+  deleteUserBtn.addEventListener('click', async () => {
+    if (!currentUser || !currentUser.isAdmin) return;
+    const username = deleteUserInput.value.trim();
+    if (!username) {
+      showAdminMsg('请输入要注销的用户名', true);
+      return;
+    }
+
+    if (!confirm(`确定要注销用户 "${username}" 吗？此操作不可恢复！`)) return;
+
+    const users = await getUsers();
+    let found = false;
+    for (const [email, data] of Object.entries(users)) {
+      if (data.username === username) {
+        if (data.isAdmin) {
+          showAdminMsg('不能注销管理员', true);
+          return;
+        }
+        if (data.username === currentUser.username) {
+          showAdminMsg('不能注销自己', true);
+          return;
+        }
+        data.deleted = true;
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      showAdminMsg('用户不存在', true);
+      return;
+    }
+
+    await saveUsers(users);
+    deleteUserInput.value = '';
+    showAdminMsg(`✅ 已注销用户 ${username}`);
+    await renderAdminPanel();
+    await loadMessages();
+  });
+
+  // ============================================================
+  // Tab 切换
+  // ============================================================
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.dataset.tab;
+      if (tab === 'login') {
+        loginForm.classList.remove('hidden');
+        registerForm.classList.add('hidden');
+      } else {
+        loginForm.classList.add('hidden');
+        registerForm.classList.remove('hidden');
+      }
+    });
+  });
 
   // ============================================================
   // 事件
   // ============================================================
 
-  function handleLogin() {
-    const name = loginName.value.trim() || '兄弟';
-    const password = loginPassword.value.trim();
-
-    if (password !== '1234') {
-      showError(loginError, '密码错误，统一密码是 1234');
-      return;
-    }
-
-    currentUser = { username: name };
-    localStorage.setItem('bh_user', JSON.stringify(currentUser));
-
-    updateUI();
-    showSuccess(loginSuccess, `欢迎，${name}！`);
-    loadMessages();
-    loginName.value = '';
-    loginPassword.value = '';
-  }
-
   loginBtn.addEventListener('click', handleLogin);
   loginPassword.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') handleLogin();
+  });
+  loginId.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleLogin();
+  });
+
+  registerBtn.addEventListener('click', handleRegister);
+  regPassword.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleRegister();
   });
 
   logoutBtn.addEventListener('click', () => {
@@ -648,6 +1469,16 @@
     setStatus('已退出');
     messages = [];
     renderMessages();
+    adminPanel.classList.add('hidden');
+  });
+
+  adminToggle.addEventListener('click', () => {
+    if (adminPanel.classList.contains('hidden')) {
+      adminPanel.classList.remove('hidden');
+      renderAdminPanel();
+    } else {
+      adminPanel.classList.add('hidden');
+    }
   });
 
   sendBtn.addEventListener('click', async () => {
@@ -686,12 +1517,30 @@
       if (saved) {
         const user = JSON.parse(saved);
         if (user && user.username) {
-          currentUser = user;
-          updateUI();
-          await loadMessages();
-          setStatus(`欢迎回来，${user.username}`);
-          msgInput.focus();
-          return;
+          // 验证用户是否还存在
+          const users = await getUsers();
+          let valid = false;
+          for (const [email, data] of Object.entries(users)) {
+            if (data.username === user.username && !data.deleted) {
+              valid = true;
+              user.isAdmin = data.isAdmin || false;
+              user.email = email;
+              break;
+            }
+          }
+          if (valid) {
+            currentUser = user;
+            updateUI();
+            await loadMessages();
+            setStatus(`欢迎回来，${user.username}`);
+            if (currentUser.isAdmin) {
+              await renderAdminPanel();
+            }
+            msgInput.focus();
+            return;
+          } else {
+            localStorage.removeItem('bh_user');
+          }
         }
       }
     } catch (e) {}
