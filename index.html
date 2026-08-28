@@ -21,7 +21,6 @@
       max-width: 600px;
       width: 100%;
     }
-
     .header {
       margin-bottom: 20px;
       display: flex;
@@ -67,7 +66,6 @@
       font-size: 13px;
       margin-bottom: 16px;
     }
-
     .auth-box {
       background: #fff;
       border-radius: 12px;
@@ -151,7 +149,6 @@
     .auth-box .auth-msg.success {
       color: #27ae60;
     }
-
     .msg-list {
       display: flex;
       flex-direction: column;
@@ -198,7 +195,6 @@
       display: block;
       margin-bottom: 10px;
     }
-
     .input-area {
       background: #fff;
       border-radius: 12px;
@@ -260,7 +256,6 @@
       color: #999;
       border-color: #ddd;
     }
-
     .footer {
       text-align: center;
       color: #ddd;
@@ -270,7 +265,6 @@
     .hidden {
       display: none !important;
     }
-
     @media (max-width: 480px) {
       body {
         padding: 16px 12px;
@@ -285,9 +279,7 @@
   </style>
 </head>
 <body>
-
 <div class="container">
-
   <div class="header">
     <h1>BHBoard <span># 兄弟留言板</span></h1>
     <div class="header-right" id="headerRight">
@@ -295,15 +287,12 @@
       <button class="logout-btn hidden" id="logoutBtn">退出</button>
     </div>
   </div>
-
   <div class="status" id="statusText">加载中...</div>
-
   <div class="auth-box" id="authBox">
     <div class="tabs">
       <button class="active" data-tab="login">登录</button>
       <button data-tab="register">注册</button>
     </div>
-
     <div id="loginForm">
       <div class="field">
         <label>邮箱</label>
@@ -317,7 +306,6 @@
       <div class="auth-msg error" id="loginError"></div>
       <div class="auth-msg success" id="loginSuccess"></div>
     </div>
-
     <div id="registerForm" class="hidden">
       <div class="field">
         <label>用户名</label>
@@ -336,14 +324,12 @@
       <div class="auth-msg success" id="regSuccess"></div>
     </div>
   </div>
-
   <div class="msg-list" id="msgList">
     <div class="empty" id="emptyPlaceholder">
       <span class="icon">💬</span>
       还没有留言，兄弟你先来
     </div>
   </div>
-
   <div class="input-area hidden" id="inputArea">
     <div class="input-row">
       <input type="text" id="msgInput" placeholder="说点什么..." maxlength="500" />
@@ -353,13 +339,12 @@
       <button class="btn-clear" id="clearBtn">清空</button>
     </div>
   </div>
-
   <div class="footer">BHBoard · 兄弟们畅聊</div>
 </div>
 
 <script>
   // ============================================================
-  // 🔥 Upstash 配置（直接写死）
+  // 🔥 Upstash 配置
   const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
   const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
   // ============================================================
@@ -416,27 +401,33 @@
     if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 3000);
   }
 
-  // Upstash 操作
+  // ✅ 修正：Upstash 写入用 { value: JSON.stringify(value) }
   async function upstashGet(key) {
     const res = await fetch(`${UPSTASH_URL}/get/${key}`, {
       headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
     });
     const data = await res.json();
-    return data.result ? JSON.parse(data.result) : null;
+    if (data.result === null || data.result === undefined) return null;
+    try { return JSON.parse(data.result); } catch { return null; }
   }
 
   async function upstashSet(key, value) {
-    await fetch(`${UPSTASH_URL}/set/${key}`, {
+    const response = await fetch(`${UPSTASH_URL}/set/${key}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${UPSTASH_TOKEN}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(JSON.stringify(value))
+      body: JSON.stringify({ value: JSON.stringify(value) })
     });
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error('写入失败: ' + err);
+    }
+    return await response.json();
   }
 
-  // 用户管理
+  // 用户
   function saveUser(user, password) {
     currentUser = user;
     localStorage.setItem('bh_user', JSON.stringify(user));
@@ -465,7 +456,8 @@
   }
 
   async function getUsers() {
-    return await upstashGet(USER_KEY) || {};
+    const val = await upstashGet(USER_KEY);
+    return val || {};
   }
 
   async function saveUsers(users) {
@@ -473,7 +465,8 @@
   }
 
   async function getMessages() {
-    return await upstashGet(MSG_KEY) || [];
+    const val = await upstashGet(MSG_KEY);
+    return val || [];
   }
 
   async function saveMessages(msgs) {
@@ -512,15 +505,20 @@
       }
     }
     users[email] = { username, password, createdAt: Date.now() };
-    await saveUsers(users);
-    showSuccess(regSuccess, '注册成功！请登录');
-    tabBtns.forEach(b => b.classList.remove('active'));
-    document.querySelector('[data-tab="login"]').classList.add('active');
-    loginForm.classList.remove('hidden');
-    registerForm.classList.add('hidden');
-    loginEmail.value = email;
-    loginPassword.focus();
-    return true;
+    try {
+      await saveUsers(users);
+      showSuccess(regSuccess, '注册成功！请登录');
+      tabBtns.forEach(b => b.classList.remove('active'));
+      document.querySelector('[data-tab="login"]').classList.add('active');
+      loginForm.classList.remove('hidden');
+      registerForm.classList.add('hidden');
+      loginEmail.value = email;
+      loginPassword.focus();
+      return true;
+    } catch (err) {
+      showError(regError, '注册失败：' + err.message);
+      return false;
+    }
   }
 
   // 留言
@@ -561,13 +559,11 @@
   function renderMessages() {
     const items = msgList.querySelectorAll('.msg-item');
     items.forEach(el => el.remove());
-
     if (messages.length === 0) {
       emptyPlaceholder.style.display = 'block';
       return;
     }
     emptyPlaceholder.style.display = 'none';
-
     const reversed = [...messages].reverse();
     for (const msg of reversed) {
       const div = document.createElement('div');
@@ -694,16 +690,20 @@
     const saved = loadUser();
     if (saved) {
       const pwd = loadPassword();
-      const users = await getUsers();
-      const user = users[saved.email];
-      if (user && user.password === pwd) {
-        currentUser = saved;
-        updateUI();
-        await loadMessages();
-        setStatus(`欢迎回来，${saved.username}`);
-        msgInput.focus();
-        return;
-      } else {
+      try {
+        const users = await getUsers();
+        const user = users[saved.email];
+        if (user && user.password === pwd) {
+          currentUser = saved;
+          updateUI();
+          await loadMessages();
+          setStatus(`欢迎回来，${saved.username}`);
+          msgInput.focus();
+          return;
+        } else {
+          clearUser();
+        }
+      } catch (e) {
         clearUser();
       }
     }
