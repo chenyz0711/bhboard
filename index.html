@@ -275,7 +275,6 @@
   </div>
   <div class="status" id="statusText">加载中...</div>
 
-  <!-- 登录框 -->
   <div class="auth-box" id="authBox">
     <div class="field">
       <label>你的名字（随便填）</label>
@@ -293,7 +292,6 @@
     </div>
   </div>
 
-  <!-- 留言列表 -->
   <div class="msg-list" id="msgList">
     <div class="empty" id="emptyPlaceholder">
       <span class="icon">💬</span>
@@ -301,7 +299,6 @@
     </div>
   </div>
 
-  <!-- 输入区 -->
   <div class="input-area hidden" id="inputArea">
     <div class="input-row">
       <input type="text" id="msgInput" placeholder="说点什么..." maxlength="500" />
@@ -316,12 +313,8 @@
 </div>
 
 <script>
-  // ============================================================
-  // 🔥 Upstash 配置
   const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
   const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
-  // ============================================================
-
   const MSG_KEY = 'bh_messages';
 
   let currentUser = null;
@@ -365,7 +358,7 @@
   }
 
   // ============================================================
-  // Upstash 原始读写
+  // Upstash 读写
   // ============================================================
 
   async function upstashGetRaw(key) {
@@ -392,31 +385,39 @@
     return await response.json();
   }
 
-  // ============================================================
-  // 业务函数
-  // ============================================================
-
+  // ✅ 读取：正确解析双层数据
   async function getMessages() {
     try {
       const raw = await upstashGetRaw(MSG_KEY);
+      console.log('📦 Upstash 原始数据:', raw);
+      
       if (raw === null || raw === undefined || raw === '') return [];
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
+      
+      const firstParse = JSON.parse(raw);
+      console.log('📦 第一层解析:', firstParse);
+      
+      const rawData = firstParse.value || firstParse;
+      let msgs = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+      msgs = Array.isArray(msgs) ? msgs : [];
+      
+      console.log('✅ 解析成功，共', msgs.length, '条留言');
+      return msgs;
     } catch (e) {
-      console.warn('读取消息失败，返回空数组');
+      console.warn('读取消息失败:', e);
       return [];
     }
   }
 
+  // ✅ 写入：存双层数据，与读取格式一致
   async function saveMessages(msgs) {
     const data = Array.isArray(msgs) ? msgs : [];
-    const result = await upstashSetRaw(MSG_KEY, JSON.stringify(data));
-    console.log('📦 写入 Upstash 结果:', result);
+    const result = await upstashSetRaw(MSG_KEY, JSON.stringify({ value: JSON.stringify(data) }));
+    console.log('📦 写入结果:', result);
     return result;
   }
 
   // ============================================================
-  // 🔥 硬核登录：统一密码 1234
+  // 登录
   // ============================================================
 
   function handleLogin() {
@@ -442,6 +443,7 @@
   // 留言
   // ============================================================
 
+  // ✅ 修复：把 getMessages() 的结果赋值给全局 messages
   async function loadMessages() {
     try {
       messages = await getMessages();
@@ -450,6 +452,7 @@
     } catch (err) {
       console.error('加载失败:', err);
       setStatus('加载失败，刷新重试');
+      messages = [];
     }
   }
 
@@ -470,14 +473,12 @@
     if (messages.length > 500) messages.shift();
 
     try {
-      const result = await saveMessages(messages);
-      console.log('✅ 写入成功:', result);
+      await saveMessages(messages);
       renderMessages();
       setStatus(`${messages.length} 条留言`);
       return true;
     } catch (err) {
       console.error('❌ 发送失败:', err);
-      // 写入失败，从内存中移除
       messages.pop();
       setStatus('发送失败，请刷新重试');
       return false;
