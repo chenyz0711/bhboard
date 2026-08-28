@@ -363,7 +363,7 @@
   }
 
   // ============================================================
-  // Upstash 读写（读写格式完全一致）
+  // Upstash 读写
   // ============================================================
 
   async function upstashGetRaw(key) {
@@ -391,33 +391,29 @@
   }
 
   // ============================================================
-  // 🔥 核心：读写格式完全一致
-  // 存储格式：{ value: "[{...}]" }
+  // 🔥 核心：每次从 Upstash 读取最新数据
   // ============================================================
 
-  async function getMessages() {
+  async function loadMessagesFromUpstash() {
     try {
       const raw = await upstashGetRaw(MSG_KEY);
-      console.log('📦 原始数据:', raw);
+      console.log('📦 从 Upstash 读取原始数据:', raw);
 
       if (raw === null || raw === undefined || raw === '') {
         console.log('📦 数据为空，返回 []');
         return [];
       }
 
-      // 第一层解析：raw 是字符串
       const firstParse = JSON.parse(raw);
       console.log('📦 第一层解析:', firstParse);
 
-      // 取出 value 字段
       const rawData = firstParse.value;
       console.log('📦 value 字段:', rawData);
 
-      // 如果 value 是字符串，解析成数组
       let msgs = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
       msgs = Array.isArray(msgs) ? msgs : [];
 
-      console.log('✅ 解析成功，共', msgs.length, '条留言');
+      console.log('✅ 从 Upstash 加载成功，共', msgs.length, '条留言');
       return msgs;
     } catch (e) {
       console.warn('读取消息失败:', e);
@@ -425,46 +421,26 @@
     }
   }
 
-  // ✅ 写入格式：和读取格式一致
-  async function saveMessages(msgs) {
+  // ============================================================
+  // 🔥 写入 Upstash（覆盖写入）
+  // ============================================================
+
+  async function saveMessagesToUpstash(msgs) {
     const data = Array.isArray(msgs) ? msgs : [];
-    // 存储格式：{ value: "[{...}]" }
     const valueToStore = JSON.stringify({ value: JSON.stringify(data) });
     const result = await upstashSetRaw(MSG_KEY, valueToStore);
-    console.log('📦 写入结果:', result);
+    console.log('📦 写入 Upstash 结果:', result);
     return result;
   }
 
   // ============================================================
-  // 登录
-  // ============================================================
-
-  function handleLogin() {
-    const name = loginName.value.trim() || '兄弟';
-    const password = loginPassword.value.trim();
-
-    if (password !== '1234') {
-      showError(loginError, '密码错误，统一密码是 1234');
-      return;
-    }
-
-    currentUser = { username: name };
-    localStorage.setItem('bh_user', JSON.stringify(currentUser));
-
-    updateUI();
-    showSuccess(loginSuccess, `欢迎，${name}！`);
-    loadMessages();
-    loginName.value = '';
-    loginPassword.value = '';
-  }
-
-  // ============================================================
-  // 留言
+  // 🔥 加载留言（强制从 Upstash 读取，覆盖本地）
   // ============================================================
 
   async function loadMessages() {
     try {
-      messages = await getMessages();
+      // 强制从 Upstash 读取最新数据
+      messages = await loadMessagesFromUpstash();
       renderMessages();
       setStatus(`${messages.length} 条留言`);
       console.log('✅ 加载完成，共', messages.length, '条留言');
@@ -475,9 +451,18 @@
     }
   }
 
+  // ============================================================
+  // 🔥 发送留言（先读最新数据，再追加，再写入）
+  // ============================================================
+
   async function sendMessage(text) {
     if (!currentUser) return false;
 
+    // 1. 先从 Upstash 读取最新数据（防止覆盖别人刚发的）
+    const latestMessages = await loadMessagesFromUpstash();
+    messages = latestMessages;
+
+    // 2. 追加新留言
     const newMsg = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       username: currentUser.username,
@@ -485,22 +470,21 @@
       timestamp: Date.now()
     };
 
-    if (!Array.isArray(messages)) {
-      messages = [];
-    }
     messages.push(newMsg);
     if (messages.length > 500) messages.shift();
 
+    // 3. 写入 Upstash
     try {
-      await saveMessages(messages);
+      await saveMessagesToUpstash(messages);
       renderMessages();
       setStatus(`${messages.length} 条留言`);
       console.log('✅ 发送成功，共', messages.length, '条留言');
       return true;
     } catch (err) {
       console.error('❌ 发送失败:', err);
-      messages.pop();
-      setStatus('发送失败，请刷新重试');
+      // 发送失败，重新加载数据
+      await loadMessages();
+      setStatus('发送失败，请重试');
       return false;
     }
   }
@@ -522,7 +506,7 @@
 
     messages = [];
     try {
-      await saveMessages(messages);
+      await saveMessagesToUpstash(messages);
       renderMessages();
       setStatus('已清空');
       alert('✅ 留言已清空');
@@ -632,6 +616,29 @@
   msgList.addEventListener('click', () => {
     if (currentUser) msgInput.focus();
   });
+
+  // ============================================================
+  // 登录
+  // ============================================================
+
+  function handleLogin() {
+    const name = loginName.value.trim() || '兄弟';
+    const password = loginPassword.value.trim();
+
+    if (password !== '1234') {
+      showError(loginError, '密码错误，统一密码是 1234');
+      return;
+    }
+
+    currentUser = { username: name };
+    localStorage.setItem('bh_user', JSON.stringify(currentUser));
+
+    updateUI();
+    showSuccess(loginSuccess, `欢迎，${name}！`);
+    loadMessages();
+    loginName.value = '';
+    loginPassword.value = '';
+  }
 
   // ============================================================
   // 启动
