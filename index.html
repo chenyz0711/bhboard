@@ -58,11 +58,9 @@
       cursor: pointer;
       padding: 4px 8px;
       border-radius: 4px;
-      transition: 0.15s;
     }
     .header-right .logout-btn:hover {
       background: #f0f0f0;
-      color: #666;
     }
     .status {
       color: #999;
@@ -70,7 +68,6 @@
       margin-bottom: 16px;
     }
 
-    /* ===== 登录/注册 ===== */
     .auth-box {
       background: #fff;
       border-radius: 12px;
@@ -143,20 +140,18 @@
     .auth-box .btn-auth:hover {
       background: #333;
     }
-    .auth-box .auth-error {
-      color: #e74c3c;
+    .auth-box .auth-msg {
       font-size: 13px;
       margin-top: 10px;
       text-align: center;
     }
-    .auth-box .auth-success {
+    .auth-box .auth-msg.error {
+      color: #e74c3c;
+    }
+    .auth-box .auth-msg.success {
       color: #27ae60;
-      font-size: 13px;
-      margin-top: 10px;
-      text-align: center;
     }
 
-    /* ===== 留言列表 ===== */
     .msg-list {
       display: flex;
       flex-direction: column;
@@ -191,7 +186,6 @@
       font-size: 15px;
       line-height: 1.6;
       word-break: break-word;
-      padding-left: 4px;
     }
     .empty {
       text-align: center;
@@ -205,7 +199,6 @@
       margin-bottom: 10px;
     }
 
-    /* ===== 输入区（登录后显示） ===== */
     .input-area {
       background: #fff;
       border-radius: 12px;
@@ -254,9 +247,6 @@
     .input-area .btn-send:hover {
       background: #333;
     }
-    .input-area .btn-send:active {
-      transform: scale(0.97);
-    }
     .input-area .btn-clear {
       padding: 10px 18px;
       background: transparent;
@@ -265,7 +255,6 @@
       border-radius: 8px;
       font-size: 13px;
       cursor: pointer;
-      transition: 0.15s;
     }
     .input-area .btn-clear:hover {
       color: #999;
@@ -278,7 +267,6 @@
       font-size: 12px;
       margin-top: 20px;
     }
-
     .hidden {
       display: none !important;
     }
@@ -300,7 +288,6 @@
 
 <div class="container">
 
-  <!-- 头部 -->
   <div class="header">
     <h1>BHBoard <span># 兄弟留言板</span></h1>
     <div class="header-right" id="headerRight">
@@ -311,14 +298,12 @@
 
   <div class="status" id="statusText">加载中...</div>
 
-  <!-- ===== 登录/注册 ===== -->
   <div class="auth-box" id="authBox">
     <div class="tabs">
       <button class="active" data-tab="login">登录</button>
       <button data-tab="register">注册</button>
     </div>
 
-    <!-- 登录 -->
     <div id="loginForm">
       <div class="field">
         <label>邮箱</label>
@@ -329,11 +314,10 @@
         <input type="password" id="loginPassword" placeholder="密码" />
       </div>
       <button class="btn-auth" id="loginBtn">登录</button>
-      <div class="auth-error" id="authError"></div>
-      <div class="auth-success" id="authSuccess"></div>
+      <div class="auth-msg error" id="loginError"></div>
+      <div class="auth-msg success" id="loginSuccess"></div>
     </div>
 
-    <!-- 注册 -->
     <div id="registerForm" class="hidden">
       <div class="field">
         <label>用户名</label>
@@ -348,12 +332,11 @@
         <input type="password" id="regPassword" placeholder="密码（至少4位）" />
       </div>
       <button class="btn-auth" id="registerBtn">注册</button>
-      <div class="auth-error" id="regError"></div>
-      <div class="auth-success" id="regSuccess"></div>
+      <div class="auth-msg error" id="regError"></div>
+      <div class="auth-msg success" id="regSuccess"></div>
     </div>
   </div>
 
-  <!-- ===== 留言列表 ===== -->
   <div class="msg-list" id="msgList">
     <div class="empty" id="emptyPlaceholder">
       <span class="icon">💬</span>
@@ -361,10 +344,9 @@
     </div>
   </div>
 
-  <!-- ===== 输入区 ===== -->
   <div class="input-area hidden" id="inputArea">
     <div class="input-row">
-      <input type="text" id="msgInput" placeholder="说点什么..." maxlength="500" autofocus />
+      <input type="text" id="msgInput" placeholder="说点什么..." maxlength="500" />
     </div>
     <div class="btn-row">
       <button class="btn-send" id="sendBtn">发送</button>
@@ -377,15 +359,17 @@
 
 <script>
   // ============================================================
-  const API_AUTH = '/api/auth';
-  const API_MSG = '/api/messages';
-
+  // 🔥 Upstash 配置（直接写死）
+  const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
+  const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
   // ============================================================
-  // 状态
-  let currentUser = null; // { email, username }
+
+  const MSG_KEY = 'bh_messages';
+  const USER_KEY = 'bh_users';
+
+  let currentUser = null;
   let messages = [];
 
-  // ============================================================
   // DOM
   const authBox = document.getElementById('authBox');
   const loginForm = document.getElementById('loginForm');
@@ -393,15 +377,14 @@
   const loginEmail = document.getElementById('loginEmail');
   const loginPassword = document.getElementById('loginPassword');
   const loginBtn = document.getElementById('loginBtn');
+  const loginError = document.getElementById('loginError');
+  const loginSuccess = document.getElementById('loginSuccess');
   const regUsername = document.getElementById('regUsername');
   const regEmail = document.getElementById('regEmail');
   const regPassword = document.getElementById('regPassword');
   const registerBtn = document.getElementById('registerBtn');
-  const authError = document.getElementById('authError');
-  const authSuccess = document.getElementById('authSuccess');
   const regError = document.getElementById('regError');
   const regSuccess = document.getElementById('regSuccess');
-
   const msgList = document.getElementById('msgList');
   const emptyPlaceholder = document.getElementById('emptyPlaceholder');
   const msgInput = document.getElementById('msgInput');
@@ -411,12 +394,8 @@
   const userInfo = document.getElementById('userInfo');
   const logoutBtn = document.getElementById('logoutBtn');
   const inputArea = document.getElementById('inputArea');
-  const headerRight = document.getElementById('headerRight');
-
   const tabBtns = document.querySelectorAll('.tabs button');
 
-  // ============================================================
-  // 工具
   function formatTime(ts) {
     const d = new Date(ts);
     const pad = n => String(n).padStart(2, '0');
@@ -437,11 +416,31 @@
     if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 3000);
   }
 
-  // ============================================================
-  // 认证
-  function saveUser(user) {
+  // Upstash 操作
+  async function upstashGet(key) {
+    const res = await fetch(`${UPSTASH_URL}/get/${key}`, {
+      headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
+    });
+    const data = await res.json();
+    return data.result ? JSON.parse(data.result) : null;
+  }
+
+  async function upstashSet(key, value) {
+    await fetch(`${UPSTASH_URL}/set/${key}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${UPSTASH_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(JSON.stringify(value))
+    });
+  }
+
+  // 用户管理
+  function saveUser(user, password) {
     currentUser = user;
     localStorage.setItem('bh_user', JSON.stringify(user));
+    localStorage.setItem('bh_password', password);
   }
 
   function loadUser() {
@@ -455,45 +454,79 @@
     return null;
   }
 
+  function loadPassword() {
+    return localStorage.getItem('bh_password') || '';
+  }
+
   function clearUser() {
     currentUser = null;
     localStorage.removeItem('bh_user');
+    localStorage.removeItem('bh_password');
   }
 
-  function updateUI() {
-    if (currentUser) {
-      authBox.classList.add('hidden');
-      inputArea.classList.remove('hidden');
-      userInfo.textContent = `👤 ${currentUser.username}`;
-      userInfo.classList.remove('hidden');
-      logoutBtn.classList.remove('hidden');
-    } else {
-      authBox.classList.remove('hidden');
-      inputArea.classList.add('hidden');
-      userInfo.classList.add('hidden');
-      logoutBtn.classList.add('hidden');
+  async function getUsers() {
+    return await upstashGet(USER_KEY) || {};
+  }
+
+  async function saveUsers(users) {
+    await upstashSet(USER_KEY, users);
+  }
+
+  async function getMessages() {
+    return await upstashGet(MSG_KEY) || [];
+  }
+
+  async function saveMessages(msgs) {
+    await upstashSet(MSG_KEY, msgs);
+  }
+
+  // 认证
+  async function handleLogin(email, password) {
+    const users = await getUsers();
+    const user = users[email];
+    if (!user) {
+      showError(loginError, '邮箱未注册');
+      return false;
     }
+    if (user.password !== password) {
+      showError(loginError, '密码错误');
+      return false;
+    }
+    saveUser({ email, username: user.username }, password);
+    updateUI();
+    showSuccess(loginSuccess, '登录成功！');
+    await loadMessages();
+    return true;
   }
 
-  // ============================================================
-  // API 调用
-  async function authRequest(action, email, password, username) {
-    const body = { action, email, password };
-    if (username) body.username = username;
-    const res = await fetch(API_AUTH, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    return await res.json();
+  async function handleRegister(username, email, password) {
+    const users = await getUsers();
+    if (users[email]) {
+      showError(regError, '该邮箱已注册');
+      return false;
+    }
+    for (const key in users) {
+      if (users[key].username === username) {
+        showError(regError, '该用户名已被使用');
+        return false;
+      }
+    }
+    users[email] = { username, password, createdAt: Date.now() };
+    await saveUsers(users);
+    showSuccess(regSuccess, '注册成功！请登录');
+    tabBtns.forEach(b => b.classList.remove('active'));
+    document.querySelector('[data-tab="login"]').classList.add('active');
+    loginForm.classList.remove('hidden');
+    registerForm.classList.add('hidden');
+    loginEmail.value = email;
+    loginPassword.focus();
+    return true;
   }
 
-  async function fetchMessages() {
+  // 留言
+  async function loadMessages() {
     try {
-      const res = await fetch(API_MSG);
-      if (!res.ok) throw new Error('网络错误');
-      const data = await res.json();
-      messages = Array.isArray(data) ? data : [];
+      messages = await getMessages();
       renderMessages();
       setStatus(`${messages.length} 条留言`);
     } catch (err) {
@@ -502,63 +535,29 @@
   }
 
   async function sendMessage(text) {
-    if (!currentUser) return;
-    try {
-      const res = await fetch(API_MSG, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: currentUser.email,
-          password: localStorage.getItem('bh_password') || '',
-          text
-        })
-      });
-      if (res.status === 401) {
-        clearUser();
-        updateUI();
-        setStatus('登录已过期，请重新登录');
-        return false;
-      }
-      if (!res.ok) throw new Error('发送失败');
-      const newMsg = await res.json();
-      messages.push(newMsg);
-      renderMessages();
-      setStatus(`${messages.length} 条留言`);
-      return true;
-    } catch (err) {
-      setStatus('发送失败，再试一次');
-      return false;
-    }
+    if (!currentUser) return false;
+    const newMsg = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      username: currentUser.username,
+      text: text.trim(),
+      timestamp: Date.now()
+    };
+    messages.push(newMsg);
+    if (messages.length > 500) messages.shift();
+    await saveMessages(messages);
+    renderMessages();
+    setStatus(`${messages.length} 条留言`);
+    return true;
   }
 
-  async function clearMessages() {
-    if (!currentUser) return;
+  async function clearAllMessages() {
     if (!confirm('确定清空所有留言？')) return;
-    try {
-      const res = await fetch(API_MSG, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: currentUser.email,
-          password: localStorage.getItem('bh_password') || ''
-        })
-      });
-      if (res.status === 401) {
-        clearUser();
-        updateUI();
-        setStatus('登录已过期，请重新登录');
-        return;
-      }
-      messages = [];
-      renderMessages();
-      setStatus('已清空');
-    } catch (err) {
-      setStatus('清空失败');
-    }
+    messages = [];
+    await saveMessages(messages);
+    renderMessages();
+    setStatus('已清空');
   }
 
-  // ============================================================
-  // 渲染留言
   function renderMessages() {
     const items = msgList.querySelectorAll('.msg-item');
     items.forEach(el => el.remove());
@@ -573,7 +572,6 @@
     for (const msg of reversed) {
       const div = document.createElement('div');
       div.className = 'msg-item';
-
       const top = document.createElement('div');
       top.className = 'msg-top';
       const userSpan = document.createElement('span');
@@ -584,21 +582,31 @@
       timeSpan.textContent = formatTime(msg.timestamp);
       top.appendChild(userSpan);
       top.appendChild(timeSpan);
-
       const textDiv = document.createElement('div');
       textDiv.className = 'msg-text';
       textDiv.textContent = msg.text || '';
-
       div.appendChild(top);
       div.appendChild(textDiv);
       msgList.appendChild(div);
     }
   }
 
-  // ============================================================
-  // 事件绑定
+  function updateUI() {
+    if (currentUser) {
+      authBox.classList.add('hidden');
+      inputArea.classList.remove('hidden');
+      userInfo.textContent = currentUser.username;
+      userInfo.classList.remove('hidden');
+      logoutBtn.classList.remove('hidden');
+    } else {
+      authBox.classList.remove('hidden');
+      inputArea.classList.add('hidden');
+      userInfo.classList.add('hidden');
+      logoutBtn.classList.add('hidden');
+    }
+  }
 
-  // Tab 切换
+  // 事件
   tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       tabBtns.forEach(b => b.classList.remove('active'));
@@ -607,53 +615,27 @@
       if (tab === 'login') {
         loginForm.classList.remove('hidden');
         registerForm.classList.add('hidden');
-        authError.textContent = '';
-        regError.textContent = '';
-        authSuccess.textContent = '';
-        regSuccess.textContent = '';
       } else {
         loginForm.classList.add('hidden');
         registerForm.classList.remove('hidden');
-        authError.textContent = '';
-        regError.textContent = '';
-        authSuccess.textContent = '';
-        regSuccess.textContent = '';
       }
     });
   });
 
-  // 登录
   loginBtn.addEventListener('click', async () => {
     const email = loginEmail.value.trim();
     const password = loginPassword.value.trim();
     if (!email || !password) {
-      showError(authError, '请填写邮箱和密码');
+      showError(loginError, '请填写邮箱和密码');
       return;
     }
-    const result = await authRequest('login', email, password);
-    if (result.success) {
-      saveUser(result.user);
-      localStorage.setItem('bh_password', password);
-      updateUI();
-      showSuccess(authSuccess, '登录成功！');
-      fetchMessages();
-      setStatus(`欢迎回来，${result.user.username}`);
-      loginEmail.value = '';
-      loginPassword.value = '';
-    } else {
-      showError(authError, result.error || '登录失败');
-    }
+    await handleLogin(email, password);
   });
 
-  // 回车登录
   loginPassword.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') loginBtn.click();
   });
-  loginEmail.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') loginBtn.click();
-  });
 
-  // 注册
   registerBtn.addEventListener('click', async () => {
     const username = regUsername.value.trim();
     const email = regEmail.value.trim();
@@ -666,40 +648,21 @@
       showError(regError, '密码至少4位');
       return;
     }
-    const result = await authRequest('register', email, password, username);
-    if (result.success) {
-      showSuccess(regSuccess, '注册成功！请登录');
-      regUsername.value = '';
-      regEmail.value = '';
-      regPassword.value = '';
-      // 切换到登录
-      tabBtns.forEach(b => b.classList.remove('active'));
-      document.querySelector('[data-tab="login"]').classList.add('active');
-      loginForm.classList.remove('hidden');
-      registerForm.classList.add('hidden');
-      loginEmail.value = email;
-      loginPassword.focus();
-    } else {
-      showError(regError, result.error || '注册失败');
-    }
+    await handleRegister(username, email, password);
   });
 
-  // 回车注册
   regPassword.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') registerBtn.click();
   });
 
-  // 退出
   logoutBtn.addEventListener('click', () => {
     clearUser();
-    localStorage.removeItem('bh_password');
     updateUI();
     setStatus('已退出');
     messages = [];
     renderMessages();
   });
 
-  // 发送留言
   sendBtn.addEventListener('click', async () => {
     if (!currentUser) return;
     const text = msgInput.value.trim();
@@ -709,11 +672,9 @@
       setTimeout(() => msgInput.style.borderColor = '', 500);
       return;
     }
-    const ok = await sendMessage(text);
-    if (ok) {
-      msgInput.value = '';
-      msgInput.focus();
-    }
+    await sendMessage(text);
+    msgInput.value = '';
+    msgInput.focus();
   });
 
   msgInput.addEventListener('keydown', (e) => {
@@ -723,37 +684,31 @@
     }
   });
 
-  clearBtn.addEventListener('click', clearMessages);
-
-  // 点击列表聚焦输入
+  clearBtn.addEventListener('click', clearAllMessages);
   msgList.addEventListener('click', () => {
     if (currentUser) msgInput.focus();
   });
 
-  // ============================================================
   // 启动
   async function init() {
     const saved = loadUser();
     if (saved) {
-      // 尝试用保存的密码自动登录验证
-      const pwd = localStorage.getItem('bh_password');
-      if (pwd) {
-        const result = await authRequest('login', saved.email, pwd);
-        if (result.success) {
-          saveUser(result.user);
-          updateUI();
-          fetchMessages();
-          setStatus(`欢迎回来，${result.user.username}`);
-          msgInput.focus();
-          return;
-        } else {
-          clearUser();
-          localStorage.removeItem('bh_password');
-        }
+      const pwd = loadPassword();
+      const users = await getUsers();
+      const user = users[saved.email];
+      if (user && user.password === pwd) {
+        currentUser = saved;
+        updateUI();
+        await loadMessages();
+        setStatus(`欢迎回来，${saved.username}`);
+        msgInput.focus();
+        return;
+      } else {
+        clearUser();
       }
     }
     updateUI();
-    fetchMessages();
+    await loadMessages();
   }
 
   init();
