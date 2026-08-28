@@ -821,17 +821,12 @@
   async function sendMessage(text) {
     if (!currentUser) return false;
 
-    // 普通用户：发送前校验账户状态（是否被注销 / 禁言）
+    // 普通用户：发送前校验是否被禁言
     if (!isAdmin) {
       try {
         const users = await readUsersStrict();
         const u = findUserByUsername(users, currentUser.username);
-        if (!u) {
-          alert('你的账户已被管理员注销');
-          doLogout();
-          return false;
-        }
-        if (u.mutedUntil && u.mutedUntil > Date.now()) {
+        if (u && u.mutedUntil && u.mutedUntil > Date.now()) {
           setStatus(`禁言中，解禁时间：${formatTime(u.mutedUntil)}`);
           return false;
         }
