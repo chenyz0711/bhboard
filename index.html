@@ -401,24 +401,30 @@
     if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 3000);
   }
 
-  // ✅ 修正：Upstash 写入用 { value: JSON.stringify(value) }
-  async function upstashGet(key) {
+  // ============================================================
+  // ✅ 核心修复：直接读写字符串，不做多余解析
+  // ============================================================
+
+  // 读取：直接返回字符串，由调用方 parse
+  async function upstashGetRaw(key) {
     const res = await fetch(`${UPSTASH_URL}/get/${key}`, {
       headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
     });
     const data = await res.json();
-    if (data.result === null || data.result === undefined) return null;
-    try { return JSON.parse(data.result); } catch { return null; }
+    // data.result 就是存进去的原始字符串，可能是 null
+    return data.result;
   }
 
-  async function upstashSet(key, value) {
+  // 写入：直接传字符串，不要 JSON.stringify 两次
+  async function upstashSetRaw(key, value) {
+    // value 必须是字符串
     const response = await fetch(`${UPSTASH_URL}/set/${key}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${UPSTASH_TOKEN}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ value: JSON.stringify(value) })
+      body: JSON.stringify({ value: value })
     });
     if (!response.ok) {
       const err = await response.text();
@@ -427,7 +433,43 @@
     return await response.json();
   }
 
-  // 用户
+  // ============================================================
+  // 业务函数
+  // ============================================================
+
+  // 读取用户数据（对象）
+  async function getUsers() {
+    try {
+      const raw = await upstashGetRaw(USER_KEY);
+      if (raw === null || raw === undefined) return {};
+      return JSON.parse(raw);
+    } catch (e) {
+      return {};
+    }
+  }
+
+  // 保存用户数据（对象转字符串）
+  async function saveUsers(users) {
+    await upstashSetRaw(USER_KEY, JSON.stringify(users));
+  }
+
+  // 读取消息（数组）
+  async function getMessages() {
+    try {
+      const raw = await upstashGetRaw(MSG_KEY);
+      if (raw === null || raw === undefined) return [];
+      return JSON.parse(raw);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // 保存消息（数组转字符串）
+  async function saveMessages(msgs) {
+    await upstashSetRaw(MSG_KEY, JSON.stringify(msgs));
+  }
+
+  // 用户管理
   function saveUser(user, password) {
     currentUser = user;
     localStorage.setItem('bh_user', JSON.stringify(user));
@@ -453,24 +495,6 @@
     currentUser = null;
     localStorage.removeItem('bh_user');
     localStorage.removeItem('bh_password');
-  }
-
-  async function getUsers() {
-    const val = await upstashGet(USER_KEY);
-    return val || {};
-  }
-
-  async function saveUsers(users) {
-    await upstashSet(USER_KEY, users);
-  }
-
-  async function getMessages() {
-    const val = await upstashGet(MSG_KEY);
-    return val || [];
-  }
-
-  async function saveMessages(msgs) {
-    await upstashSet(MSG_KEY, msgs);
   }
 
   // 认证
@@ -602,7 +626,10 @@
     }
   }
 
-  // 事件
+  // ============================================================
+  // 事件绑定
+  // ============================================================
+
   tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       tabBtns.forEach(b => b.classList.remove('active'));
@@ -685,7 +712,10 @@
     if (currentUser) msgInput.focus();
   });
 
+  // ============================================================
   // 启动
+  // ============================================================
+
   async function init() {
     const saved = loadUser();
     if (saved) {
