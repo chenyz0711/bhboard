@@ -274,6 +274,20 @@
     .hidden {
       display: none !important;
     }
+    .btn-reset {
+      padding: 8px 16px;
+      background: #e74c3c;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      margin-left: 10px;
+      transition: 0.15s;
+    }
+    .btn-reset:hover {
+      background: #c0392b;
+    }
     @media (max-width: 480px) {
       body { padding: 16px 12px; }
       .auth-box { padding: 24px 18px; }
@@ -290,7 +304,10 @@
       <button class="logout-btn hidden" id="logoutBtn">退出</button>
     </div>
   </div>
-  <div class="status" id="statusText">加载中...</div>
+  <div class="status" id="statusText">
+    加载中...
+    <button class="btn-reset" id="resetDataBtn">重置数据</button>
+  </div>
 
   <!-- 认证卡片 -->
   <div class="auth-box" id="authBox">
@@ -392,6 +409,7 @@
   const logoutBtn = document.getElementById('logoutBtn');
   const inputArea = document.getElementById('inputArea');
   const authTabs = document.getElementById('authTabs');
+  const resetDataBtn = document.getElementById('resetDataBtn');
 
   // ---------- 工具 ----------
   function formatTime(ts) {
@@ -424,7 +442,7 @@
     return 'h' + h.toString(36);
   }
 
-  // ---------- Upstash 读写 (简化版，直接读写数组) ----------
+  // ---------- Upstash 读写 (直接存储字符串) ----------
   async function upstashGet(key) {
     const res = await fetch(`${UPSTASH_URL}/get/${key}`, {
       headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
@@ -449,50 +467,80 @@
     return await response.json();
   }
 
-  // 读取用户数据：返回数组 [{username: 'xxx', password: 'hash'}]
+  // 深度解析JSON（处理多次序列化）
+  function deepParseJSON(str) {
+    if (str === null || str === undefined || str === '') {
+      return null;
+    }
+    
+    let result = str;
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    // 如果已经是对象，直接返回
+    if (typeof result === 'object') {
+      return result;
+    }
+    
+    // 尝试多次解析
+    while (typeof result === 'string' && attempts < maxAttempts) {
+      try {
+        const parsed = JSON.parse(result);
+        result = parsed;
+        attempts++;
+      } catch (e) {
+        // 如果解析失败，返回当前值
+        break;
+      }
+    }
+    
+    return result;
+  }
+
+  // 读取用户数据
   async function loadUsers() {
     try {
       const raw = await upstashGet(USERS_KEY);
       console.log('🔍 原始用户数据:', raw);
       
       if (raw === null || raw === undefined || raw === '') {
-        return [];
+        console.log('📭 用户数据为空');
+        return {};
       }
       
-      let parsed;
-      try {
-        parsed = JSON.parse(raw);
-      } catch (e) {
-        console.warn('⚠️ 用户数据不是有效JSON:', raw);
-        return [];
-      }
+      // 深度解析JSON
+      const parsed = deepParseJSON(raw);
+      console.log('🔍 深度解析后:', parsed);
       
-      // 如果是数组，直接返回
-      if (Array.isArray(parsed)) {
+      // 如果是对象，直接返回
+      if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
         return parsed;
       }
       
-      // 如果是对象，转换为数组
-      if (typeof parsed === 'object' && parsed !== null) {
-        const arr = [];
-        for (const [key, value] of Object.entries(parsed)) {
-          arr.push({ username: key, password: value });
+      // 如果是数组，转换为对象
+      if (Array.isArray(parsed)) {
+        const obj = {};
+        for (const item of parsed) {
+          if (typeof item === 'object' && item !== null) {
+            Object.assign(obj, item);
+          }
         }
-        return arr;
+        return obj;
       }
       
-      return [];
+      return {};
     } catch (e) {
       console.error('❌ 加载用户失败:', e);
-      return [];
+      return {};
     }
   }
 
-  // 保存用户数据：接收数组 [{username, password}]
-  async function saveUsers(usersArray) {
-    console.log('✍️ 保存用户数据:', usersArray);
-    const jsonStr = JSON.stringify(usersArray);
+  // 保存用户数据（直接保存为对象）
+  async function saveUsers(usersObj) {
+    console.log('✍️ 保存用户数据:', usersObj);
+    const jsonStr = JSON.stringify(usersObj);
     await upstashSet(USERS_KEY, jsonStr);
+    console.log('✅ 用户数据已保存');
   }
 
   // 读取留言数据
@@ -505,13 +553,8 @@
         return [];
       }
       
-      let parsed;
-      try {
-        parsed = JSON.parse(raw);
-      } catch (e) {
-        console.warn('⚠️ 留言数据不是有效JSON:', raw);
-        return [];
-      }
+      const parsed = deepParseJSON(raw);
+      console.log('🔍 深度解析后:', parsed);
       
       if (Array.isArray(parsed)) {
         return parsed;
@@ -544,15 +587,12 @@
     const users = await loadUsers();
     console.log('📋 当前用户列表:', users);
     
-    // 检查用户名是否已存在
-    const exists = users.some(u => u.username === username);
-    if (exists) {
+    if (users[username]) {
       regError.textContent = '用户名已存在';
       return false;
     }
     
-    // 添加新用户
-    users.push({ username: username, password: hash(password) });
+    users[username] = hash(password);
     await saveUsers(users);
     
     console.log('✅ 注册成功:', username);
@@ -564,20 +604,18 @@
     console.log('📋 登录时用户列表:', users);
     console.log('🔍 尝试登录:', username);
     
-    // 查找用户
-    const user = users.find(u => u.username === username);
-    
-    if (!user) {
+    // 检查用户是否存在
+    if (!users[username]) {
       loginError.textContent = '密码错误';
       console.log('❌ 用户不存在:', username);
       return false;
     }
     
     const inputHash = hash(password);
-    console.log('🔑 存储的哈希:', user.password);
+    console.log('🔑 存储的哈希:', users[username]);
     console.log('🔑 输入的哈希:', inputHash);
     
-    if (user.password !== inputHash) {
+    if (users[username] !== inputHash) {
       loginError.textContent = '密码错误';
       console.log('❌ 密码错误');
       return false;
@@ -585,6 +623,26 @@
     
     console.log('✅ 登录成功:', username);
     return true;
+  }
+
+  // 重置数据
+  async function resetData() {
+    const password = prompt('⚠️ 重置所有数据需要管理员密码：');
+    if (password !== 'admin') {
+      if (password !== null) alert('❌ 密码错误');
+      return;
+    }
+    if (!confirm('确定重置所有数据吗？这将删除所有用户和留言！')) return;
+    
+    try {
+      await upstashSet(USERS_KEY, JSON.stringify({}));
+      await upstashSet(MSG_KEY, JSON.stringify([]));
+      alert('✅ 数据已重置');
+      location.reload();
+    } catch (err) {
+      console.error('重置失败:', err);
+      alert('❌ 重置失败');
+    }
   }
 
   // ---------- 留言操作 ----------
@@ -752,7 +810,6 @@
     showSuccess(regSuccess, `注册成功！请切换到登录`);
     regUsername.value = '';
     regPassword.value = '';
-    // 自动切换到登录
     document.querySelector('.auth-tab[data-tab="login"]').click();
   }
 
@@ -792,6 +849,8 @@
   });
 
   clearBtn.addEventListener('click', clearAllMessages);
+  resetDataBtn.addEventListener('click', resetData);
+  
   msgList.addEventListener('click', () => {
     if (currentUser) msgInput.focus();
   });
@@ -804,8 +863,7 @@
         const user = JSON.parse(saved);
         if (user && user.username) {
           const users = await loadUsers();
-          const exists = users.some(u => u.username === user.username);
-          if (exists) {
+          if (users[user.username]) {
             currentUser = user;
             updateUI();
             await loadMessages();
