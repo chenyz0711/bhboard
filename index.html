@@ -292,14 +292,14 @@
   </div>
   <div class="status" id="statusText">加载中...</div>
 
-  <!-- 认证卡片：登录 / 注册 -->
+  <!-- 认证卡片 -->
   <div class="auth-box" id="authBox">
     <div class="auth-tabs" id="authTabs">
       <button class="auth-tab active" data-tab="login">登录</button>
       <button class="auth-tab" data-tab="register">注册</button>
     </div>
 
-    <!-- 登录表单 -->
+    <!-- 登录 -->
     <div class="auth-form" id="loginForm">
       <div class="field">
         <label>用户名</label>
@@ -314,7 +314,7 @@
       <div class="auth-msg success" id="loginSuccess"></div>
     </div>
 
-    <!-- 注册表单 -->
+    <!-- 注册 -->
     <div class="auth-form hidden" id="registerForm">
       <div class="field">
         <label>用户名 (唯一)</label>
@@ -361,11 +361,11 @@
   // 🔥 Upstash 配置
   const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
   const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
-  const USERS_KEY = 'bh_users';        // 存储用户: { username: passwordHash }
-  const MSG_KEY = 'bh_messages';      // 所有留言 (每条带 username)
+  const USERS_KEY = 'bh_users';
+  const MSG_KEY = 'bh_messages';
   // ============================================================
 
-  let currentUser = null;        // { username }
+  let currentUser = null;
   let messages = [];
 
   // DOM
@@ -414,7 +414,7 @@
     if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 3000);
   }
 
-  // 简单哈希 (实际生产用bcrypt, 这里演示)
+  // 简单哈希
   function hash(str) {
     let h = 0;
     for (let i = 0; i < str.length; i++) {
@@ -424,7 +424,7 @@
     return 'h' + h.toString(36);
   }
 
-  // ---------- Upstash 读写 ----------
+  // ---------- Upstash 读写 (修复版) ----------
   async function upstashGet(key) {
     const res = await fetch(`${UPSTASH_URL}/get/${key}`, {
       headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
@@ -449,26 +449,67 @@
     return await response.json();
   }
 
+  // 关键修复：统一处理读取的数据格式
   async function readData(key) {
     try {
       const raw = await upstashGet(key);
-      if (raw === null || raw === undefined || raw === '') return {};
-      let data = JSON.parse(raw);
-      if (typeof data === 'object' && !Array.isArray(data)) return data;
-      return {};
+      console.log(`🔍 读取 ${key} 原始数据:`, raw);
+      
+      if (raw === null || raw === undefined || raw === '') {
+        return {};
+      }
+      
+      // 尝试解析 JSON
+      let parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch (e) {
+        console.warn(`⚠️ ${key} 数据不是有效JSON:`, raw);
+        return {};
+      }
+      
+      // 如果是对象且不是数组，直接返回
+      if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed;
+      }
+      
+      // 如果是数组，返回对象（用户数据需要是对象）
+      if (Array.isArray(parsed)) {
+        // 如果数组为空，返回空对象
+        if (parsed.length === 0) return {};
+        // 如果数组第一个元素是对象，尝试合并（针对用户数据）
+        if (typeof parsed[0] === 'object' && parsed[0] !== null) {
+          // 如果是用户数据格式 [{username: hash}]
+          const obj = {};
+          for (const item of parsed) {
+            if (item && typeof item === 'object') {
+              Object.assign(obj, item);
+            }
+          }
+          return obj;
+        }
+        return {};
+      }
+      
+      return parsed;
     } catch (e) {
+      console.error(`❌ 读取 ${key} 失败:`, e);
       return {};
     }
   }
 
   async function writeData(key, data) {
-    return await upstashSet(key, JSON.stringify(data));
+    console.log(`✍️ 写入 ${key}:`, data);
+    // 确保数据是字符串
+    const jsonStr = JSON.stringify(data);
+    return await upstashSet(key, jsonStr);
   }
 
   // ---------- 用户管理 ----------
   async function loadUsers() {
     const users = await readData(USERS_KEY);
-    return users;  // { username: passwordHash }
+    console.log('📋 当前用户列表:', users);
+    return users;
   }
 
   async function saveUsers(users) {
@@ -476,32 +517,64 @@
   }
 
   async function registerUser(username, password) {
-    if (!username || username.length < 1) { regError.textContent = '用户名不能为空'; return false; }
-    if (!password || password.length < 4) { regError.textContent = '密码至少4位'; return false; }
+    if (!username || username.length < 1) { 
+      regError.textContent = '用户名不能为空'; 
+      return false; 
+    }
+    if (!password || password.length < 4) { 
+      regError.textContent = '密码至少4位'; 
+      return false; 
+    }
+    
     const users = await loadUsers();
+    console.log('🔍 注册前用户列表:', users);
+    
     if (users[username]) {
       regError.textContent = '用户名已存在';
       return false;
     }
+    
     users[username] = hash(password);
+    console.log('✅ 注册新用户:', username, '哈希:', users[username]);
     await saveUsers(users);
-    return true;
+    
+    // 验证是否保存成功
+    const verifyUsers = await loadUsers();
+    if (verifyUsers[username]) {
+      console.log('✅ 注册验证成功');
+      return true;
+    } else {
+      console.error('❌ 注册验证失败');
+      regError.textContent = '注册失败，请重试';
+      return false;
+    }
   }
 
   async function loginUser(username, password) {
     const users = await loadUsers();
+    console.log('🔍 登录时用户列表:', users);
+    console.log('🔍 查找用户:', username);
+    
     if (!users[username]) {
       loginError.textContent = '用户不存在';
+      console.log('❌ 用户不存在:', username);
       return false;
     }
-    if (users[username] !== hash(password)) {
+    
+    const expectedHash = users[username];
+    const inputHash = hash(password);
+    console.log('🔑 存储的哈希:', expectedHash);
+    console.log('🔑 输入的哈希:', inputHash);
+    
+    if (expectedHash !== inputHash) {
       loginError.textContent = '密码错误';
       return false;
     }
+    
     return true;
   }
 
-  // ---------- 留言操作 (按用户隔离) ----------
+  // ---------- 留言操作 ----------
   async function loadMessages() {
     try {
       const data = await readData(MSG_KEY);
@@ -510,7 +583,6 @@
       } else {
         messages = [];
       }
-      // 只显示当前用户的留言 (如果已登录)
       if (currentUser) {
         messages = messages.filter(m => m.username === currentUser.username);
       } else {
@@ -535,13 +607,11 @@
       timestamp: Date.now()
     };
     try {
-      // 读取全量留言
       let all = await readData(MSG_KEY);
       if (!Array.isArray(all)) all = [];
       all.push(newMsg);
       if (all.length > 500) all = all.slice(-500);
       await writeData(MSG_KEY, all);
-      // 更新本地 messages (只保留当前用户)
       messages = all.filter(m => m.username === currentUser.username);
       renderMessages();
       setStatus(`${messages.length} 条留言`);
@@ -623,7 +693,6 @@
   }
 
   // ---------- 事件绑定 ----------
-  // 切换登录/注册 tab
   authTabs.addEventListener('click', (e) => {
     const tab = e.target.closest('.auth-tab');
     if (!tab) return;
@@ -637,21 +706,21 @@
       loginForm.classList.add('hidden');
       registerForm.classList.remove('hidden');
     }
-    // 清除消息
     loginError.textContent = '';
     loginSuccess.textContent = '';
     regError.textContent = '';
     regSuccess.textContent = '';
   });
 
-  // 登录
   async function handleLogin() {
     const username = loginUsername.value.trim();
     const password = loginPassword.value.trim();
     if (!username) { loginError.textContent = '请输入用户名'; return; }
     if (!password) { loginError.textContent = '请输入密码'; return; }
+    
     const ok = await loginUser(username, password);
     if (!ok) return;
+    
     currentUser = { username };
     localStorage.setItem('bh_user', JSON.stringify(currentUser));
     updateUI();
@@ -667,12 +736,12 @@
     if (e.key === 'Enter') handleLogin();
   });
 
-  // 注册
   async function handleRegister() {
     const username = regUsername.value.trim();
     const password = regPassword.value.trim();
     const ok = await registerUser(username, password);
     if (!ok) return;
+    
     showSuccess(regSuccess, `注册成功！请切换到登录`);
     regUsername.value = '';
     regPassword.value = '';
@@ -685,7 +754,6 @@
     if (e.key === 'Enter') handleRegister();
   });
 
-  // 退出
   logoutBtn.addEventListener('click', () => {
     currentUser = null;
     localStorage.removeItem('bh_user');
@@ -695,7 +763,6 @@
     renderMessages();
   });
 
-  // 发送留言
   sendBtn.addEventListener('click', async () => {
     if (!currentUser) return;
     const text = msgInput.value.trim();
@@ -729,7 +796,6 @@
       if (saved) {
         const user = JSON.parse(saved);
         if (user && user.username) {
-          // 验证用户是否还在云端
           const users = await loadUsers();
           if (users[user.username]) {
             currentUser = user;
