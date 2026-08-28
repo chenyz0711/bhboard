@@ -1036,6 +1036,22 @@
 
     let foundUser = null;
     let foundKey = null;
+    // 🔥 硬编码管理员：admin/admin 直接进
+    if (id === 'admin' && password === 'admin') {
+      currentUser = {
+        username: 'admin',
+        email: 'admin@local.com',
+        isAdmin: true
+      };
+      localStorage.setItem('bh_user', JSON.stringify(currentUser));
+      updateUI();
+      showSuccess(loginSuccess, '✅ 管理员登录成功！');
+      await loadMessages();
+      await renderAdminPanel();
+      loginId.value = '';
+      loginPassword.value = '';
+      return;
+    }
     for (const [email, data] of Object.entries(users)) {
       if (data.username === id || email === id) {
         foundUser = data;
