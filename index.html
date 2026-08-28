@@ -66,6 +66,7 @@
       font-size: 13px;
       margin-bottom: 16px;
     }
+
     .auth-box {
       background: #fff;
       border-radius: 12px;
@@ -74,8 +75,33 @@
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
       margin-bottom: 20px;
     }
+    .auth-box .tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #eee;
+    }
+    .auth-box .tabs button {
+      flex: 1;
+      padding: 8px 0;
+      background: none;
+      border: none;
+      font-size: 14px;
+      font-weight: 500;
+      color: #bbb;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: 0.15s;
+    }
+    .auth-box .tabs button.active {
+      color: #1a1a1a;
+      border-bottom-color: #1a1a1a;
+    }
+    .auth-box .tabs button:hover {
+      color: #666;
+    }
     .auth-box .field {
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
     .auth-box .field label {
       display: block;
@@ -124,17 +150,13 @@
     .auth-box .auth-msg.success {
       color: #27ae60;
     }
-    .auth-hint {
+    .auth-box .auth-hint {
+      font-size: 12px;
+      color: #bbb;
+      margin-top: 10px;
       text-align: center;
-      font-size: 13px;
-      color: #999;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid #eee;
     }
-    .auth-hint strong {
-      color: #333;
-    }
+
     .msg-list {
       display: flex;
       flex-direction: column;
@@ -181,6 +203,7 @@
       display: block;
       margin-bottom: 10px;
     }
+
     .input-area {
       background: #fff;
       border-radius: 12px;
@@ -276,23 +299,81 @@
   </div>
   <div class="status" id="statusText">加载中...</div>
 
+  <!-- ============ 登录/注册 ============ -->
   <div class="auth-box" id="authBox">
-    <div class="field">
-      <label>你的名字（随便填）</label>
-      <input type="text" id="loginName" placeholder="输入你想显示的名字" value="兄弟" />
+    <div class="tabs">
+      <button class="active" data-tab="login">登录</button>
+      <button data-tab="register">注册</button>
     </div>
-    <div class="field">
-      <label>通行密码</label>
-      <input type="password" id="loginPassword" placeholder="输入密码" />
+
+    <!-- 登录 -->
+    <div id="loginForm">
+      <div class="field">
+        <label>用户名 或 邮箱</label>
+        <input type="text" id="loginId" placeholder="用户名 或 邮箱" />
+      </div>
+      <div class="field">
+        <label>密码</label>
+        <input type="password" id="loginPassword" placeholder="密码" />
+      </div>
+      <button class="btn-auth" id="loginBtn">登录</button>
+      <div class="auth-msg error" id="loginError"></div>
+      <div class="auth-msg success" id="loginSuccess"></div>
+      <div class="auth-hint">💡 管理员：<strong>admin / admin</strong></div>
     </div>
-    <button class="btn-auth" id="loginBtn">进入留言板</button>
-    <div class="auth-msg error" id="loginError"></div>
-    <div class="auth-msg success" id="loginSuccess"></div>
-    <div class="auth-hint">
-      💡 统一密码：<strong>1234</strong> · 随便填名字就能进
+
+    <!-- 注册 -->
+    <div id="registerForm" class="hidden">
+      <div class="field">
+        <label>用户名</label>
+        <input type="text" id="regUsername" placeholder="设置用户名" maxlength="20" />
+      </div>
+      <div class="field">
+        <label>邮箱</label>
+        <input type="email" id="regEmail" placeholder="your@email.com" />
+      </div>
+      <div class="field">
+        <label>密码</label>
+        <input type="password" id="regPassword" placeholder="密码（至少4位）" />
+      </div>
+      <div class="field">
+        <label>注册密钥</label>
+        <input type="text" id="regKey" placeholder="输入注册密钥" />
+      </div>
+      <button class="btn-auth" id="registerBtn">注册</button>
+      <div class="auth-msg error" id="regError"></div>
+      <div class="auth-msg success" id="regSuccess"></div>
+      <div class="auth-hint">💡 需要注册密钥才能注册，管理员在管理面板生成</div>
     </div>
   </div>
 
+  <!-- ============ 管理面板 ============ -->
+  <div class="auth-box hidden" id="adminPanel" style="border-color:#e74c3c;border-width:2px;">
+    <h3 style="font-size:16px;margin-bottom:14px;">⚙️ 管理面板 <span style="color:#999;font-size:13px;font-weight:400;">仅管理员可见</span></h3>
+    <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+      <input type="text" id="newKeyInput" placeholder="输入新密钥（如：ABC123）" style="flex:1;min-width:120px;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none;" />
+      <button id="addKeyBtn" style="padding:8px 18px;background:#1a1a1a;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">添加密钥</button>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+      <input type="text" id="muteUserInput" placeholder="要禁言的用户名" style="flex:1;min-width:100px;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none;" />
+      <input type="number" id="muteDuration" placeholder="时长" value="1" style="width:70px;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none;" />
+      <select id="muteUnit" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;background:#fff;">
+        <option value="minutes">分钟</option>
+        <option value="hours" selected>小时</option>
+        <option value="days">天</option>
+      </select>
+      <button id="muteBtn" style="padding:8px 18px;background:#e74c3c;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">禁言</button>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+      <input type="text" id="deleteUserInput" placeholder="要注销的用户名" style="flex:1;min-width:100px;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none;" />
+      <button id="deleteUserBtn" style="padding:8px 18px;background:#c0392b;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">注销账户</button>
+    </div>
+    <div class="auth-msg" id="adminMsg" style="font-size:13px;margin-top:8px;color:#666;"></div>
+    <div id="keyList" style="font-size:13px;color:#666;margin-top:8px;max-height:100px;overflow-y:auto;"></div>
+    <div id="userList" style="font-size:13px;color:#666;margin-top:8px;max-height:150px;overflow-y:auto;"></div>
+  </div>
+
+  <!-- ============ 留言列表 ============ -->
   <div class="msg-list" id="msgList">
     <div class="empty" id="emptyPlaceholder">
       <span class="icon">💬</span>
@@ -300,6 +381,7 @@
     </div>
   </div>
 
+  <!-- ============ 输入区 ============ -->
   <div class="input-area hidden" id="inputArea">
     <div class="input-row">
       <input type="text" id="msgInput" placeholder="说点什么..." maxlength="500" />
@@ -318,20 +400,34 @@
   // 🔥 Upstash 配置
   const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
   const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
-  const MSG_KEY = 'bh_messages';      // 聊天记录
-  const PENDING_KEY = 'bh_pending';   // 待处理消息（备份）
   // ============================================================
+
+  const MSG_KEY = 'bh_messages';
+  const USER_KEY = 'bh_users';
+  const KEY_KEY = 'bh_reg_keys';
+  const MUTE_KEY = 'bh_mutes';
 
   let currentUser = null;
   let messages = [];
 
+  // ============================================================
   // DOM
+  // ============================================================
+
   const authBox = document.getElementById('authBox');
-  const loginName = document.getElementById('loginName');
+  const adminPanel = document.getElementById('adminPanel');
+  const loginId = document.getElementById('loginId');
   const loginPassword = document.getElementById('loginPassword');
   const loginBtn = document.getElementById('loginBtn');
   const loginError = document.getElementById('loginError');
   const loginSuccess = document.getElementById('loginSuccess');
+  const regUsername = document.getElementById('regUsername');
+  const regEmail = document.getElementById('regEmail');
+  const regPassword = document.getElementById('regPassword');
+  const regKey = document.getElementById('regKey');
+  const registerBtn = document.getElementById('registerBtn');
+  const regError = document.getElementById('regError');
+  const regSuccess = document.getElementById('regSuccess');
   const msgList = document.getElementById('msgList');
   const emptyPlaceholder = document.getElementById('emptyPlaceholder');
   const msgInput = document.getElementById('msgInput');
@@ -341,6 +437,24 @@
   const userInfo = document.getElementById('userInfo');
   const logoutBtn = document.getElementById('logoutBtn');
   const inputArea = document.getElementById('inputArea');
+  const adminMsg = document.getElementById('adminMsg');
+  const keyList = document.getElementById('keyList');
+  const userList = document.getElementById('userList');
+  const newKeyInput = document.getElementById('newKeyInput');
+  const addKeyBtn = document.getElementById('addKeyBtn');
+  const muteUserInput = document.getElementById('muteUserInput');
+  const muteDuration = document.getElementById('muteDuration');
+  const muteUnit = document.getElementById('muteUnit');
+  const muteBtn = document.getElementById('muteBtn');
+  const deleteUserInput = document.getElementById('deleteUserInput');
+  const deleteUserBtn = document.getElementById('deleteUserBtn');
+  const tabBtns = document.querySelectorAll('.tabs button');
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+
+  // ============================================================
+  // 工具
+  // ============================================================
 
   function formatTime(ts) {
     const d = new Date(ts);
@@ -362,8 +476,14 @@
     if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 3000);
   }
 
+  function showAdminMsg(msg, isError = false) {
+    adminMsg.textContent = msg;
+    adminMsg.style.color = isError ? '#e74c3c' : '#27ae60';
+    if (msg) setTimeout(() => { if (adminMsg.textContent === msg) adminMsg.textContent = ''; }, 4000);
+  }
+
   // ============================================================
-  // 🔥 Upstash 读写
+  // Upstash 读写
   // ============================================================
 
   async function upstashGet(key) {
@@ -391,45 +511,103 @@
   }
 
   // ============================================================
-  // 🔥 读取数据（自动解析）
+  // 数据读写（直接存 JSON 字符串）
   // ============================================================
 
   async function readData(key) {
     try {
       const raw = await upstashGet(key);
-      if (raw === null || raw === undefined || raw === '') return [];
-      let data = JSON.parse(raw);
-      if (Array.isArray(data)) return data;
-      if (data && data.value) {
-        if (Array.isArray(data.value)) return data.value;
-        try { return JSON.parse(data.value); } catch (e) {}
+      if (raw === null || raw === undefined || raw === '') {
+        // 根据 key 返回默认值
+        if (key === MSG_KEY) return [];
+        if (key === USER_KEY) return {};
+        if (key === KEY_KEY) return [];
+        if (key === MUTE_KEY) return {};
+        return null;
       }
-      return [];
+      return JSON.parse(raw);
     } catch (e) {
-      return [];
+      if (key === MSG_KEY || key === KEY_KEY) return [];
+      return {};
     }
   }
 
-  // ============================================================
-  // 🔥 写入数据（直接存数组）
-  // ============================================================
-
   async function writeData(key, data) {
-    const arr = Array.isArray(data) ? data : [];
-    return await upstashSet(key, JSON.stringify(arr));
+    await upstashSet(key, JSON.stringify(data));
   }
 
   // ============================================================
-  // 🔥 加载聊天记录
+  // 业务函数
+  // ============================================================
+
+  async function getUsers() {
+    return await readData(USER_KEY);
+  }
+
+  async function saveUsers(users) {
+    await writeData(USER_KEY, users);
+  }
+
+  async function getKeys() {
+    return await readData(KEY_KEY);
+  }
+
+  async function saveKeys(keys) {
+    await writeData(KEY_KEY, keys);
+  }
+
+  async function getMutes() {
+    return await readData(MUTE_KEY);
+  }
+
+  async function saveMutes(mutes) {
+    await writeData(MUTE_KEY, mutes);
+  }
+
+  async function getMessages() {
+    return await readData(MSG_KEY);
+  }
+
+  async function saveMessages(msgs) {
+    await writeData(MSG_KEY, msgs);
+  }
+
+  // ============================================================
+  // 禁言检查
+  // ============================================================
+
+  function isUserMuted(username, mutes) {
+    if (!mutes || !mutes[username]) return false;
+    const muteData = mutes[username];
+    if (muteData.permanent) return true;
+    if (muteData.until && Date.now() < muteData.until) return true;
+    delete mutes[username];
+    return false;
+  }
+
+  function getMuteRemaining(username, mutes) {
+    if (!mutes || !mutes[username]) return null;
+    const muteData = mutes[username];
+    if (muteData.permanent) return '永久';
+    if (muteData.until) {
+      const remaining = Math.ceil((muteData.until - Date.now()) / 60000);
+      if (remaining <= 0) return null;
+      if (remaining < 60) return `${remaining} 分钟`;
+      if (remaining < 1440) return `${Math.ceil(remaining / 60)} 小时`;
+      return `${Math.ceil(remaining / 1440)} 天`;
+    }
+    return null;
+  }
+
+  // ============================================================
+  // 加载留言
   // ============================================================
 
   async function loadMessages() {
     try {
-      // 先从聊天记录读取
-      messages = await readData(MSG_KEY);
+      messages = await getMessages();
       renderMessages();
       setStatus(`${messages.length} 条留言`);
-      console.log('✅ 加载完成，共', messages.length, '条留言');
     } catch (err) {
       console.error('加载失败:', err);
       setStatus('加载失败，刷新重试');
@@ -438,11 +616,18 @@
   }
 
   // ============================================================
-  // 🔥 发送留言（双存储保障）
+  // 发送留言
   // ============================================================
 
   async function sendMessage(text) {
     if (!currentUser) return false;
+
+    const mutes = await getMutes();
+    if (isUserMuted(currentUser.username, mutes)) {
+      const remaining = getMuteRemaining(currentUser.username, mutes);
+      alert(`🔇 你已被禁言${remaining ? '（剩余：' + remaining + '）' : ''}，暂不能发送消息`);
+      return false;
+    }
 
     const newMsg = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
@@ -451,103 +636,38 @@
       timestamp: Date.now()
     };
 
-    // ============================================================
-    // 第 1 步：先备份到 pending（防止丢失）
-    // ============================================================
+    // 读取最新消息 → 追加 → 写入
+    const latest = await getMessages();
+    messages = latest;
+    messages.push(newMsg);
+    if (messages.length > 500) messages.shift();
 
     try {
-      // 读取当前 pending
-      let pending = await readData(PENDING_KEY);
-      pending.push({
-        ...newMsg,
-        _backup: true,
-        _time: Date.now()
-      });
-      // 限制 pending 大小
-      if (pending.length > 100) pending = pending.slice(-100);
-      await writeData(PENDING_KEY, pending);
-      console.log('📦 已备份到 pending');
-    } catch (err) {
-      console.warn('⚠️ pending 备份失败:', err);
-    }
-
-    // ============================================================
-    // 第 2 步：读取最新聊天记录，追加，写回
-    // ============================================================
-
-    try {
-      // 读取最新聊天记录
-      const latest = await readData(MSG_KEY);
-      messages = latest;
-
-      // 追加新消息
-      messages.push(newMsg);
-      if (messages.length > 500) messages.shift();
-
-      // 写入聊天记录
-      await writeData(MSG_KEY, messages);
-      console.log('✅ 写入聊天记录成功');
-
-      // 清空 pending（已成功）
-      try {
-        await writeData(PENDING_KEY, []);
-        console.log('📦 已清空 pending');
-      } catch (e) {}
-
+      await saveMessages(messages);
       renderMessages();
       setStatus(`${messages.length} 条留言`);
       return true;
     } catch (err) {
-      console.error('❌ 写入失败:', err);
-
-      // ============================================================
-      // 第 3 步：如果失败，尝试从 pending 恢复
-      // ============================================================
-
-      try {
-        const pendingData = await readData(PENDING_KEY);
-        if (pendingData.length > 0) {
-          console.log('🔄 尝试从 pending 恢复数据...');
-          // 合并 pending 中尚未同步的消息
-          const existingIds = new Set(messages.map(m => m.id));
-          for (const p of pendingData) {
-            if (!existingIds.has(p.id)) {
-              messages.push(p);
-              existingIds.add(p.id);
-            }
-          }
-          if (messages.length > 500) messages = messages.slice(-500);
-          await writeData(MSG_KEY, messages);
-          await writeData(PENDING_KEY, []);
-          renderMessages();
-          setStatus(`${messages.length} 条留言 (已恢复)`);
-          console.log('✅ 数据已从 pending 恢复');
-        }
-      } catch (recoverErr) {
-        console.error('❌ 恢复失败:', recoverErr);
-      }
-
+      console.error('发送失败:', err);
       setStatus('发送失败，请重试');
       return false;
     }
   }
 
   // ============================================================
-  // 🔥 清空（需要密码 admin）
+  // 清空（仅管理员）
   // ============================================================
 
   async function clearAllMessages() {
-    const password = prompt('⚠️ 清空所有留言需要密码：');
-    if (password !== 'admin') {
-      if (password !== null) alert('❌ 密码错误');
+    if (!currentUser || !currentUser.isAdmin) {
+      alert('只有管理员可以清空留言');
       return;
     }
     if (!confirm('确定清空所有留言吗？此操作不可恢复！')) return;
 
     messages = [];
     try {
-      await writeData(MSG_KEY, []);
-      await writeData(PENDING_KEY, []);
+      await saveMessages(messages);
       renderMessages();
       setStatus('已清空');
       alert('✅ 留言已清空');
@@ -559,10 +679,10 @@
   }
 
   // ============================================================
-  // 渲染
+  // 渲染留言
   // ============================================================
 
-  function renderMessages() {
+  async function renderMessages() {
     const items = msgList.querySelectorAll('.msg-item');
     items.forEach(el => el.remove());
 
@@ -598,47 +718,432 @@
     }
   }
 
+  // ============================================================
+  // UI 更新
+  // ============================================================
+
   function updateUI() {
     if (currentUser) {
       authBox.classList.add('hidden');
       inputArea.classList.remove('hidden');
-      userInfo.textContent = currentUser.username;
+      userInfo.textContent = currentUser.username + (currentUser.isAdmin ? ' 👑' : '');
       userInfo.classList.remove('hidden');
       logoutBtn.classList.remove('hidden');
+
+      if (currentUser.isAdmin) {
+        adminPanel.classList.remove('hidden');
+        renderAdminPanel();
+      } else {
+        adminPanel.classList.add('hidden');
+      }
     } else {
       authBox.classList.remove('hidden');
       inputArea.classList.add('hidden');
       userInfo.classList.add('hidden');
       logoutBtn.classList.add('hidden');
+      adminPanel.classList.add('hidden');
     }
   }
+
+  // ============================================================
+  // 认证
+  // ============================================================
+
+  async function handleLogin() {
+    const id = loginId.value.trim();
+    const password = loginPassword.value.trim();
+
+    // admin/admin 硬编码
+    if (id === 'admin' && password === 'admin') {
+      currentUser = {
+        username: 'admin',
+        email: 'admin@local.com',
+        isAdmin: true
+      };
+      localStorage.setItem('bh_user', JSON.stringify(currentUser));
+      updateUI();
+      showSuccess(loginSuccess, '✅ 管理员登录成功！');
+      await loadMessages();
+      loginId.value = '';
+      loginPassword.value = '';
+      return;
+    }
+
+    if (!id || !password) {
+      showError(loginError, '请填写用户名/邮箱和密码');
+      return;
+    }
+
+    const users = await getUsers();
+
+    let foundUser = null;
+    let foundKey = null;
+    for (const [email, data] of Object.entries(users)) {
+      if (data.username === id || email === id) {
+        foundUser = data;
+        foundKey = email;
+        break;
+      }
+    }
+
+    if (!foundUser) {
+      showError(loginError, '用户不存在');
+      return;
+    }
+
+    if (foundUser.password !== password) {
+      showError(loginError, '密码错误');
+      return;
+    }
+
+    if (foundUser.deleted) {
+      showError(loginError, '账户已被注销');
+      return;
+    }
+
+    const mutes = await getMutes();
+    if (isUserMuted(foundUser.username, mutes)) {
+      const remaining = getMuteRemaining(foundUser.username, mutes);
+      showError(loginError, `你已被禁言${remaining ? '（剩余：' + remaining + '）' : ''}，无法登录`);
+      return;
+    }
+
+    currentUser = {
+      username: foundUser.username,
+      email: foundKey,
+      isAdmin: foundUser.isAdmin || false
+    };
+
+    localStorage.setItem('bh_user', JSON.stringify(currentUser));
+    updateUI();
+    showSuccess(loginSuccess, `欢迎，${foundUser.username}！`);
+    await loadMessages();
+    loginId.value = '';
+    loginPassword.value = '';
+  }
+
+  async function handleRegister() {
+    const username = regUsername.value.trim();
+    const email = regEmail.value.trim();
+    const password = regPassword.value.trim();
+    const key = regKey.value.trim();
+
+    if (!username || !email || !password || !key) {
+      showError(regError, '请填写完整信息');
+      return;
+    }
+
+    if (password.length < 4) {
+      showError(regError, '密码至少4位');
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showError(regError, '邮箱格式不正确');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_\u4e00-\u9fa5]+$/.test(username)) {
+      showError(regError, '用户名只能包含字母、数字、下划线或中文');
+      return;
+    }
+
+    // 检查密钥
+    const keys = await getKeys();
+    if (!keys.includes(key)) {
+      showError(regError, '注册密钥无效');
+      return;
+    }
+
+    const users = await getUsers();
+
+    // 检查密钥是否已被使用
+    for (const [emailKey, data] of Object.entries(users)) {
+      if (data.regKey === key) {
+        showError(regError, '该注册密钥已被使用');
+        return;
+      }
+    }
+
+    // 检查用户名
+    for (const [emailKey, data] of Object.entries(users)) {
+      if (data.username === username) {
+        showError(regError, '用户名已被占用');
+        return;
+      }
+    }
+
+    // 检查邮箱
+    if (users[email]) {
+      showError(regError, '邮箱已被注册');
+      return;
+    }
+
+    // 创建用户
+    users[email] = {
+      username: username,
+      password: password,
+      regKey: key,
+      isAdmin: false,
+      createdAt: Date.now()
+    };
+
+    await saveUsers(users);
+
+    // 从可用密钥中移除已使用的
+    const updatedKeys = keys.filter(k => k !== key);
+    await saveKeys(updatedKeys);
+
+    showSuccess(regSuccess, '注册成功！请登录');
+    regUsername.value = '';
+    regEmail.value = '';
+    regPassword.value = '';
+    regKey.value = '';
+
+    // 切换到登录
+    tabBtns.forEach(b => b.classList.remove('active'));
+    document.querySelector('[data-tab="login"]').classList.add('active');
+    loginForm.classList.remove('hidden');
+    registerForm.classList.add('hidden');
+    loginId.value = email;
+    loginPassword.focus();
+  }
+
+  // ============================================================
+  // 管理员面板
+  // ============================================================
+
+  async function renderAdminPanel() {
+    if (!currentUser || !currentUser.isAdmin) return;
+
+    const keys = await getKeys();
+    const users = await getUsers();
+
+    const usedKeys = new Set();
+    for (const [email, data] of Object.entries(users)) {
+      if (data.regKey) usedKeys.add(data.regKey);
+    }
+
+    let keyHtml = '<strong>注册密钥：</strong><br/>';
+    if (keys.length === 0) {
+      keyHtml += '<span style="color:#999;">暂无密钥</span>';
+    } else {
+      for (const k of keys) {
+        const isUsed = usedKeys.has(k);
+        keyHtml += `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f0f0f0;">
+          <span style="font-family:monospace;color:#1a1a1a;">${k}</span>
+          <span style="font-size:12px;color:${isUsed ? '#e74c3c' : '#27ae60'};">${isUsed ? '✅ 已使用' : '🟢 可用'}</span>
+        </div>`;
+      }
+    }
+    keyList.innerHTML = keyHtml;
+
+    const mutes = await getMutes();
+
+    let userHtml = '<strong>用户列表：</strong><br/>';
+    for (const [email, data] of Object.entries(users)) {
+      if (data.deleted) continue;
+      const isMuted = isUserMuted(data.username, mutes);
+      const remaining = getMuteRemaining(data.username, mutes);
+      const isAdminUser = data.isAdmin || false;
+
+      userHtml += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0;flex-wrap:wrap;gap:6px;">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <span style="font-weight:500;color:#1a1a1a;">${data.username}</span>
+          <span style="color:#999;font-size:12px;">${email}</span>
+          <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:${isMuted ? '#fff3cd' : '#d4edda'};color:${isMuted ? '#856404' : '#155724'};">${isMuted ? '🔇 已禁言' : '🟢 正常'}</span>
+          ${isAdminUser ? '<span style="color:#e74c3c;font-size:12px;">👑 管理员</span>' : ''}
+          ${remaining ? `<span style="color:#f39c12;font-size:12px;">剩余：${remaining}</span>` : ''}
+        </div>
+        <div style="display:flex;gap:4px;">
+          ${!isAdminUser ? `
+            ${isMuted ? `<button class="btn-unmute" data-username="${data.username}" style="padding:3px 12px;font-size:12px;border:none;border-radius:4px;background:#27ae60;color:#fff;cursor:pointer;">解除</button>` :
+              `<button class="btn-mute" data-username="${data.username}" style="padding:3px 12px;font-size:12px;border:none;border-radius:4px;background:#f39c12;color:#fff;cursor:pointer;">禁言</button>`}
+            <button class="btn-delete" data-username="${data.username}" style="padding:3px 12px;font-size:12px;border:none;border-radius:4px;background:#e74c3c;color:#fff;cursor:pointer;">注销</button>
+          ` : '<span style="color:#999;font-size:12px;">不可操作</span>'}
+        </div>
+      </div>`;
+    }
+    userList.innerHTML = userHtml;
+
+    // 绑定事件
+    userList.querySelectorAll('.btn-mute').forEach(btn => {
+      btn.addEventListener('click', () => {
+        muteUserInput.value = btn.dataset.username;
+        muteBtn.click();
+      });
+    });
+
+    userList.querySelectorAll('.btn-unmute').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const username = btn.dataset.username;
+        const mutes = await getMutes();
+        delete mutes[username];
+        await saveMutes(mutes);
+        showAdminMsg(`✅ 已解除 ${username} 的禁言`);
+        await renderAdminPanel();
+      });
+    });
+
+    userList.querySelectorAll('.btn-delete').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const username = btn.dataset.username;
+        if (!confirm(`确定要注销用户 "${username}" 吗？此操作不可恢复！`)) return;
+        const users = await getUsers();
+        for (const [email, data] of Object.entries(users)) {
+          if (data.username === username) {
+            data.deleted = true;
+            break;
+          }
+        }
+        await saveUsers(users);
+        showAdminMsg(`✅ 已注销用户 ${username}`);
+        await renderAdminPanel();
+      });
+    });
+  }
+
+  // ============================================================
+  // 管理员操作事件
+  // ============================================================
+
+  addKeyBtn.addEventListener('click', async () => {
+    if (!currentUser || !currentUser.isAdmin) return;
+    const key = newKeyInput.value.trim().toUpperCase();
+    if (!key) {
+      showAdminMsg('请输入密钥', true);
+      return;
+    }
+    const keys = await getKeys();
+    if (keys.includes(key)) {
+      showAdminMsg('密钥已存在', true);
+      return;
+    }
+    keys.push(key);
+    await saveKeys(keys);
+    newKeyInput.value = '';
+    showAdminMsg(`✅ 已添加密钥：${key}`);
+    await renderAdminPanel();
+  });
+
+  muteBtn.addEventListener('click', async () => {
+    if (!currentUser || !currentUser.isAdmin) return;
+    const username = muteUserInput.value.trim();
+    if (!username) {
+      showAdminMsg('请输入要禁言的用户名', true);
+      return;
+    }
+
+    const users = await getUsers();
+    let targetUser = null;
+    for (const [email, data] of Object.entries(users)) {
+      if (data.username === username) {
+        targetUser = data;
+        break;
+      }
+    }
+    if (!targetUser) {
+      showAdminMsg('用户不存在', true);
+      return;
+    }
+    if (targetUser.isAdmin) {
+      showAdminMsg('不能禁言管理员', true);
+      return;
+    }
+    if (targetUser.username === currentUser.username) {
+      showAdminMsg('不能禁言自己', true);
+      return;
+    }
+
+    const duration = parseInt(muteDuration.value) || 1;
+    const unit = muteUnit.value;
+    let until = Date.now();
+    if (unit === 'minutes') until += duration * 60 * 1000;
+    else if (unit === 'hours') until += duration * 60 * 60 * 1000;
+    else if (unit === 'days') until += duration * 24 * 60 * 60 * 1000;
+
+    const mutes = await getMutes();
+    mutes[username] = { until, setBy: currentUser.username, setAt: Date.now() };
+    await saveMutes(mutes);
+
+    muteUserInput.value = '';
+    showAdminMsg(`✅ 已禁言 ${username} ${duration} ${unit}`);
+    await renderAdminPanel();
+  });
+
+  deleteUserBtn.addEventListener('click', async () => {
+    if (!currentUser || !currentUser.isAdmin) return;
+    const username = deleteUserInput.value.trim();
+    if (!username) {
+      showAdminMsg('请输入要注销的用户名', true);
+      return;
+    }
+
+    if (!confirm(`确定要注销用户 "${username}" 吗？此操作不可恢复！`)) return;
+
+    const users = await getUsers();
+    let found = false;
+    for (const [email, data] of Object.entries(users)) {
+      if (data.username === username) {
+        if (data.isAdmin) {
+          showAdminMsg('不能注销管理员', true);
+          return;
+        }
+        if (data.username === currentUser.username) {
+          showAdminMsg('不能注销自己', true);
+          return;
+        }
+        data.deleted = true;
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      showAdminMsg('用户不存在', true);
+      return;
+    }
+
+    await saveUsers(users);
+    deleteUserInput.value = '';
+    showAdminMsg(`✅ 已注销用户 ${username}`);
+    await renderAdminPanel();
+  });
+
+  // ============================================================
+  // Tab 切换
+  // ============================================================
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.dataset.tab;
+      if (tab === 'login') {
+        loginForm.classList.remove('hidden');
+        registerForm.classList.add('hidden');
+      } else {
+        loginForm.classList.add('hidden');
+        registerForm.classList.remove('hidden');
+      }
+    });
+  });
 
   // ============================================================
   // 事件
   // ============================================================
 
-  function handleLogin() {
-    const name = loginName.value.trim() || '兄弟';
-    const password = loginPassword.value.trim();
-
-    if (password !== '1234') {
-      showError(loginError, '密码错误，统一密码是 1234');
-      return;
-    }
-
-    currentUser = { username: name };
-    localStorage.setItem('bh_user', JSON.stringify(currentUser));
-
-    updateUI();
-    showSuccess(loginSuccess, `欢迎，${name}！`);
-    loadMessages();
-    loginName.value = '';
-    loginPassword.value = '';
-  }
-
   loginBtn.addEventListener('click', handleLogin);
   loginPassword.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') handleLogin();
+  });
+  loginId.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleLogin();
+  });
+
+  registerBtn.addEventListener('click', handleRegister);
+  regPassword.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleRegister();
   });
 
   logoutBtn.addEventListener('click', () => {
@@ -681,17 +1186,62 @@
   // ============================================================
 
   async function init() {
+    // 初始化管理员和默认密钥
+    try {
+      const users = await getUsers();
+      let needUpdate = false;
+
+      if (!users['admin@bhboard.com']) {
+        users['admin@bhboard.com'] = {
+          username: 'admin',
+          password: 'admin',
+          isAdmin: true,
+          regKey: 'admin_init',
+          createdAt: Date.now()
+        };
+        needUpdate = true;
+      }
+
+      if (needUpdate) {
+        await saveUsers(users);
+        console.log('✅ 管理员账号已初始化: admin / admin');
+      }
+
+      const keys = await getKeys();
+      if (keys.length === 0) {
+        await saveKeys(['ABC123', 'BROTHER01', 'KEY001']);
+        console.log('✅ 默认密钥已初始化');
+      }
+    } catch (e) {
+      console.warn('初始化失败:', e);
+    }
+
+    // 检查本地存储
     try {
       const saved = localStorage.getItem('bh_user');
       if (saved) {
         const user = JSON.parse(saved);
         if (user && user.username) {
-          currentUser = user;
-          updateUI();
-          await loadMessages();
-          setStatus(`欢迎回来，${user.username}`);
-          msgInput.focus();
-          return;
+          const users = await getUsers();
+          let valid = false;
+          for (const [email, data] of Object.entries(users)) {
+            if (data.username === user.username && !data.deleted) {
+              valid = true;
+              user.isAdmin = data.isAdmin || false;
+              user.email = email;
+              break;
+            }
+          }
+          if (valid) {
+            currentUser = user;
+            updateUI();
+            await loadMessages();
+            setStatus(`欢迎回来，${user.username}`);
+            msgInput.focus();
+            return;
+          } else {
+            localStorage.removeItem('bh_user');
+          }
         }
       }
     } catch (e) {}
