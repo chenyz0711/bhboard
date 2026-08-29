@@ -202,9 +202,10 @@
   <!-- SECTION: lobby -->
   <div id="lobbyView">
     <div class="card">
-      <h2>你的名字</h2>
+      <h2>你的名字与密钥</h2>
       <div class="form-gap">
         <input class="txt" type="text" id="nameInput" placeholder="输入名字" maxlength="12" />
+        <input class="txt" type="text" id="keyInput" placeholder="输入密钥" autocomplete="off" />
       </div>
     </div>
     <div class="card">
@@ -320,6 +321,7 @@
   </div>
 </div>
 
+<script src="/keycheck.js"></script>
 <script>
   // ============================================================
   // SECTION: config
@@ -329,7 +331,10 @@
   const ROOM_PREFIX = 'bh_room:';
   const ROOM_TTL = 7 * 24 * 3600;      // 存储层兜底：7 天后自动消失
   const ROOM_MAX_WAIT = 3600 * 1000;   // 等待中超过 1 小时自动清除
+  const ROOM_MAX_IDLE = 30 * 60 * 1000; // 超过 30 分钟无人活动自动删除
   const ROOM_MAX_AGE = 7 * 24 * 3600 * 1000; // 房间存在超过 7 天自动清除
+  const CREATE_LIMIT_KEY = 'bh_room_creates'; // 建房记录（每人每天限建用）
+  const DAILY_CREATE_LIMIT = 10;       // 每人每天最多创建 10 个房间
   const POLL_MS = 800;             // 对局轮询间隔
   const WAIT_POLL_MS = 1000;       // 等待加入轮询间隔
   const REGISTRY_KEY = 'bh_registry';   // 对局总列表（开局页/管理页共用）
@@ -440,13 +445,17 @@
     } catch (e) { return null; }
     if (!obj || typeof obj !== 'object') return null;
 
-    // 自动清理：等待超过 1 小时，或房间存在超过 7 天
+    // 自动清理：等待超过 1 小时 / 超过 30 分钟无人活动 / 存在超过 7 天
     const now = Date.now();
     const bornAt = obj.createdAt || obj.updatedAt || 0;
     const waitingTooLong = obj.status === 'waiting' && bornAt > 0 && (now - bornAt) > ROOM_MAX_WAIT;
+    const idleTooLong = obj.updatedAt > 0 && (now - obj.updatedAt) > ROOM_MAX_IDLE;
     const tooOld = bornAt > 0 && (now - bornAt) > ROOM_MAX_AGE;
-    if (waitingTooLong || tooOld) {
-      try { await upDel(ROOM_PREFIX + code); } catch (e) {}
+    if (waitingTooLong || idleTooLong || tooOld) {
+      try {
+        await upDel(ROOM_PREFIX + code);
+        await removeGameRecord(code);   // 同步清掉对局列表记录
+      } catch (e) {}
       return null;
     }
     return obj;
@@ -511,6 +520,44 @@
     } catch (e) {
       console.warn('列表清理失败:', e);
     }
+  }
+
+  // ============================================================
+  // SECTION: create-limit（每人每天限建房间数）
+  // ============================================================
+  function todayKey() {
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  async function readCreates() {
+    const raw = await upGet(CREATE_LIMIT_KEY);
+    if (!raw) return {};
+    try {
+      const obj = JSON.parse(raw);
+      return (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
+    } catch (e) { return {}; }
+  }
+
+  // 返回某人今天已建的房间数
+  async function todayCreateCount(name) {
+    const creates = await readCreates();
+    const day = creates[todayKey()] || {};
+    return day[name] || 0;
+  }
+
+  async function recordCreate(name) {
+    const creates = await readCreates();
+    const dayKey = todayKey();
+    creates[dayKey] = creates[dayKey] || {};
+    creates[dayKey][name] = (creates[dayKey][name] || 0) + 1;
+    // 只保留最近 3 天，防止无限膨胀
+    const days = Object.keys(creates).sort().reverse();
+    if (days.length > 3) {
+      for (const d of days.slice(3)) delete creates[d];
+    }
+    await upSet(CREATE_LIMIT_KEY, JSON.stringify(creates));
   }
 
   // 在线心跳：页面定期调用，管理页据此判断在线状态；
@@ -780,8 +827,8 @@
   // ============================================================
   const BOT_NAMES = ['老机器', '铁憨憨', '阿机', '赛博兄弟', '机器人老王', '电子狗蛋'];
 
-  function startBotGame() {
-    const name = getName();
+  async function startBotGame() {
+    const name = await getName();
     if (!name) return;
     const st = newRoomState(name);
     // 人机局也用真实房间号并标记机器人，这样兄弟能在列表里看到并进来看
@@ -1128,22 +1175,36 @@
     if (msg) setTimeout(() => { if (lobbyErr.textContent === msg) lobbyErr.textContent = ''; }, 4000);
   }
 
-  function getName() {
+  async function getName() {
     const name = nameInput.value.trim().slice(0, 12);
     if (!name) {
       lobbyError('先填个名字');
       nameInput.focus();
       return null;
     }
+    const key = $('keyInput').value.trim();
+    const result = await window.KeyGate.validateAccessKey(name, key);
+    if (!result.ok) {
+      lobbyError(result.msg);
+      return null;
+    }
+    window.KeyGate.rememberKey(key);
     saveUser(name);
     return name;
   }
 
   async function createRoom() {
-    const name = getName();
+    const name = await getName();
     if (!name) return;
     createBtn.disabled = true;
     try {
+      // 每人每天限建检查
+      const used = await todayCreateCount(name);
+      if (used >= DAILY_CREATE_LIMIT) {
+        lobbyError(`今天已经建了 ${DAILY_CREATE_LIMIT} 个房间，明天再来吧`);
+        return;
+      }
+
       let code, existing;
       do {
         code = genCode();
@@ -1155,6 +1216,7 @@
       pushLog(st, `${name} 创建了房间`, 'lg-sys');
       await putRoom(code, st);
       await refreshGameRecord(st);
+      await recordCreate(name);
 
       roomCode = code; mySeat = 0; myName = name; mode = 'waiting';
       saveLocalRoom(code, 0);
@@ -1171,7 +1233,7 @@
   }
 
   async function joinRoom() {
-    const name = getName();
+    const name = await getName();
     if (!name) return;
     // 从对局列表点加入时，房间号以列表为准
     const code = (joinCodeOverride || joinCodeInput.value.trim()).toUpperCase();
@@ -1400,6 +1462,7 @@
   (function init() {
     const savedName = getSavedUser();
     if (savedName) nameInput.value = savedName;
+    $('keyInput').value = window.KeyGate.storedKey();
     refreshResumeHint();
     showView('lobby');
     refreshMatchList();
