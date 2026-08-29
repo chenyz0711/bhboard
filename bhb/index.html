@@ -132,12 +132,19 @@
 
   <div class="auth-box" id="authBox">
     <div class="field">
-      <label>你的名字（随便填）</label>
-      <input type="text" id="loginName" placeholder="输入你想显示的名字" value="兄弟" maxlength="20" />
+      <label>你的名字</label>
+      <input type="text" id="loginName" placeholder="输入你的名字" maxlength="20" />
+    </div>
+    <div class="field">
+      <label>密钥</label>
+      <input type="text" id="loginKey" placeholder="输入密钥" autocomplete="off" />
+    </div>
+    <div class="field">
+      <div class="auth-msg error" id="loginKeyErr"></div>
     </div>
     <button class="btn-auth" id="loginBtn">进入论坛</button>
     <div class="auth-hint">
-      💡 只需要名字，没有密码
+      💡 密钥找管理员要，第一次用会自动绑定给你
     </div>
   </div>
 
@@ -160,6 +167,7 @@
   <div class="footer">BHBoard · 兄弟们畅聊 · made by chenyz</div>
 </div>
 
+<script src="/keycheck.js"></script>
 <script>
   // ============================================================
   // 🔥 Upstash 配置
@@ -211,6 +219,8 @@
   // DOM
   const authBox = document.getElementById('authBox');
   const loginName = document.getElementById('loginName');
+  const loginKey = document.getElementById('loginKey');
+  const loginKeyErr = document.getElementById('loginKeyErr');
   const loginBtn = document.getElementById('loginBtn');
   const msgList = document.getElementById('msgList');
   const emptyPlaceholder = document.getElementById('emptyPlaceholder');
@@ -424,8 +434,25 @@
   // 事件
   // ============================================================
 
-  function handleLogin() {
-    const name = loginName.value.trim() || '兄弟';
+  async function handleLogin() {
+    const name = loginName.value.trim();
+    const key = loginKey.value.trim();
+    if (!name) {
+      loginKeyErr.textContent = '先填你的名字';
+      setTimeout(() => { if (loginKeyErr.textContent === '先填你的名字') loginKeyErr.textContent = ''; }, 4000);
+      loginName.focus();
+      return;
+    }
+    loginBtn.disabled = true;
+    loginBtn.textContent = '验证中…';
+    const result = await window.KeyGate.validateAccessKey(name, key);
+    if (!result.ok) {
+      loginKeyErr.textContent = result.msg;
+      loginBtn.disabled = false;
+      loginBtn.textContent = '进入论坛';
+      return;
+    }
+    window.KeyGate.rememberKey(key);
     currentUser = { username: name.slice(0, 20) };
     localStorage.setItem('bh_user', JSON.stringify(currentUser));
     updateUI();
@@ -437,6 +464,9 @@
 
   loginBtn.addEventListener('click', handleLogin);
   loginName.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') loginKey.focus();
+  });
+  loginKey.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') handleLogin();
   });
 
@@ -474,6 +504,14 @@
   // 启动
   // ============================================================
 
+  function getSavedName() {
+    try {
+      const s = localStorage.getItem('bh_user');
+      const u = s ? JSON.parse(s) : null;
+      return u && u.username ? u.username : '';
+    } catch (e) { return ''; }
+  }
+
   async function init() {
     try {
       const saved = localStorage.getItem('bh_user');
@@ -490,6 +528,9 @@
         }
       }
     } catch (e) {}
+    // 未登录：带出记住的名字和密钥
+    loginName.value = getSavedName();
+    loginKey.value = window.KeyGate.storedKey();
     updateUI();
     await loadMessages();
   }
