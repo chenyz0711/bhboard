@@ -157,7 +157,7 @@
     </div>
   </div>
 
-  <div class="footer">BHBoard · 兄弟们畅聊</div>
+  <div class="footer">BHBoard · 兄弟们畅聊 · made by chenyz</div>
 </div>
 
 <script>
@@ -167,7 +167,43 @@
   const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
   const MSG_KEY = 'bh_messages';      // 聊天记录
   const PENDING_KEY = 'bh_pending';   // 待处理消息（备份）
+  const PRESENCE_PREFIX = 'bh_member:';   // 在线心跳键前缀（管理页用）
+  const PRESENCE_TTL = 90;
+  const MEMBERS_KEY = 'bh_members';
   // ============================================================
+
+  // ============================================================
+  // 🔥 在线心跳（兄弟管理页判断在线状态）
+  // ============================================================
+  async function beatPresence(name) {
+    if (!name) return;
+    try {
+      await fetch(
+        `${UPSTASH_URL}/set/${PRESENCE_PREFIX}${encodeURIComponent(name)}/${Date.now()}/ex/${PRESENCE_TTL}`,
+        { method: 'POST', headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` } }
+      );
+    } catch (e) {}
+    try {
+      const raw = await upstashGet(MEMBERS_KEY);
+      let members = {};
+      if (raw) {
+        try { members = JSON.parse(raw); } catch (e) {}
+        // 兼容旧版包裹格式
+        if (members && typeof members.value === 'string') {
+          try { members = JSON.parse(members.value); } catch (e) {}
+        }
+        if (!members || typeof members !== 'object' || Array.isArray(members)) members = {};
+      }
+      if (!members[name]) {
+        members[name] = Date.now();
+        // 用路径式写法存（和兄弟管理页读取格式一致）
+        await fetch(
+          `${UPSTASH_URL}/set/${MEMBERS_KEY}/${encodeURIComponent(JSON.stringify(members))}`,
+          { method: 'POST', headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` } }
+        );
+      }
+    } catch (e) {}
+  }
 
   let currentUser = null;
   let messages = [];
@@ -396,6 +432,7 @@
     loadMessages();
     setStatus(`欢迎，${currentUser.username}`);
     loginName.value = '';
+    startPresence(currentUser.username);
   }
 
   loginBtn.addEventListener('click', handleLogin);
@@ -448,12 +485,18 @@
           await loadMessages();
           setStatus(`欢迎回来，${user.username}`);
           msgInput.focus();
+          startPresence(user.username);
           return;
         }
       }
     } catch (e) {}
     updateUI();
     await loadMessages();
+  }
+
+  function startPresence(name) {
+    beatPresence(name);
+    setInterval(() => beatPresence(name), 30000);
   }
 
   init();
