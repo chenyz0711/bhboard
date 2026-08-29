@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BHBoard · 兄弟照片</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #f5f5f5;
+      font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      justify-content: center;
+      padding: 24px 16px 40px;
+    }
+    .container { max-width: 720px; width: 100%; }
+    .header {
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .header h1 { font-size: 22px; font-weight: 700; color: #1a1a1a; }
+    .header h1 span { color: #999; font-weight: 400; font-size: 13px; margin-left: 8px; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .back-btn {
+      font-size: 13px; color: #999; background: none; border: none;
+      cursor: pointer; padding: 4px 8px; border-radius: 4px; text-decoration: none;
+    }
+    .back-btn:hover { background: #f0f0f0; }
+    .admin-tag {
+      font-size: 12px; padding: 4px 10px; border-radius: 20px;
+      background: #1a1a1a; color: #fff; font-weight: 600;
+    }
+    .hidden { display: none !important; }
+
+    .card {
+      background: #fff;
+      border: 1px solid #eee;
+      border-radius: 12px;
+      padding: 18px 16px;
+      margin-bottom: 14px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+    .card h2 { font-size: 15px; color: #1a1a1a; margin-bottom: 10px; }
+    .sub { font-size: 12px; color: #999; margin-bottom: 10px; line-height: 1.6; }
+
+    .upload-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .name-input {
+      padding: 9px 12px; border: 1px solid #e0e0e0; border-radius: 8px;
+      font-size: 14px; outline: none; background: #fafafa; width: 140px;
+    }
+    .name-input:focus { border-color: #1a1a1a; background: #fff; }
+    .file-label {
+      display: inline-block; padding: 9px 16px;
+      background: #1a1a1a; color: #fff; border-radius: 8px;
+      font-size: 14px; cursor: pointer; transition: 0.15s;
+    }
+    .file-label:hover { background: #333; }
+    .file-label.disabled { opacity: 0.5; cursor: not-allowed; }
+    #fileInput { display: none; }
+    .quota-tip { font-size: 13px; color: #666; margin-left: auto; }
+    .quota-tip.full { color: #e74c3c; font-weight: 600; }
+    .upload-status { font-size: 13px; color: #999; margin-top: 8px; min-height: 18px; }
+    .upload-status.ok { color: #27ae60; }
+    .upload-status.err { color: #e74c3c; }
+
+    .admin-unlock { display: flex; gap: 8px; }
+    .admin-unlock input {
+      flex: 1; padding: 9px 12px; border: 1px solid #e0e0e0; border-radius: 8px;
+      font-size: 14px; outline: none; background: #fafafa;
+    }
+    .admin-unlock input:focus { border-color: #1a1a1a; background: #fff; }
+    .btn-small {
+      padding: 9px 16px; border: none; border-radius: 8px;
+      background: #1a1a1a; color: #fff; font-size: 13px; cursor: pointer;
+    }
+    .btn-small:hover { background: #333; }
+
+    .wall {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
+    }
+    .wall-item {
+      position: relative;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #eee;
+      aspect-ratio: 1;
+      cursor: pointer;
+      border: 1px solid #eee;
+    }
+    .wall-item img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .wall-meta {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.6));
+      color: #fff; font-size: 11px; padding: 14px 8px 6px;
+      display: flex; justify-content: space-between; gap: 4px;
+    }
+    .wall-meta .who { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .wall-del {
+      position: absolute; top: 6px; right: 6px;
+      width: 24px; height: 24px; border-radius: 50%;
+      background: rgba(231, 76, 60, 0.92); color: #fff;
+      border: none; font-size: 13px; line-height: 1; cursor: pointer;
+    }
+    .wall-del:hover { background: #e74c3c; }
+    .empty-tip { text-align: center; color: #ccc; padding: 40px 0; font-size: 14px; }
+
+    .lightbox {
+      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 50; padding: 20px;
+    }
+    .lightbox-inner { max-width: 92vw; max-height: 88vh; text-align: center; }
+    .lightbox-inner img {
+      max-width: 92vw; max-height: 76vh; border-radius: 8px;
+      background: #222;
+    }
+    .lightbox-info { color: #ddd; font-size: 13px; margin-top: 10px; }
+    .lightbox-close {
+      margin-top: 10px; padding: 8px 20px; border: none; border-radius: 8px;
+      background: #fff; color: #1a1a1a; font-size: 14px; cursor: pointer;
+    }
+    .lightbox-del {
+      margin-top: 10px; margin-left: 8px; padding: 8px 20px; border: none; border-radius: 8px;
+      background: #e74c3c; color: #fff; font-size: 14px; cursor: pointer;
+    }
+    .footer { text-align: center; color: #ddd; font-size: 12px; margin-top: 20px; }
+    @media (max-width: 480px) {
+      .wall { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+      .quota-tip { margin-left: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>📸 兄弟照片 <span># 一天最多 10 张</span></h1>
+    <div class="header-right">
+      <span class="admin-tag hidden" id="adminTag">管理员模式</span>
+      <a class="back-btn" href="/">← 回主页</a>
+    </div>
+  </div>
+
+  <!-- 上传区 -->
+  <div class="card">
+    <h2>上传照片</h2>
+    <div class="sub">每张不超过 1MB，每人每天最多 10 张。上传前会自动压缩，放心发。</div>
+    <div class="upload-row">
+      <input class="name-input" type="text" id="nameInput" placeholder="你的名字" maxlength="12" />
+      <label class="file-label" id="fileLabel">
+        📷 选择照片
+        <input type="file" id="fileInput" accept="image/*" />
+      </label>
+      <span class="quota-tip" id="quotaTip"></span>
+    </div>
+    <div class="upload-status" id="uploadStatus"></div>
+  </div>
+
+  <!-- 管理员解锁 -->
+  <div class="card" id="unlockCard">
+    <h2>🔐 管理员解锁</h2>
+    <div class="sub">解锁后可以删除任意照片；不解锁也能正常看和上传</div>
+    <div class="admin-unlock">
+      <input type="password" id="adminPwd" placeholder="管理密码" autocomplete="off" />
+      <button class="btn-small" id="unlockBtn">解锁</button>
+    </div>
+  </div>
+
+  <!-- 照片墙 -->
+  <div class="card">
+    <h2>照片墙</h2>
+    <div class="wall" id="wall"></div>
+    <div class="empty-tip" id="emptyTip">还没有照片，兄弟你先来一张</div>
+  </div>
+
+  <div class="footer">BHBoard · 兄弟照片 · made by chenyz</div>
+</div>
+
+<!-- 大图预览 -->
+<div class="lightbox hidden" id="lightbox">
+  <div class="lightbox-inner">
+    <img id="lightboxImg" alt="照片" />
+    <div class="lightbox-info" id="lightboxInfo"></div>
+    <button class="lightbox-close" id="lightboxClose">关闭</button>
+    <button class="lightbox-del hidden" id="lightboxDel">🗑️ 删除这张</button>
+  </div>
+</div>
+
+<script>
+  // ============================================================
+  // SECTION: config
+  // ============================================================
+  const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
+  const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
+  const PHOTOS_KEY = 'bh_photos';          // 照片索引（含缩略图）
+  const PHOTO_PREFIX = 'bh_photo:';        // 每张照片的完整数据
+  const PRESENCE_PREFIX = 'bh_member:';    // 在线心跳（管理页用）
+  const PRESENCE_TTL = 90;
+  const MEMBERS_KEY = 'bh_members';
+  const DAILY_LIMIT = 10;                  // 每人每天最多 10 张
+  const MAX_FILE_SIZE = 1024 * 1024;       // 原图最大 1MB
+  const MAX_STORED = 500 * 1024;           // 压缩后目标上限（数据库单条安全线内）
+  const MAX_PHOTOS = 40;                   // 照片墙总量上限，超了删最旧
+  const ADMIN_PASSWORD = 'admin';
+
+  let isAdmin = sessionStorage.getItem('bh_admin') === '1';
+  let photoIndex = [];                     // 当前照片索引缓存
+
+  // ============================================================
+  // SECTION: dom
+  // ============================================================
+  const $ = id => document.getElementById(id);
+  const nameInput = $('nameInput');
+  const fileInput = $('fileInput');
+  const fileLabel = $('fileLabel');
+  const quotaTip = $('quotaTip');
+  const uploadStatus = $('uploadStatus');
+  const adminTag = $('adminTag');
+  const unlockCard = $('unlockCard');
+  const adminPwd = $('adminPwd');
+  const unlockBtn = $('unlockBtn');
+  const wall = $('wall');
+  const emptyTip = $('emptyTip');
+  const lightbox = $('lightbox');
+  const lightboxImg = $('lightboxImg');
+  const lightboxInfo = $('lightboxInfo');
+  const lightboxClose = $('lightboxClose');
+  const lightboxDel = $('lightboxDel');
+  let currentLightboxId = null;
+
+  // ============================================================
+  // SECTION: upstash
+  // ============================================================
+  async function upGet(key) {
+    const res = await fetch(`${UPSTASH_URL}/get/${key}`, {
+      headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
+    });
+    const data = await res.json();
+    return data.result;
+  }
+
+  async function upSet(key, value) {
+    const res = await fetch(
+      `${UPSTASH_URL}/set/${key}/${encodeURIComponent(value)}`,
+      { method: 'POST', headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` } }
+    );
+    if (!res.ok) throw new Error('写入失败');
+    return await res.json();
+  }
+
+  async function upDel(key) {
+    const res = await fetch(`${UPSTASH_URL}/del/${key}`, {
+      method: 'POST', headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` } }
+    );
+    return await res.json();
+  }
+
+  async function readIndex() {
+    const raw = await upGet(PHOTOS_KEY);
+    if (!raw) return [];
+    try {
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) { return []; }
+  }
+
+  // ============================================================
+  // SECTION: helpers
+  // ============================================================
+  function todayStr() {
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  function fmtTime(ts) {
+    const d = new Date(ts);
+    const pad = n => String(n).padStart(2, '0');
+    return `${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function todayCount(name) {
+    const today = todayStr();
+    return photoIndex.filter(p => p.by === name && (p.date === today)).length;
+  }
+
+  function getSavedName() {
+    try {
+      const s = localStorage.getItem('bh_user');
+      const u = s ? JSON.parse(s) : null;
+      return u && u.username ? u.username : '';
+    } catch (e) { return ''; }
+  }
+
+  function updateQuota() {
+    const name = nameInput.value.trim();
+    if (!name) {
+      quotaTip.textContent = '';
+      return;
+    }
+    const used = todayCount(name);
+    quotaTip.textContent = `今天已传 ${used}/${DAILY_LIMIT} 张`;
+    quotaTip.classList.toggle('full', used >= DAILY_LIMIT);
+  }
+
+  function setStatus(msg, cls) {
+    uploadStatus.textContent = msg || '';
+    uploadStatus.className = 'upload-status' + (cls ? ' ' + cls : '');
+  }
+
+  // ============================================================
+  // SECTION: compress
+  // ============================================================
+  function fileToDataURL(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('读取文件失败'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('图片解析失败'));
+      img.src = src;
+    });
+  }
+
+  function canvasToJpeg(img, maxSide, quality) {
+    const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+    const w = Math.max(1, Math.round(img.width * scale));
+    const h = Math.max(1, Math.round(img.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    return canvas.toDataURL('image/jpeg', quality);
+  }
+
+  // 压缩完整图：最长边 900，质量逐步降到目标大小以内
+  function compressFull(img) {
+    let q = 0.82;
+    let data = canvasToJpeg(img, 900, q);
+    while (data.length > MAX_STORED && q > 0.45) {
+      q -= 0.1;
+      data = canvasToJpeg(img, 900, q);
+    }
+    return data;
+  }
+
+  // ============================================================
+  // SECTION: upload
+  // ============================================================
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files && fileInput.files[0];
+    if (file) uploadPhoto(file);
+  });
+
+  async function uploadPhoto(file) {
+    fileInput.value = '';
+    const name = nameInput.value.trim().slice(0, 12);
+    if (!name) {
+      setStatus('先填你的名字', 'err');
+      nameInput.focus();
+      return;
+    }
+    localStorage.setItem('bh_user', JSON.stringify({ username: name }));
+
+    if (!file.type.startsWith('image/')) {
+      setStatus('只能传图片文件', 'err');
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      setStatus('这张超过 1MB 了，换张小一点的', 'err');
+      return;
+    }
+    if (todayCount(name) >= DAILY_LIMIT) {
+      setStatus(`今天已经传了 ${DAILY_LIMIT} 张，明天再来吧`, 'err');
+      return;
+    }
+
+    fileLabel.classList.add('disabled');
+    setStatus('处理中…');
+    try {
+      const raw = await fileToDataURL(file);
+      const img = await loadImage(raw);
+      const full = compressFull(img);
+      const thumb = canvasToJpeg(img, 200, 0.7);
+
+      const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const meta = { id, by: name, ts: Date.now(), date: todayStr() };
+
+      // 先写照片本体，再更新索引
+      setStatus('上传中…');
+      await upSet(PHOTO_PREFIX + id, JSON.stringify({ ...meta, data: full }));
+
+      photoIndex.push({ ...meta, thumb });
+      // 超出总量上限：删最旧的
+      while (photoIndex.length > MAX_PHOTOS) {
+        const oldest = photoIndex.shift();
+        upDel(PHOTO_PREFIX + oldest.id).catch(() => {});
+      }
+      await upSet(PHOTOS_KEY, JSON.stringify(photoIndex));
+
+      setStatus('✅ 上传成功', 'ok');
+      updateQuota();
+      renderWall();
+    } catch (err) {
+      console.error(err);
+      setStatus('上传失败：' + err.message, 'err');
+    } finally {
+      fileLabel.classList.remove('disabled');
+    }
+  }
+
+  // ============================================================
+  // SECTION: wall
+  // ============================================================
+  function renderWall() {
+    wall.innerHTML = '';
+    const sorted = [...photoIndex].sort((a, b) => b.ts - a.ts);
+    emptyTip.style.display = sorted.length === 0 ? 'block' : 'none';
+
+    for (const p of sorted) {
+      const item = document.createElement('div');
+      item.className = 'wall-item';
+      item.dataset.id = p.id;
+
+      const img = document.createElement('img');
+      img.src = p.thumb;
+      img.alt = `${p.by} 的照片`;
+      img.loading = 'lazy';
+
+      const meta = document.createElement('div');
+      meta.className = 'wall-meta';
+      const who = document.createElement('span');
+      who.className = 'who';
+      who.textContent = p.by;
+      const when = document.createElement('span');
+      when.textContent = fmtTime(p.ts);
+      meta.appendChild(who);
+      meta.appendChild(when);
+
+      item.appendChild(img);
+      item.appendChild(meta);
+
+      if (isAdmin) {
+        const del = document.createElement('button');
+        del.className = 'wall-del';
+        del.textContent = '×';
+        del.title = '删除这张照片';
+        del.addEventListener('click', (e) => {
+          e.stopPropagation();
+          deletePhoto(p.id);
+        });
+        item.appendChild(del);
+      }
+
+      item.addEventListener('click', () => openLightbox(p.id));
+      wall.appendChild(item);
+    }
+  }
+
+  // ============================================================
+  // SECTION: lightbox
+  // ============================================================
+  async function openLightbox(id) {
+    const entry = photoIndex.find(p => p.id === id);
+    if (!entry) return;
+    currentLightboxId = id;
+    lightboxImg.src = entry.thumb;   // 先显示缩略图
+    lightboxInfo.textContent = `${entry.by} · ${fmtTime(entry.ts)} · 加载原图…`;
+    lightboxDel.classList.toggle('hidden', !isAdmin);
+    lightbox.classList.remove('hidden');
+
+    try {
+      const raw = await upGet(PHOTO_PREFIX + id);
+      if (!raw) throw new Error('照片数据丢失');
+      const photo = JSON.parse(raw);
+      if (currentLightboxId !== id) return;   // 已经切走/关闭
+      lightboxImg.src = photo.data;
+      lightboxInfo.textContent = `${photo.by} · ${fmtTime(photo.ts)}`;
+    } catch (err) {
+      if (currentLightboxId === id) {
+        lightboxInfo.textContent = '原图加载失败：' + err.message;
+      }
+    }
+  }
+
+  function closeLightbox() {
+    lightbox.classList.add('hidden');
+    currentLightboxId = null;
+  }
+
+  lightboxClose.addEventListener('click', closeLightbox);
+  lightbox.addEventListener('click', (e) => {
+    if (e.target === lightbox) closeLightbox();
+  });
+  lightboxDel.addEventListener('click', () => {
+    if (currentLightboxId) {
+      const id = currentLightboxId;
+      closeLightbox();
+      deletePhoto(id);
+    }
+  });
+
+  // ============================================================
+  // SECTION: admin
+  // ============================================================
+  function applyAdminUI() {
+    adminTag.classList.toggle('hidden', !isAdmin);
+    unlockCard.classList.toggle('hidden', isAdmin);
+    renderWall();
+  }
+
+  unlockBtn.addEventListener('click', () => {
+    if (adminPwd.value.trim() === ADMIN_PASSWORD) {
+      isAdmin = true;
+      sessionStorage.setItem('bh_admin', '1');
+      applyAdminUI();
+    } else {
+      alert('密码不对');
+    }
+  });
+  adminPwd.addEventListener('keydown', e => { if (e.key === 'Enter') unlockBtn.click(); });
+
+  async function deletePhoto(id) {
+    if (!isAdmin) return;
+    const entry = photoIndex.find(p => p.id === id);
+    if (!entry) return;
+    if (!confirm(`确定删除 ${entry.by} 的这张照片吗？`)) return;
+    try {
+      await upDel(PHOTO_PREFIX + id);
+      photoIndex = photoIndex.filter(p => p.id !== id);
+      await upSet(PHOTOS_KEY, JSON.stringify(photoIndex));
+      updateQuota();
+      renderWall();
+    } catch (err) {
+      alert('删除失败：' + err.message);
+    }
+  }
+
+  // ============================================================
+  // SECTION: presence
+  // ============================================================
+  async function beatPresence(name) {
+    if (!name) return;
+    try {
+      await fetch(
+        `${UPSTASH_URL}/set/${PRESENCE_PREFIX}${encodeURIComponent(name)}/${Date.now()}/ex/${PRESENCE_TTL}`,
+        { method: 'POST', headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` } }
+      );
+    } catch (e) {}
+    try {
+      const raw = await upGet(MEMBERS_KEY);
+      let members = {};
+      if (raw) {
+        try { members = JSON.parse(raw); } catch (e) {}
+        if (members && typeof members.value === 'string') {
+          try { members = JSON.parse(members.value); } catch (e) {}
+        }
+        if (!members || typeof members !== 'object' || Array.isArray(members)) members = {};
+      }
+      if (!members[name]) {
+        members[name] = Date.now();
+        await upSet(MEMBERS_KEY, JSON.stringify(members));
+      }
+    } catch (e) {}
+  }
+
+  // ============================================================
+  // SECTION: init
+  // ============================================================
+  nameInput.addEventListener('input', updateQuota);
+
+  (async function init() {
+    const saved = getSavedName();
+    if (saved) nameInput.value = saved;
+    applyAdminUI();
+    try {
+      photoIndex = await readIndex();
+    } catch (e) {
+      console.error('加载照片列表失败:', e);
+      photoIndex = [];
+    }
+    updateQuota();
+    renderWall();
+
+    beatPresence(saved);
+    setInterval(() => beatPresence(nameInput.value.trim()), 30000);
+  })();
+</script>
+</body>
+</html>
