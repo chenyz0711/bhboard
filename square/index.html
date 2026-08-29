@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BHBoard · 兄弟广场</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #f5f5f5;
+      font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+    .container { max-width: 860px; width: 100%; }
+    .header {
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .header h1 { font-size: 22px; font-weight: 700; color: #1a1a1a; }
+    .header h1 span { color: #999; font-weight: 400; font-size: 13px; margin-left: 8px; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .back-btn {
+      font-size: 13px; color: #999; background: none; border: none;
+      cursor: pointer; padding: 4px 8px; border-radius: 4px; text-decoration: none;
+    }
+    .back-btn:hover { background: #f0f0f0; }
+    .user-tag { font-size: 13px; color: #333; }
+    .status-bar { color: #999; font-size: 13px; margin-bottom: 10px; }
+
+    .name-box {
+      background: #fff; border-radius: 12px; padding: 28px 24px;
+      border: 1px solid #eee; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+      margin-bottom: 16px;
+    }
+    .name-box label { display: block; font-size: 13px; color: #666; margin-bottom: 6px; }
+    .name-box input {
+      width: 100%; padding: 10px 14px; border: 1px solid #e0e0e0;
+      border-radius: 8px; font-size: 14px; outline: none; background: #fafafa;
+      margin-bottom: 12px;
+    }
+    .name-box input:focus { border-color: #1a1a1a; background: #fff; }
+    .btn-main {
+      width: 100%; padding: 11px; background: #1a1a1a; color: #fff;
+      border: none; border-radius: 8px; font-size: 15px; cursor: pointer;
+    }
+    .btn-main:hover { background: #333; }
+
+    .stage-wrap {
+      background: #fff; border: 1px solid #eee; border-radius: 12px;
+      padding: 10px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      position: relative;
+    }
+    canvas {
+      display: block; width: 100%; border-radius: 8px;
+      background: #cde8b5;
+      touch-action: none;
+    }
+    .hint-line { text-align: center; font-size: 12px; color: #bbb; margin-top: 8px; }
+
+    .chat-bar { display: flex; gap: 8px; margin-top: 10px; }
+    .chat-bar input {
+      flex: 1; padding: 10px 14px; border: 1px solid #e0e0e0;
+      border-radius: 8px; font-size: 14px; outline: none; background: #fafafa;
+    }
+    .chat-bar input:focus { border-color: #1a1a1a; background: #fff; }
+    .chat-bar button {
+      padding: 10px 18px; background: #1a1a1a; color: #fff; border: none;
+      border-radius: 8px; font-size: 14px; cursor: pointer;
+    }
+    .chat-bar button:hover { background: #333; }
+
+    .touch-controls {
+      display: none;
+      margin-top: 12px;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .dpad {
+      display: grid;
+      grid-template-columns: 52px 52px 52px;
+      grid-template-rows: 52px 52px;
+      gap: 6px;
+    }
+    .dpad button, .action-btn {
+      border: 1px solid #ddd; background: #fff; border-radius: 10px;
+      font-size: 20px; cursor: pointer; user-select: none;
+      -webkit-user-select: none; touch-action: none;
+    }
+    .dpad button:active, .action-btn:active { background: #eee; }
+    .d-up { grid-column: 2; grid-row: 1; }
+    .d-left { grid-column: 1; grid-row: 2; }
+    .d-down { grid-column: 2; grid-row: 2; }
+    .d-right { grid-column: 3; grid-row: 2; }
+    .action-col { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+    .punch-btn, .propose-btn {
+      width: 68px; height: 68px; border-radius: 50%;
+      color: #fff; border: none; font-size: 14px; font-weight: 600;
+    }
+    .punch-btn { background: #e74c3c; }
+    .punch-btn:active { background: #c0392b; }
+    .propose-btn { background: #e8699a; }
+    .propose-btn:active { background: #d14f83; }
+    @media (pointer: coarse) {
+      .touch-controls { display: flex; }
+    }
+    .footer { text-align: center; color: #ddd; font-size: 12px; margin-top: 16px; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>BHBoard <span># 兄弟广场</span></h1>
+    <div class="header-right">
+      <a class="back-btn" href="/">← 回主页</a>
+      <span class="user-tag" id="userTag"></span>
+    </div>
+  </div>
+  <div class="status-bar" id="statusBar">进来就是兄弟，别客气</div>
+
+  <div class="name-box" id="nameBox">
+    <label>你的名字</label>
+    <input type="text" id="nameInput" placeholder="输入名字进场" maxlength="12" />
+    <button class="btn-main" id="nameBtn">进广场</button>
+  </div>
+
+  <div class="stage-wrap hidden" id="stageWrap">
+    <canvas id="stage" width="840" height="480"></canvas>
+    <div class="hint-line">方向键 / WASD 走动 · 空格或 J 出拳 · K 求婚（50% 成功率，成了立刻生娃）</div>
+
+    <div class="chat-bar">
+      <input type="text" id="chatInput" placeholder="说句话…" maxlength="60" />
+      <button id="chatBtn">说话</button>
+    </div>
+
+    <div class="touch-controls">
+      <div class="dpad">
+        <button class="d-up" data-dir="up">▲</button>
+        <button class="d-left" data-dir="left">◀</button>
+        <button class="d-down" data-dir="down">▼</button>
+        <button class="d-right" data-dir="right">▶</button>
+      </div>
+      <div class="action-col">
+        <button class="action-btn propose-btn" id="proposeBtn">求婚</button>
+        <button class="action-btn punch-btn" id="punchBtn">出拳</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">BHBoard · 兄弟广场</div>
+</div>
+
+<script>
+  // ============================================================
+  // SECTION: state
+  // ============================================================
+  const canvas = document.getElementById('stage');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  const NAME_POOL = ['RRRory', '我是WHY', 'chenyz', '丙寅', 'CZ', '李知行07', 'Felixxx', '徐悠然', '朱凌初'];
+  const NPC_COLORS = ['#5b8def', '#e67e22', '#9b59b6', '#16a085', '#d35400', '#2980b9', '#c0392b', '#27ae60', '#8e44ad'];
+  const NPC_LINES = [
+    '今天吃啥？', '兄弟来了！', '谁请客？', '走走走，打球去',
+    '我请客你买单', '哈哈哈', '在吗在吗', '晚上开黑不',
+    '别跑啊', '稳住，我们能赢', '666', '这天气真不错',
+    '有人求婚吗', '单身，勿扰', '我想找个伴'
+  ];
+  const ANGRY_LINES = ['你敢打我？！', '找打是吧！', '给我站住！', '兄弟之间不讲武德', '看拳！'];
+  const REPLY_LINES = ['就是就是', '哈哈哈哈', '有道理', '确实', '你说得对', '牛啊兄弟', '细说细说'];
+  const ARRIVE_LINES = ['来了来了', '兄弟们好', '我来也', '今天广场真热闹'];
+  const LEAVE_LINES = ['先走了', '撤了撤了', '回家吃饭了', '下次再玩'];
+  const PROPOSE_LINES = ['嫁给我吧！', '跟我过日子吧', '我喜欢你！'];
+  const ACCEPT_LINES = ['我愿意！', '好呀！', '嗯，我愿意'];
+  const REJECT_LINES = ['不了吧…', '我们不合适', '你是个好人'];
+
+  let player = null;
+  let npcs = [];          // 访客 + 小孩（isKid 区分）
+  let floaters = [];      // 飘字（伤害/爱心）
+  let running = false;
+  let lastTime = 0;
+  let kidCount = 0;
+  let nextJoinAt = 0;
+
+  const keys = {};
+  const touchDirs = { up: false, down: false, left: false, right: false };
+
+  function rand(a, b) { return a + Math.random() * (b - a); }
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  // ============================================================
+  // SECTION: chars
+  // ============================================================
+  function makeVisitor(name, color) {
+    const stayMs = rand(30000, 60000);   // 待 30~60 秒
+    return {
+      name, color,
+      isPlayer: false, isKid: false,
+      x: rand(80, W - 80), y: rand(80, H - 80),
+      r: 20, hp: 100,
+      facing: Math.random() < 0.5 ? -1 : 1,
+      speed: rand(55, 85),
+      bubble: null, bubbleUntil: 0,
+      punchUntil: 0, punchCd: 0, hitUntil: 0,
+      down: false, respawnAt: 0,
+      wanderAngle: Math.random() * Math.PI * 2,
+      nextWanderAt: 0,
+      nextTalkAt: performance.now() + rand(2000, 8000),
+      angryUntil: 0,
+      leaveAt: performance.now() + stayMs,
+      arriveAt: performance.now()
+    };
+  }
+
+  function makeKid(parentA, parentB) {
+    kidCount++;
+    return {
+      name: `${parentA.name}与${parentB.name}的小孩`,
+      color: '#e8a0b8',
+      isPlayer: false, isKid: true,
+      x: (parentA.x !== undefined ? parentA.x : W / 2) + rand(-20, 20),
+      y: (parentA.y !== undefined ? parentA.y : H / 2) + rand(-20, 20),
+      r: 12, hp: 100,
+      facing: Math.random() < 0.5 ? -1 : 1,
+      speed: rand(35, 55),
+      bubble: null, bubbleUntil: 0,
+      punchUntil: 0, punchCd: 0, hitUntil: 0,
+      down: false, respawnAt: 0,
+      wanderAngle: Math.random() * Math.PI * 2,
+      nextWanderAt: 0,
+      nextTalkAt: Infinity,   // 小孩不说话
+      angryUntil: 0,
+      leaveAt: Infinity       // 小孩永不离开
+    };
+  }
+
+  // ============================================================
+  // SECTION: name-gate
+  // ============================================================
+  const nameBox = document.getElementById('nameBox');
+  const nameInput = document.getElementById('nameInput');
+  const nameBtn = document.getElementById('nameBtn');
+  const stageWrap = document.getElementById('stageWrap');
+  const userTag = document.getElementById('userTag');
+  const statusBar = document.getElementById('statusBar');
+
+  function presentNames() {
+    const s = new Set();
+    if (player) s.add(player.name);
+    for (const n of npcs) s.add(n.name);
+    return s;
+  }
+
+  function spawnVisitor() {
+    const taken = presentNames();
+    const candidates = NAME_POOL.filter(n => !taken.has(n) && !taken.has(n + '的小孩'));
+    if (candidates.length === 0) return null;
+    const name = pick(candidates);
+    const color = pick(NPC_COLORS);
+    const v = makeVisitor(name, color);
+    say(v, pick(ARRIVE_LINES), 2000);
+    npcs.push(v);
+    return v;
+  }
+
+  function enterPlaza(name) {
+    localStorage.setItem('bh_user', JSON.stringify({ username: name }));
+    userTag.textContent = name;
+    nameBox.classList.add('hidden');
+    stageWrap.classList.remove('hidden');
+    player = {
+      name, color: '#1a1a1a',
+      isPlayer: true, isKid: false,
+      x: rand(80, W - 80), y: rand(80, H - 80),
+      r: 20, hp: 100,
+      facing: 1, speed: 170,
+      bubble: null, bubbleUntil: 0,
+      punchUntil: 0, punchCd: 0, hitUntil: 0,
+      down: false, respawnAt: 0
+    };
+    npcs = [];
+    kidCount = 0;
+    // 开局先来两三个兄弟
+    for (let i = 0; i < 3; i++) spawnVisitor();
+    nextJoinAt = performance.now() + rand(6000, 10000);
+    updateStatus();
+    running = true;
+    lastTime = performance.now();
+    requestAnimationFrame(loop);
+  }
+
+  function updateStatus() {
+    const visitors = npcs.filter(n => !n.isKid).length + 1;
+    statusBar.textContent = `广场上 ${visitors} 个兄弟 · 已诞生 ${kidCount} 个小孩`;
+  }
+
+  function tryEnter() {
+    let name = nameInput.value.trim().slice(0, 12);
+    if (!name) {
+      nameInput.style.borderColor = '#e74c3c';
+      setTimeout(() => nameInput.style.borderColor = '', 500);
+      return;
+    }
+    if (NAME_POOL.includes(name)) name = name + '哥';
+    enterPlaza(name);
+  }
+
+  nameBtn.addEventListener('click', tryEnter);
+  nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryEnter(); });
+
+  (function init() {
+    try {
+      const saved = localStorage.getItem('bh_user');
+      if (saved) {
+        const user = JSON.parse(saved);
+        if (user && user.username) {
+          nameInput.value = user.username;
+          tryEnter();
+          return;
+        }
+      }
+    } catch (e) {}
+    nameInput.focus();
+  })();
+
+  // ============================================================
+  // SECTION: input
+  // ============================================================
+  window.addEventListener('keydown', (e) => {
+    const k = e.key.toLowerCase();
+    if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'j', 'k'].includes(k)) {
+      if (document.activeElement !== document.getElementById('chatInput')) e.preventDefault();
+    }
+    keys[k] = true;
+    if (document.activeElement !== document.getElementById('chatInput')) {
+      if (k === ' ' || k === 'j') playerPunch();
+      if (k === 'k') playerPropose();
+    }
+  });
+  window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+
+  document.querySelectorAll('.dpad button').forEach((btn) => {
+    const dir = btn.dataset.dir;
+    const on = (e) => { e.preventDefault(); touchDirs[dir] = true; };
+    const off = (e) => { e.preventDefault(); touchDirs[dir] = false; };
+    btn.addEventListener('pointerdown', on);
+    btn.addEventListener('pointerup', off);
+    btn.addEventListener('pointercancel', off);
+    btn.addEventListener('pointerleave', off);
+  });
+  document.getElementById('punchBtn').addEventListener('pointerdown', (e) => {
+    e.preventDefault(); playerPunch();
+  });
+  document.getElementById('proposeBtn').addEventListener('pointerdown', (e) => {
+    e.preventDefault(); playerPropose();
+  });
+
+  // ============================================================
+  // SECTION: chat
+  // ============================================================
+  const chatInput = document.getElementById('chatInput');
+  const chatBtn = document.getElementById('chatBtn');
+
+  function say(c, text, dur) {
+    c.bubble = text;
+    c.bubbleUntil = performance.now() + dur;
+  }
+
+  function playerSay() {
+    const text = chatInput.value.trim();
+    if (!text || !player) return;
+    say(player, text.slice(0, 60), 3200);
+    chatInput.value = '';
+    const talkers = npcs.filter(n => !n.isKid && !n.down);
+    if (talkers.length > 0 && Math.random() < 0.75) {
+      const npc = pick(talkers);
+      setTimeout(() => { if (!npc.down && npcs.includes(npc)) say(npc, pick(REPLY_LINES), 2600); }, rand(500, 1300));
+    }
+  }
+
+  chatBtn.addEventListener('click', playerSay);
+  chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); playerSay(); }
+  });
+
+  // ============================================================
+  // SECTION: combat
+  // ============================================================
+  const PUNCH_RANGE = 52;
+  const PUNCH_ARC = 70;
+  const PUNCH_CD = 380;
+
+  function doPunch(attacker, dmg) {
+    const now = performance.now();
+    if (now < attacker.punchCd || attacker.down) return;
+    attacker.punchCd = now + PUNCH_CD;
+    attacker.punchUntil = now + 180;
+
+    const targets = attacker.isPlayer
+      ? npcs.filter(n => !n.isKid)
+      : [player, ...npcs.filter(n => !n.isKid && n !== attacker)];
+
+    for (const t of targets) {
+      if (t.down) continue;
+      const dx = t.x - attacker.x, dy = t.y - attacker.y;
+      const dist = Math.hypot(dx, dy);
+      const inFront = (dx * attacker.facing) >= -10;
+      if (dist < PUNCH_RANGE && Math.abs(dy) < PUNCH_ARC && inFront) {
+        t.hp -= dmg;
+        t.hitUntil = now + 220;
+        const kb = 46 / Math.max(dist, 1);
+        t.x += dx * kb; t.y += dy * kb;
+        clampPos(t);
+        floaters.push({ x: t.x, y: t.y - t.r - 8, text: `-${dmg}`, kind: 'dmg', at: now });
+
+        if (t.hp <= 0) {
+          t.down = true;
+          t.respawnAt = now + 3000;
+          t.hp = 100;
+          if (t.isPlayer) {
+            statusBar.textContent = '你被打趴了，马上站起来…';
+          } else {
+            statusBar.textContent = `${t.name} 被打趴了！`;
+          }
+        } else if (!t.isPlayer) {
+          t.angryUntil = now + 3500;
+          say(t, pick(ANGRY_LINES), 2200);
+        } else {
+          statusBar.textContent = `你被 ${attacker.name} 打了一拳！`;
+        }
+      }
+    }
+  }
+
+  function playerPunch() {
+    if (player && !player.down) doPunch(player, 16);
+  }
+
+  function clampPos(c) {
+    c.x = Math.max(c.r, Math.min(W - c.r, c.x));
+    c.y = Math.max(c.r, Math.min(H - c.r, c.y));
+  }
+
+  // ============================================================
+  // SECTION: propose
+  // ============================================================
+  const PROPOSE_RANGE = 60;
+  let proposeCd = 0;
+
+  function tryPropose(proposer, target) {
+    if (!target || target.down || target.isKid) return;
+    say(proposer, pick(PROPOSE_LINES), 2600);
+    floaters.push({ x: target.x, y: target.y - target.r - 14, text: '💍', kind: 'heart', at: performance.now() });
+
+    if (Math.random() < 0.5) {
+      say(target, pick(ACCEPT_LINES), 2600);
+      const kid = makeKid(proposer, target);
+      kid.x = (proposer.x + target.x) / 2;
+      kid.y = (proposer.y + target.y) / 2;
+      clampPos(kid);
+      npcs.push(kid);
+      floaters.push({ x: kid.x, y: kid.y - 20, text: '🎉 喜得贵子！', kind: 'heart', at: performance.now() + 300 });
+      statusBar.textContent = `${proposer.name} 和 ${target.name} 结婚啦！小孩「${kid.name}」诞生 🎉`;
+      updateStatus();
+    } else {
+      say(target, pick(REJECT_LINES), 2600);
+      statusBar.textContent = `${target.name} 拒绝了 ${proposer.name} 的求婚…`;
+    }
+  }
+
+  function playerPropose() {
+    const now = performance.now();
+    if (!player || player.down || now < proposeCd) return;
+    proposeCd = now + 800;
+
+    // 找最近的、非小孩的访客
+    let best = null, bestDist = PROPOSE_RANGE;
+    for (const n of npcs) {
+      if (n.isKid || n.down) continue;
+      const d = Math.hypot(n.x - player.x, n.y - player.y);
+      if (d < bestDist) { bestDist = d; best = n; }
+    }
+    if (!best) {
+      statusBar.textContent = '附近没有可以求婚的兄弟（走近点，K 键）';
+      return;
+    }
+    tryPropose(player, best);
+  }
+
+  // ============================================================
+  // SECTION: npc-ai
+  // ============================================================
+  function updateNPC(npc, dt, now) {
+    if (npc.down) {
+      if (now >= npc.respawnAt) {
+        npc.down = false;
+        npc.x = rand(80, W - 80);
+        npc.y = rand(80, H - 80);
+        npc.hp = 100;
+        npc.angryUntil = 0;
+      }
+      return;
+    }
+
+    // 访客：到点离开
+    if (!npc.isKid && now >= npc.leaveAt) {
+      say(npc, pick(LEAVE_LINES), 1200);
+      const idx = npcs.indexOf(npc);
+      if (idx >= 0) npcs.splice(idx, 1);
+      statusBar.textContent = `${npc.name} 离开了广场`;
+      updateStatus();
+      return;
+    }
+
+    if (npc.angryUntil > now && player && !player.down) {
+      // 追玩家
+      const dx = player.x - npc.x, dy = player.y - npc.y;
+      const dist = Math.hypot(dx, dy);
+      npc.facing = dx >= 0 ? 1 : -1;
+      if (dist > 40) {
+        npc.x += (dx / dist) * npc.speed * 1.5 * dt;
+        npc.y += (dy / dist) * npc.speed * 1.5 * dt;
+      } else {
+        doPunch(npc, 9);
+      }
+    } else {
+      // 闲逛
+      if (now >= npc.nextWanderAt) {
+        npc.wanderAngle = Math.random() < 0.25 ? null : Math.random() * Math.PI * 2;
+        npc.nextWanderAt = now + rand(1200, 3200);
+      }
+      if (npc.wanderAngle !== null) {
+        npc.x += Math.cos(npc.wanderAngle) * npc.speed * dt;
+        npc.y += Math.sin(npc.wanderAngle) * npc.speed * dt;
+        npc.facing = Math.cos(npc.wanderAngle) >= 0 ? 1 : -1;
+      }
+    }
+
+    clampPos(npc);
+
+    // 随机说话（小孩不说）
+    if (!npc.isKid && now >= npc.nextTalkAt) {
+      say(npc, pick(NPC_LINES), 2600);
+      npc.nextTalkAt = now + rand(4000, 12000);
+    }
+
+    // 访客之间偶尔求婚（只有大人，概率低）
+    if (!npc.isKid && Math.random() < 0.0006) {
+      const others = npcs.filter(n => !n.isKid && n !== npc && !n.down);
+      let best = null, bestDist = PROPOSE_RANGE;
+      for (const o of others) {
+        const d = Math.hypot(o.x - npc.x, o.y - npc.y);
+        if (d < bestDist) { bestDist = d; best = o; }
+      }
+      if (best) tryPropose(npc, best);
+    }
+  }
+
+  // ============================================================
+  // SECTION: update
+  // ============================================================
+  function updatePlayer(dt, now) {
+    if (player.down) {
+      if (now >= player.respawnAt) {
+        player.down = false;
+        player.hp = 100;
+        player.x = rand(80, W - 80);
+        player.y = rand(80, H - 80);
+        statusBar.textContent = '站起来了，继续！';
+      }
+      return;
+    }
+
+    let dx = 0, dy = 0;
+    if (keys['w'] || keys['arrowup'] || touchDirs.up) dy -= 1;
+    if (keys['s'] || keys['arrowdown'] || touchDirs.down) dy += 1;
+    if (keys['a'] || keys['arrowleft'] || touchDirs.left) dx -= 1;
+    if (keys['d'] || keys['arrowright'] || touchDirs.right) dx += 1;
+
+    if (dx !== 0 || dy !== 0) {
+      const len = Math.hypot(dx, dy);
+      player.x += (dx / len) * player.speed * dt;
+      player.y += (dy / len) * player.speed * dt;
+      if (dx !== 0) player.facing = dx > 0 ? 1 : -1;
+      clampPos(player);
+    }
+  }
+
+  // ============================================================
+  // SECTION: render
+  // ============================================================
+  function drawChar(c, now) {
+    const hit = now < c.hitUntil;
+    const punching = now < c.punchUntil;
+
+    ctx.save();
+    ctx.translate(c.x, c.y);
+
+    if (c.down) {
+      ctx.globalAlpha = 0.45;
+      ctx.fillStyle = c.color;
+      ctx.beginPath();
+      ctx.ellipse(0, 6, c.r * 1.3, c.r * 0.6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#333';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('💫', 0, -8);
+      ctx.restore();
+      return;
+    }
+
+    // 影子
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.beginPath();
+    ctx.ellipse(0, c.r + 6, c.r * 0.9, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 拳头
+    if (punching) {
+      ctx.fillStyle = '#f0c27a';
+      ctx.beginPath();
+      ctx.arc(c.facing * (c.r + 14), -2, 8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 身体
+    ctx.fillStyle = hit ? '#e74c3c' : c.color;
+    ctx.beginPath();
+    ctx.arc(0, 0, c.r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 眼睛
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(c.facing * 6 - 3, -4, 3.4, 0, Math.PI * 2);
+    ctx.arc(c.facing * 6 + 5, -4, 3.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath();
+    ctx.arc(c.facing * 6 - 3 + c.facing, -4, 1.6, 0, Math.PI * 2);
+    ctx.arc(c.facing * 6 + 5 + c.facing, -4, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 小孩标记
+    if (c.isKid) {
+      ctx.font = '11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('👶', c.facing * 12, -c.r - 2);
+    }
+
+    // 生气
+    if (!c.isPlayer && !c.isKid && c.angryUntil > now) {
+      ctx.font = '13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('💢', c.facing * 14, -c.r - 2);
+    }
+
+    ctx.restore();
+
+    // 名字（小孩的长名字截断显示）
+    ctx.fillStyle = '#333';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    const displayName = c.name.length > 12 ? c.name.slice(0, 12) + '…' : c.name;
+    ctx.fillText(displayName, c.x, c.y - c.r - 10);
+
+    // 血条（大人）
+    if (!c.isKid) {
+      const bw = 36, bh = 4;
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      ctx.fillRect(c.x - bw / 2, c.y - c.r - 7, bw, bh);
+      ctx.fillStyle = c.hp > 40 ? '#27ae60' : '#e67e22';
+      ctx.fillRect(c.x - bw / 2, c.y - c.r - 7, bw * Math.max(c.hp, 0) / 100, bh);
+    }
+
+    // 气泡
+    if (c.bubble && now < c.bubbleUntil) {
+      drawBubble(c.x, c.y - c.r - 26, c.bubble);
+    }
+  }
+
+  function drawBubble(x, y, text) {
+    ctx.font = '13px sans-serif';
+    const tw = Math.min(ctx.measureText(text).width, 180);
+    const pad = 8;
+    const bw = tw + pad * 2;
+    const bh = 24;
+    let bx = x - bw / 2;
+    bx = Math.max(4, Math.min(W - bw - 4, bx));
+    const by = Math.max(4, y - bh);
+
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#ddd';
+    ctx.beginPath();
+    ctx.roundRect(bx, by, bw, bh, 8);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x - 5, by + bh);
+    ctx.lineTo(x, by + bh + 6);
+    ctx.lineTo(x + 5, by + bh);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+
+    ctx.fillStyle = '#333';
+    ctx.textAlign = 'left';
+    const shown = text.length > 16 ? text.slice(0, 16) + '…' : text;
+    ctx.fillText(shown, bx + pad, by + 16);
+  }
+
+  function drawGround() {
+    ctx.fillStyle = '#cde8b5';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#e8dcc0';
+    ctx.fillRect(0, H / 2 - 28, W, 56);
+    const deco = [
+      [70, 70, 18], [760, 90, 22], [140, 400, 20], [700, 400, 18], [420, 60, 16]
+    ];
+    for (const [x, y, r] of deco) {
+      ctx.fillStyle = '#8fbf6f';
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#7aa95c';
+      ctx.beginPath();
+      ctx.arc(x - r * 0.3, y - r * 0.3, r * 0.55, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function loop(now) {
+    if (!running) return;
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+
+    updatePlayer(dt, now);
+    // 遍历副本：updateNPC 里可能移除自己
+    for (const npc of [...npcs]) updateNPC(npc, dt, now);
+
+    // 新兄弟进场
+    if (now >= nextJoinAt) {
+      const visitors = npcs.filter(n => !n.isKid).length;
+      if (visitors < 5) spawnVisitor();
+      nextJoinAt = now + rand(6000, 10000);
+      updateStatus();
+    }
+
+    floaters = floaters.filter(f => now - f.at < 900);
+
+    drawGround();
+    for (const npc of npcs) drawChar(npc, now);
+    if (player) drawChar(player, now);
+
+    // 飘字
+    for (const f of floaters) {
+      const t = (now - f.at) / 900;
+      ctx.globalAlpha = Math.max(0, 1 - t);
+      ctx.font = f.kind === 'heart' ? '15px sans-serif' : 'bold 14px sans-serif';
+      ctx.fillStyle = f.kind === 'heart' ? '#e8699a' : '#e74c3c';
+      ctx.textAlign = 'center';
+      ctx.fillText(f.text, f.x, f.y - t * 26);
+      ctx.globalAlpha = 1;
+    }
+
+    requestAnimationFrame(loop);
+  }
+</script>
+</body>
+</html>
