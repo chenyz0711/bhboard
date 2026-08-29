@@ -835,7 +835,9 @@
       if (mode === 'waiting') {
         if (st.status === 'playing') {
           mode = 'playing';
+          lastSeq = st.seq;
           showView('game');
+          render(st);
           startPolling(POLL_MS);
         }
         return;
@@ -907,11 +909,34 @@
     if (!name) return;
     const code = joinCodeInput.value.trim().toUpperCase();
     if (code.length !== 4) { lobbyError('房间号是 4 位'); return; }
+
+    // 本机创建/玩过这个房间 → 走恢复流程（房主回等待页，玩家回对局），
+    // 防止房主误输入自己的房间号把房间"开局"
+    const saved = getLocalRoom();
+    if (saved && saved.code === code) {
+      joinBtn.disabled = true;
+      const resumed = await resumeRoom();
+      joinBtn.disabled = false;
+      if (resumed) return;
+    }
+
     joinBtn.disabled = true;
     try {
       const st = await getRoom(code);
       if (!st) { lobbyError('找不到这个房间，检查一下房间号'); return; }
+      if (st.status === 'playing') {
+        lobbyError(`这个房间正在对局中（${st.players[0].name} 对战 ${st.players[1].name}），换个房间号吧`);
+        return;
+      }
+      if (st.status === 'finished') {
+        lobbyError('这个房间的比赛已经结束了，换个房间吧');
+        return;
+      }
       if (st.status !== 'waiting') { lobbyError('这个房间已经开局了'); return; }
+      if (st.players[0].name === name) {
+        lobbyError('这是你自己创建的房间，不能和自己对战');
+        return;
+      }
 
       st.players[1].name = name;
       st.status = 'playing';
@@ -937,18 +962,40 @@
 
   async function resumeRoom() {
     const saved = getLocalRoom();
-    if (!saved) return;
+    if (!saved) return false;
     try {
       const st = await getRoom(saved.code);
-      if (!st || (st.status !== 'playing' && st.status !== 'finished')) {
+      if (!st) {
         clearLocalRoom();
         $('resumeHint').textContent = '';
-        return;
+        return false;
+      }
+      // 房间还在等人：房主回来继续当房主等兄弟
+      if (st.status === 'waiting') {
+        if (saved.seat === 0 && st.players[0].name) {
+          roomCode = saved.code;
+          mySeat = 0;
+          myName = st.players[0].name;
+          mode = 'waiting';
+          nameInput.value = myName;
+          waitCode.textContent = saved.code;
+          showView('waiting');
+          startPolling(WAIT_POLL_MS);
+          return true;
+        }
+        clearLocalRoom();
+        $('resumeHint').textContent = '';
+        return false;
+      }
+      if (st.status !== 'playing' && st.status !== 'finished') {
+        clearLocalRoom();
+        $('resumeHint').textContent = '';
+        return false;
       }
       if (!st.players[saved.seat] || !st.players[saved.seat].name) {
         clearLocalRoom();
         $('resumeHint').textContent = '';
-        return;
+        return false;
       }
       roomCode = saved.code;
       mySeat = saved.seat;
@@ -959,8 +1006,10 @@
       showView('game');
       render(st);
       startPolling(POLL_MS);
+      return true;
     } catch (e) {
       console.warn('恢复失败:', e);
+      return false;
     }
   }
 
