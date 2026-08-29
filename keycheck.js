@@ -87,5 +87,24 @@
     try { return localStorage.getItem('bh_access_key') || ''; } catch (e) { return ''; }
   }
 
-  window.KeyGate = { validateAccessKey, rememberKey, storedKey, UNIVERSAL_KEY };
+  // 读取登录用户（全站统一登录态，主页登录后各页面共享）
+  function getUser() {
+    try {
+      const saved = localStorage.getItem('bh_user');
+      if (!saved) return null;
+      const user = JSON.parse(saved);
+      return (user && user.username) ? user : null;
+    } catch (e) { return null; }
+  }
+
+  // 未登录强制跳转主页登录
+  function requireLogin() {
+    if (!getUser()) {
+      location.replace('https://bhboard.pages.dev/');
+      return false;
+    }
+    return true;
+  }
+
+  window.KeyGate = { validateAccessKey, rememberKey, storedKey, getUser, requireLogin, isAlreadyLoggedIn, UNIVERSAL_KEY };
 })();
