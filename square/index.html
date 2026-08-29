@@ -45,6 +45,7 @@
       margin-bottom: 12px;
     }
     .name-box input:focus { border-color: #1a1a1a; background: #fff; }
+    .enter-err { color: #e74c3c; font-size: 13px; min-height: 16px; margin-bottom: 4px; }
     .btn-main {
       width: 100%; padding: 11px; background: #1a1a1a; color: #fff;
       border: none; border-radius: 8px; font-size: 15px; cursor: pointer;
@@ -127,6 +128,9 @@
   <div class="name-box" id="nameBox">
     <label>你的名字</label>
     <input type="text" id="nameInput" placeholder="输入名字进场" maxlength="12" />
+    <label>密钥</label>
+    <input type="text" id="keyInput" placeholder="输入密钥" autocomplete="off" />
+    <div class="enter-err" id="enterErr"></div>
     <button class="btn-main" id="nameBtn">进广场</button>
   </div>
 
@@ -156,6 +160,7 @@
   <div class="footer">BHBoard · 兄弟广场 · made by chenyz</div>
 </div>
 
+<script src="/keycheck.js"></script>
 <script>
   // ============================================================
   // SECTION: state
@@ -288,6 +293,8 @@
   // ============================================================
   const nameBox = document.getElementById('nameBox');
   const nameInput = document.getElementById('nameInput');
+  const keyInput = document.getElementById('keyInput');
+  const enterErr = document.getElementById('enterErr');
   const nameBtn = document.getElementById('nameBtn');
   const stageWrap = document.getElementById('stageWrap');
   const userTag = document.getElementById('userTag');
@@ -344,19 +351,31 @@
     statusBar.textContent = `广场上 ${visitors} 个兄弟 · 已诞生 ${kidCount} 个小孩`;
   }
 
-  function tryEnter() {
+  async function tryEnter() {
     let name = nameInput.value.trim().slice(0, 12);
     if (!name) {
       nameInput.style.borderColor = '#e74c3c';
       setTimeout(() => nameInput.style.borderColor = '', 500);
       return;
     }
+    const key = keyInput.value.trim();
+    nameBtn.disabled = true;
+    nameBtn.textContent = '验证中…';
+    const result = await window.KeyGate.validateAccessKey(name, key);
+    if (!result.ok) {
+      enterErr.textContent = result.msg;
+      nameBtn.disabled = false;
+      nameBtn.textContent = '进广场';
+      return;
+    }
+    window.KeyGate.rememberKey(key);
     if (NAME_POOL.includes(name)) name = name + '哥';
     enterPlaza(name);
   }
 
   nameBtn.addEventListener('click', tryEnter);
-  nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryEnter(); });
+  nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') keyInput.focus(); });
+  keyInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryEnter(); });
 
   (function init() {
     try {
@@ -370,6 +389,7 @@
         }
       }
     } catch (e) {}
+    keyInput.value = window.KeyGate.storedKey();
     nameInput.focus();
   })();
 
