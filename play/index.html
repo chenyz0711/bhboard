@@ -202,10 +202,9 @@
   <!-- SECTION: lobby -->
   <div id="lobbyView">
     <div class="card">
-      <h2>你的名字与密钥</h2>
+      <h2>你的名字</h2>
       <div class="form-gap">
-        <input class="txt" type="text" id="nameInput" placeholder="输入名字" maxlength="12" />
-        <input class="txt" type="text" id="keyInput" placeholder="输入密钥" autocomplete="off" />
+        <input class="txt" type="text" id="nameInput" placeholder="输入名字" maxlength="12" readonly />
       </div>
     </div>
     <div class="card">
@@ -1176,21 +1175,14 @@
   }
 
   async function getName() {
-    const name = nameInput.value.trim().slice(0, 12);
-    if (!name) {
-      lobbyError('先填个名字');
-      nameInput.focus();
+    // 全站单点登录：直接用登录的用户名，未登录跳主页
+    const user = window.KeyGate.getUser();
+    if (!user || !user.username) {
+      window.KeyGate.requireLogin();
       return null;
     }
-    const key = $('keyInput').value.trim();
-    const result = await window.KeyGate.validateAccessKey(name, key);
-    if (!result.ok) {
-      lobbyError(result.msg);
-      return null;
-    }
-    window.KeyGate.rememberKey(key);
-    saveUser(name);
-    return name;
+    nameInput.value = user.username;
+    return user.username.slice(0, 12);
   }
 
   async function createRoom() {
@@ -1460,9 +1452,10 @@
   // SECTION: init
   // ============================================================
   (function init() {
+    // 全站单点登录：未登录强制跳主页登录
+    if (!window.KeyGate.requireLogin()) return;
     const savedName = getSavedUser();
     if (savedName) nameInput.value = savedName;
-    $('keyInput').value = window.KeyGate.storedKey();
     refreshResumeHint();
     showView('lobby');
     refreshMatchList();
