@@ -58,6 +58,7 @@
       text-align: center; font-size: 13px; color: #999;
       margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee;
     }
+    .login-err { color: #e74c3c; font-size: 13px; min-height: 16px; }
     .welcome { font-size: 14px; color: #666; margin-bottom: 14px; }
     .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .menu-card {
@@ -97,14 +98,21 @@
     </div>
   </div>
 
-  <!-- 登录：只需要用户名 -->
+  <!-- 登录：用户名 + 密钥 -->
   <div class="login-box" id="loginBox">
     <div class="field">
       <label>你的名字</label>
-      <input type="text" id="loginName" placeholder="输入名字就能进" maxlength="20" />
+      <input type="text" id="loginName" placeholder="输入你的名字" maxlength="20" />
+    </div>
+    <div class="field">
+      <label>密钥</label>
+      <input type="text" id="loginKey" placeholder="输入密钥" autocomplete="off" />
+    </div>
+    <div class="field">
+      <div class="login-err" id="loginErr"></div>
     </div>
     <button class="btn-main" id="loginBtn">进入</button>
-    <div class="auth-hint">💡 只需要名字，没有密码</div>
+    <div class="auth-hint">💡 密钥找管理员要，第一次用会自动绑定给你</div>
   </div>
 
   <!-- 菜单 -->
@@ -142,9 +150,12 @@
   <div class="footer">BHBoard · 兄弟们的主页 · made by chenyz</div>
 </div>
 
+<script src="/keycheck.js"></script>
 <script>
   const loginBox = document.getElementById('loginBox');
   const loginName = document.getElementById('loginName');
+  const loginKey = document.getElementById('loginKey');
+  const loginErr = document.getElementById('loginErr');
   const loginBtn = document.getElementById('loginBtn');
   const menuBox = document.getElementById('menuBox');
   const welcomeText = document.getElementById('welcomeText');
@@ -178,20 +189,34 @@
     }
   }
 
-  function doLogin() {
+  async function doLogin() {
     const name = loginName.value.trim().slice(0, 20);
+    const key = loginKey.value.trim();
     if (!name) {
       loginName.focus();
       loginName.style.borderColor = '#e74c3c';
       setTimeout(() => loginName.style.borderColor = '', 500);
       return;
     }
+    loginBtn.disabled = true;
+    loginBtn.textContent = '验证中…';
+    const result = await window.KeyGate.validateAccessKey(name, key);
+    if (!result.ok) {
+      loginErr.textContent = result.msg;
+      loginBtn.disabled = false;
+      loginBtn.textContent = '进入';
+      return;
+    }
+    window.KeyGate.rememberKey(key);
     localStorage.setItem('bh_user', JSON.stringify({ username: name }));
     render();
   }
 
   loginBtn.addEventListener('click', doLogin);
   loginName.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') loginKey.focus();
+  });
+  loginKey.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') doLogin();
   });
 
@@ -199,6 +224,9 @@
     localStorage.removeItem('bh_user');
     render();
   });
+
+  // 带出记住的密钥
+  loginKey.value = window.KeyGate.storedKey();
 
   render();
 </script>
