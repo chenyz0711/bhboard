@@ -153,8 +153,7 @@
     <h2>上传照片</h2>
     <div class="sub">每张不超过 1MB，每人每天最多 10 张。上传前会自动压缩，放心发。</div>
     <div class="upload-row">
-      <input class="name-input" type="text" id="nameInput" placeholder="你的名字" maxlength="12" />
-      <input class="name-input" type="text" id="keyInput" placeholder="密钥" autocomplete="off" />
+      <input class="name-input" type="text" id="nameInput" placeholder="你的名字" maxlength="12" readonly />
       <label class="file-label" id="fileLabel">
         📷 选择照片
         <input type="file" id="fileInput" accept="image/*" />
@@ -220,7 +219,6 @@
   // ============================================================
   const $ = id => document.getElementById(id);
   const nameInput = $('nameInput');
-  const keyInput = $('keyInput');
   const fileInput = $('fileInput');
   const fileLabel = $('fileLabel');
   const quotaTip = $('quotaTip');
@@ -374,22 +372,14 @@
 
   async function uploadPhoto(file) {
     fileInput.value = '';
-    const name = nameInput.value.trim().slice(0, 12);
-    if (!name) {
-      setStatus('先填你的名字', 'err');
-      nameInput.focus();
+    // 全站单点登录：直接用登录的用户名，未登录跳主页
+    const user = window.KeyGate.getUser();
+    if (!user || !user.username) {
+      window.KeyGate.requireLogin();
       return;
     }
-    // 密钥校验
-    const key = keyInput.value.trim();
-    const result = await window.KeyGate.validateAccessKey(name, key);
-    if (!result.ok) {
-      setStatus(result.msg, 'err');
-      keyInput.focus();
-      return;
-    }
-    window.KeyGate.rememberKey(key);
-    localStorage.setItem('bh_user', JSON.stringify({ username: name }));
+    const name = user.username.slice(0, 12);
+    nameInput.value = name;
 
     if (!file.type.startsWith('image/')) {
       setStatus('只能传图片文件', 'err');
@@ -599,9 +589,10 @@
   nameInput.addEventListener('input', updateQuota);
 
   (async function init() {
+    // 全站单点登录：未登录强制跳主页登录
+    if (!window.KeyGate.requireLogin()) return;
     const saved = getSavedName();
     if (saved) nameInput.value = saved;
-    keyInput.value = window.KeyGate.storedKey();
     applyAdminUI();
     try {
       photoIndex = await readIndex();
