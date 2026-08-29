@@ -5,1219 +5,187 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BHBoard</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       background: #f5f5f5;
       font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
       display: flex;
       justify-content: center;
-      padding: 24px 20px;
+      padding: 40px 20px;
+      min-height: 100vh;
     }
-    .container {
-      max-width: 600px;
-      width: 100%;
-    }
+    .container { max-width: 600px; width: 100%; }
     .header {
-      margin-bottom: 14px;
+      margin-bottom: 24px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
       gap: 10px;
     }
-    .header h1 {
-      font-size: 24px;
-      font-weight: 700;
-      color: #1a1a1a;
+    .header h1 { font-size: 26px; font-weight: 700; color: #1a1a1a; }
+    .header h1 span { color: #999; font-weight: 400; font-size: 14px; margin-left: 8px; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .user-info { font-size: 14px; color: #333; }
+    .logout-btn {
+      font-size: 13px; color: #999; background: none; border: none;
+      cursor: pointer; padding: 4px 8px; border-radius: 4px;
     }
-    .header h1 span {
-      color: #999;
-      font-weight: 400;
-      font-size: 14px;
-      margin-left: 8px;
-    }
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .header-right .user-info {
-      font-size: 14px;
-      color: #333;
-    }
-    .header-right .logout-btn {
-      font-size: 13px;
-      color: #999;
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 4px 8px;
-      border-radius: 4px;
-    }
-    .header-right .logout-btn:hover {
-      background: #f0f0f0;
-    }
-    .status {
-      color: #999;
-      font-size: 13px;
-      margin-bottom: 12px;
-    }
-    .auth-box {
+    .logout-btn:hover { background: #f0f0f0; }
+    .login-box {
       background: #fff;
       border-radius: 12px;
-      padding: 28px 26px;
+      padding: 32px 28px;
       border: 1px solid #eee;
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-      margin-bottom: 16px;
     }
-    .auth-tabs {
-      display: flex;
-      margin-bottom: 18px;
-      border-bottom: 1px solid #eee;
-    }
-    .auth-tabs button {
-      flex: 1;
-      padding: 10px;
-      background: none;
-      border: none;
-      border-bottom: 2px solid transparent;
-      font-size: 14px;
-      color: #999;
-      cursor: pointer;
+    .login-box .field { margin-bottom: 14px; }
+    .login-box .field label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; }
+    .login-box .field input {
+      width: 100%; padding: 10px 14px;
+      border: 1px solid #e0e0e0; border-radius: 8px;
+      font-size: 14px; outline: none; background: #fafafa;
       transition: 0.15s;
     }
-    .auth-tabs button.active {
-      color: #1a1a1a;
-      font-weight: 600;
-      border-bottom-color: #1a1a1a;
+    .login-box .field input:focus { border-color: #1a1a1a; background: #fff; }
+    .btn-main {
+      width: 100%; padding: 11px;
+      background: #1a1a1a; color: #fff; border: none; border-radius: 8px;
+      font-size: 15px; font-weight: 500; cursor: pointer; transition: 0.15s;
     }
-    .auth-box .field {
-      margin-bottom: 14px;
-    }
-    .auth-box .field label {
-      display: block;
-      font-size: 13px;
-      color: #666;
-      margin-bottom: 4px;
-    }
-    .auth-box .field input {
-      width: 100%;
-      padding: 10px 14px;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      font-size: 14px;
-      outline: none;
-      background: #fafafa;
-      transition: 0.15s;
-    }
-    .auth-box .field input:focus {
-      border-color: #1a1a1a;
-      background: #fff;
-    }
-    .auth-box .btn-auth {
-      width: 100%;
-      padding: 11px;
-      background: #1a1a1a;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-size: 15px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: 0.15s;
-      margin-top: 4px;
-    }
-    .auth-box .btn-auth:hover {
-      background: #333;
-    }
-    .auth-box .btn-auth:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    .auth-box .auth-msg {
-      font-size: 13px;
-      margin-top: 10px;
-      text-align: center;
-    }
-    .auth-box .auth-msg.error {
-      color: #e74c3c;
-    }
+    .btn-main:hover { background: #333; }
     .auth-hint {
-      text-align: center;
-      font-size: 13px;
-      color: #999;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid #eee;
+      text-align: center; font-size: 13px; color: #999;
+      margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee;
     }
-    /* ============ 聊天式留言区：固定高度只滚留言 ============ */
-    .msg-list {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      margin-bottom: 16px;
-      height: 430px; /* 约放下 5 条留言 */
-      max-height: calc(100vh - 300px);
-      overflow-y: auto;
-      padding-right: 4px;
-    }
-    .msg-list::-webkit-scrollbar {
-      width: 6px;
-    }
-    .msg-list::-webkit-scrollbar-thumb {
-      background: #ddd;
-      border-radius: 3px;
-    }
-    .msg-item {
+    .welcome { font-size: 14px; color: #666; margin-bottom: 14px; }
+    .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .menu-card {
       background: #fff;
-      border-radius: 12px;
-      padding: 14px 18px;
       border: 1px solid #eee;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-      flex-shrink: 0;
-    }
-    .msg-top {
-      display: flex;
-      align-items: baseline;
-      gap: 12px;
-      margin-bottom: 2px;
-    }
-    .msg-user {
-      font-weight: 600;
+      border-radius: 12px;
+      padding: 24px 20px;
+      text-decoration: none;
       color: #1a1a1a;
-      font-size: 14px;
-    }
-    .msg-time {
-      color: #bbb;
-      font-size: 12px;
-    }
-    .msg-text {
-      color: #333;
-      font-size: 15px;
-      line-height: 1.6;
-      word-break: break-word;
-    }
-    .msg-del-btn {
-      margin-left: auto;
-      background: none;
-      border: none;
-      color: #ccc;
-      font-size: 12px;
-      cursor: pointer;
-      padding: 2px 6px;
-      border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
       transition: 0.15s;
-    }
-    .msg-del-btn:hover {
-      color: #e74c3c;
-      background: #fdecea;
-    }
-    .empty {
-      text-align: center;
-      color: #ccc;
-      padding: 50px 0;
-      font-size: 14px;
-    }
-    .empty .icon {
-      font-size: 32px;
       display: block;
-      margin-bottom: 10px;
     }
-    .input-area {
-      background: #fff;
-      border-radius: 12px;
-      padding: 16px 18px 18px;
-      border: 1px solid #eee;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    .menu-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      border-color: #ddd;
     }
-    .input-area .input-row {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-    .input-area .input-row input {
-      flex: 1;
-      padding: 10px 14px;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      font-size: 14px;
-      outline: none;
-      background: #fafafa;
-      transition: 0.15s;
-    }
-    .input-area .input-row input:focus {
-      border-color: #1a1a1a;
-      background: #fff;
-    }
-    .input-area .input-row input::placeholder {
-      color: #ccc;
-    }
-    .input-area .btn-row {
-      display: flex;
-      gap: 10px;
-    }
-    .input-area .btn-send {
-      flex: 1;
-      padding: 10px;
-      background: #1a1a1a;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: 0.15s;
-    }
-    .input-area .btn-send:hover {
-      background: #333;
-    }
-    .input-area .btn-clear {
-      padding: 10px 18px;
-      background: transparent;
-      color: #999;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      font-size: 13px;
-      cursor: pointer;
-      transition: 0.15s;
-    }
-    .input-area .btn-clear:hover {
-      color: #e74c3c;
-      border-color: #e74c3c;
-    }
-    /* ============ 管理员面板 ============ */
-    .admin-panel {
-      background: #fff;
-      border-radius: 12px;
-      padding: 16px 18px;
-      border: 1px solid #eee;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-      margin-bottom: 16px;
-    }
-    .admin-tabs {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 14px;
-      flex-wrap: wrap;
-    }
-    .admin-tabs button {
-      padding: 6px 14px;
-      border: 1px solid #ddd;
-      background: #fafafa;
-      border-radius: 6px;
-      font-size: 13px;
-      cursor: pointer;
-      color: #666;
-      transition: 0.15s;
-    }
-    .admin-tabs button.active {
-      background: #1a1a1a;
-      color: #fff;
-      border-color: #1a1a1a;
-    }
-    .admin-row {
-      border: 1px solid #eee;
-      border-radius: 8px;
-      padding: 10px 12px;
-      margin-bottom: 10px;
-      background: #fafafa;
-    }
-    .admin-row-main {
-      display: flex;
-      gap: 10px;
-      align-items: baseline;
-      flex-wrap: wrap;
-    }
-    .admin-row-name {
-      font-weight: 600;
-      font-size: 14px;
-      color: #1a1a1a;
-    }
-    .admin-row-email {
-      color: #999;
-      font-size: 12px;
-    }
-    .admin-row-sub {
-      font-size: 12px;
-      color: #666;
-      margin-top: 4px;
-      word-break: break-all;
-    }
-    .admin-row-sub .muted {
-      color: #e74c3c;
-      font-weight: 600;
-    }
-    .admin-row-actions {
-      margin-top: 8px;
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .admin-row-actions button {
-      font-size: 12px;
-      padding: 4px 10px;
-      border: 1px solid #ddd;
-      background: #fff;
-      border-radius: 6px;
-      cursor: pointer;
-      color: #333;
-      transition: 0.15s;
-    }
-    .admin-row-actions button:hover {
-      border-color: #999;
-    }
-    .admin-row-actions button.danger {
-      color: #e74c3c;
-      border-color: #f3c1bc;
-    }
-    .admin-row-actions button.danger:hover {
-      background: #fdecea;
-    }
-    .admin-empty {
-      text-align: center;
-      color: #ccc;
-      font-size: 13px;
-      padding: 20px 0;
-    }
-    .footer {
-      text-align: center;
-      color: #ddd;
-      font-size: 12px;
-      margin-top: 16px;
-    }
-    .hidden {
-      display: none !important;
-    }
+    .menu-icon { font-size: 30px; margin-bottom: 10px; }
+    .menu-title { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
+    .menu-desc { font-size: 13px; color: #999; line-height: 1.5; }
+    .footer { text-align: center; color: #ddd; font-size: 12px; margin-top: 24px; }
+    .hidden { display: none !important; }
     @media (max-width: 480px) {
-      body {
-        padding: 16px 12px;
-      }
-      .auth-box {
-        padding: 22px 18px;
-      }
-      .msg-list {
-        height: 360px;
-        max-height: calc(100vh - 280px);
-      }
-      .msg-item {
-        padding: 12px 14px;
-      }
+      body { padding: 20px 14px; }
+      .menu-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
 <div class="container">
   <div class="header">
-    <h1>BHBoard <span># 兄弟留言板</span></h1>
-    <div class="header-right" id="headerRight">
+    <h1>BHBoard <span># 兄弟站</span></h1>
+    <div class="header-right">
       <span class="user-info hidden" id="userInfo"></span>
       <button class="logout-btn hidden" id="logoutBtn">退出</button>
     </div>
   </div>
-  <div class="status" id="statusText">加载中...</div>
 
-  <div class="auth-box" id="authBox">
-    <div class="auth-tabs">
-      <button id="tabLogin" class="active">登录</button>
-      <button id="tabRegister">注册</button>
+  <!-- 登录：只需要用户名 -->
+  <div class="login-box" id="loginBox">
+    <div class="field">
+      <label>你的名字</label>
+      <input type="text" id="loginName" placeholder="输入名字就能进" maxlength="20" />
     </div>
+    <button class="btn-main" id="loginBtn">进入</button>
+    <div class="auth-hint">💡 只需要名字，没有密码</div>
+  </div>
 
-    <!-- 登录表单 -->
-    <div id="loginBox">
-      <div class="field">
-        <label>用户名（管理员填 admin）</label>
-        <input type="text" id="loginName" placeholder="输入注册时的用户名" autocomplete="username" />
-      </div>
-      <div class="field">
-        <label>密码</label>
-        <input type="password" id="loginPassword" placeholder="输入密码" autocomplete="current-password" />
-      </div>
-      <button class="btn-auth" id="loginBtn">进入留言板</button>
-      <div class="auth-msg error" id="loginError"></div>
-    </div>
-
-    <!-- 注册表单 -->
-    <div id="registerBox" class="hidden">
-      <div class="field">
-        <label>用户名（留言里显示，也用它登录）</label>
-        <input type="text" id="regUsername" placeholder="输入用户名" maxlength="20" />
-      </div>
-      <div class="field">
-        <label>密码（至少 4 位）</label>
-        <input type="password" id="regPassword" placeholder="设置密码" autocomplete="new-password" />
-      </div>
-      <button class="btn-auth" id="registerBtn">注册并进入</button>
-      <div class="auth-msg error" id="registerError"></div>
-    </div>
-
-    <div class="auth-hint">
-      💡 填个用户名和密码就能进，新名字会自动注册
+  <!-- 菜单 -->
+  <div id="menuBox" class="hidden">
+    <div class="welcome" id="welcomeText"></div>
+    <div class="menu-grid">
+      <a class="menu-card" href="/bhb/">
+        <div class="menu-icon">💬</div>
+        <div class="menu-title">兄弟论坛</div>
+        <div class="menu-desc">留言、灌水、聊大天</div>
+      </a>
+      <a class="menu-card" href="/play/">
+        <div class="menu-icon">🎮</div>
+        <div class="menu-title">兄弟广场</div>
+        <div class="menu-desc">走动、说话、干一架</div>
+      </a>
     </div>
   </div>
 
-  <!-- 管理员面板 -->
-  <div class="admin-panel hidden" id="adminPanel">
-    <div class="admin-tabs">
-      <button id="adminTabUsers" class="active">账户管理</button>
-      <button id="adminRefreshBtn">刷新</button>
-    </div>
-
-    <div id="adminUsersPane">
-      <div id="adminUserList"></div>
-    </div>
-  </div>
-
-  <div class="msg-list" id="msgList">
-    <div class="empty" id="emptyPlaceholder">
-      <span class="icon">💬</span>
-      还没有留言，兄弟你先来
-    </div>
-  </div>
-
-  <div class="input-area hidden" id="inputArea">
-    <div class="input-row">
-      <input type="text" id="msgInput" placeholder="说点什么..." maxlength="500" />
-    </div>
-    <div class="btn-row">
-      <button class="btn-send" id="sendBtn">发送</button>
-      <button class="btn-clear" id="clearBtn">清空</button>
-    </div>
-  </div>
-
-  <div class="footer">BHBoard · 兄弟们畅聊</div>
+  <div class="footer">BHBoard · 兄弟们的主页</div>
 </div>
 
 <script>
-  // ============================================================
-  // 🔥 Upstash 配置
-  const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
-  const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
-  const MSG_KEY = 'bh_messages';      // 聊天记录
-  const PENDING_KEY = 'bh_pending';   // 待处理消息（备份）
-  const USERS_KEY = 'bh_users';       // 注册账号
-  // ============================================================
-
-  let currentUser = null;   // { username }
-  let isAdmin = false;
-  let messages = [];
-
-  // DOM
-  const authBox = document.getElementById('authBox');
-  const tabLogin = document.getElementById('tabLogin');
-  const tabRegister = document.getElementById('tabRegister');
   const loginBox = document.getElementById('loginBox');
-  const registerBox = document.getElementById('registerBox');
   const loginName = document.getElementById('loginName');
-  const loginPassword = document.getElementById('loginPassword');
   const loginBtn = document.getElementById('loginBtn');
-  const loginError = document.getElementById('loginError');
-  const regUsername = document.getElementById('regUsername');
-  const regPassword = document.getElementById('regPassword');
-  const registerBtn = document.getElementById('registerBtn');
-  const registerError = document.getElementById('registerError');
-  const msgList = document.getElementById('msgList');
-  const emptyPlaceholder = document.getElementById('emptyPlaceholder');
-  const msgInput = document.getElementById('msgInput');
-  const sendBtn = document.getElementById('sendBtn');
-  const clearBtn = document.getElementById('clearBtn');
-  const statusText = document.getElementById('statusText');
+  const menuBox = document.getElementById('menuBox');
+  const welcomeText = document.getElementById('welcomeText');
   const userInfo = document.getElementById('userInfo');
   const logoutBtn = document.getElementById('logoutBtn');
-  const inputArea = document.getElementById('inputArea');
-  // 管理员面板 DOM
-  const adminPanel = document.getElementById('adminPanel');
-  const adminTabUsers = document.getElementById('adminTabUsers');
-  const adminRefreshBtn = document.getElementById('adminRefreshBtn');
-  const adminUsersPane = document.getElementById('adminUsersPane');
-  const adminUserList = document.getElementById('adminUserList');
 
-  function formatTime(ts) {
-    const d = new Date(ts);
-    const pad = n => String(n).padStart(2, '0');
-    return `${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  }
-
-  function setStatus(text) {
-    statusText.textContent = text;
-  }
-
-  function showError(el, msg) {
-    el.textContent = msg;
-    if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 4000);
-  }
-
-  // ============================================================
-  // 🔥 Upstash 读写
-  // ============================================================
-
-  async function upstashGet(key) {
-    const res = await fetch(`${UPSTASH_URL}/get/${key}`, {
-      headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
-    });
-    const data = await res.json();
-    return data.result;
-  }
-
-  async function upstashSet(key, value) {
-    const response = await fetch(`${UPSTASH_URL}/set/${key}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${UPSTASH_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ value: value })
-    });
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error('写入失败: ' + err);
-    }
-    return await response.json();
-  }
-
-  // ============================================================
-  // 🔥 读取数据（数组，自动解析）
-  // ============================================================
-
-  async function readData(key) {
+  function getUser() {
     try {
-      const raw = await upstashGet(key);
-      if (raw === null || raw === undefined || raw === '') return [];
-      let data = JSON.parse(raw);
-      if (Array.isArray(data)) return data;
-      if (data && data.value) {
-        if (Array.isArray(data.value)) return data.value;
-        try { return JSON.parse(data.value); } catch (e) {}
-      }
-      return [];
-    } catch (e) {
-      return [];
-    }
+      const saved = localStorage.getItem('bh_user');
+      if (!saved) return null;
+      const user = JSON.parse(saved);
+      return user && user.username ? user : null;
+    } catch (e) { return null; }
   }
 
-  async function writeData(key, data) {
-    const arr = Array.isArray(data) ? data : [];
-    return await upstashSet(key, JSON.stringify(arr));
-  }
-
-  // ============================================================
-  // 🔥 账号读写（对象：用户名小写 -> 用户信息）
-  // ============================================================
-
-  function parseObj(raw) {
-    if (raw === null || raw === undefined || raw === '') return {};
-    let data = JSON.parse(raw);
-    if (data && typeof data === 'object' && !Array.isArray(data)) {
-      if (data.value && typeof data.value === 'object' && !Array.isArray(data.value)) {
-        return data.value;
-      }
-      return data;
-    }
-    return {};
-  }
-
-  // 严格版：读取失败会抛错（注册、发消息校验用）
-  async function readUsersStrict() {
-    return parseObj(await upstashGet(USERS_KEY));
-  }
-
-  // 宽松版：读取失败返回空（管理面板展示用）
-  async function readUsers() {
-    try {
-      return await readUsersStrict();
-    } catch (e) {
-      return {};
-    }
-  }
-
-  async function writeUsers(users) {
-    const obj = (users && typeof users === 'object' && !Array.isArray(users)) ? users : {};
-    return await upstashSet(USERS_KEY, JSON.stringify(obj));
-  }
-
-  // ============================================================
-  // 🔥 按用户名查找账户（不区分大小写，兼容旧的邮箱键数据）
-  // ============================================================
-
-  function findUserByUsername(users, username) {
-    const target = String(username || '').toLowerCase();
-    if (!target) return null;
-    if (users[target]) return users[target];
-    for (const k in users) {
-      if (k.toLowerCase() === target) return users[k];
-      if (String(users[k].username).toLowerCase() === target) return users[k];
-    }
-    return null;
-  }
-
-  // ============================================================
-  // 🔥 会话进入 / 退出
-  // ============================================================
-
-  async function startSession(user, adminFlag) {
-    isAdmin = adminFlag;
-    currentUser = user;
-    localStorage.setItem('bh_user', JSON.stringify({ ...user, admin: adminFlag }));
-    updateUI();
-
-    if (isAdmin) {
-      adminPanel.classList.remove('hidden');
-      setStatus('管理员模式');
-      loadAdminData();
-    } else {
-      adminPanel.classList.add('hidden');
-      setStatus(`欢迎，${user.username}`);
-    }
-
-    await loadMessages();
-
-    // 普通用户：检查是否被禁言
-    if (!isAdmin) {
-      try {
-        const users = await readUsersStrict();
-        const u = findUserByUsername(users, user.username);
-        if (u && u.mutedUntil && u.mutedUntil > Date.now()) {
-          setStatus(`你已被禁言，解禁时间：${formatTime(u.mutedUntil)}`);
-        }
-      } catch (e) {}
-    }
-
-    loginName.value = '';
-    loginPassword.value = '';
-    regUsername.value = '';
-    regPassword.value = '';
-    msgInput.focus();
-  }
-
-  function doLogout() {
-    currentUser = null;
-    isAdmin = false;
-    localStorage.removeItem('bh_user');
-    adminPanel.classList.add('hidden');
-    updateUI();
-    setStatus('已退出');
-    messages = [];
-    renderMessages();
-  }
-
-  // ============================================================
-  // 🔥 注册 / 登录
-  // ============================================================
-
-  async function handleRegister() {
-    const username = regUsername.value.trim().slice(0, 20);
-    const password = regPassword.value;
-
-    if (!username) { showError(registerError, '请填写用户名'); return; }
-    if (username.toLowerCase() === 'admin') { showError(registerError, '该名称不可注册'); return; }
-    if (password.length < 4) { showError(registerError, '密码至少 4 位'); return; }
-
-    registerBtn.disabled = true;
-    try {
-      const users = await readUsersStrict();
-      if (findUserByUsername(users, username)) {
-        showError(registerError, '该用户名已被使用，请直接登录');
-        return;
-      }
-
-      users[username.toLowerCase()] = {
-        username: username,
-        password: password, // 简易版：明文存储
-        createdAt: Date.now()
-      };
-      await writeUsers(users);
-
-      startSession({ username: username }, false);
-    } catch (err) {
-      console.error('注册失败:', err);
-      showError(registerError, '注册失败：' + err.message);
-    } finally {
-      registerBtn.disabled = false;
-    }
-  }
-
-  async function handleLogin() {
-    const username = loginName.value.trim().slice(0, 20);
-    const password = loginPassword.value;
-
-    if (!username || !password) {
-      showError(loginError, '用户名和密码不能为空');
-      return;
-    }
-
-    // 管理员账号（严格校验密码，不自动放行）
-    if (username.toLowerCase() === 'admin') {
-      if (password === 'admin') {
-        startSession({ username: '管理员', admin: true }, true);
-      } else {
-        showError(loginError, '密码错误');
-      }
-      return;
-    }
-
-    loginBtn.disabled = true;
-    try {
-      const users = await readUsersStrict();
-      let user = findUserByUsername(users, username);
-
-      // 用户不存在：自动创建新账户并放行
-      if (!user) {
-        const key = username.toLowerCase();
-        users[key] = {
-          username: username,
-          password: password, // 简易版：明文存储
-          createdAt: Date.now()
-        };
-        await writeUsers(users);
-        user = users[key];
-      }
-
-      // 用户已存在：直接放行
-      startSession({ username: user.username }, false);
-    } catch (err) {
-      console.error('登录失败:', err);
-      showError(loginError, '登录失败：' + err.message);
-    } finally {
-      loginBtn.disabled = false;
-    }
-  }
-
-  function switchTab(mode) {
-    if (mode === 'login') {
-      tabLogin.classList.add('active');
-      tabRegister.classList.remove('active');
-      loginBox.classList.remove('hidden');
-      registerBox.classList.add('hidden');
-    } else {
-      tabRegister.classList.add('active');
-      tabLogin.classList.remove('active');
-      registerBox.classList.remove('hidden');
+  function render() {
+    const user = getUser();
+    if (user) {
       loginBox.classList.add('hidden');
-    }
-    loginError.textContent = '';
-    registerError.textContent = '';
-  }
-
-  // ============================================================
-  // 🔥 加载聊天记录
-  // ============================================================
-
-  async function loadMessages() {
-    try {
-      messages = await readData(MSG_KEY);
-      renderMessages();
-      setStatus(isAdmin ? `管理员模式 · ${messages.length} 条留言` : `${messages.length} 条留言`);
-      console.log('✅ 加载完成，共', messages.length, '条留言');
-    } catch (err) {
-      console.error('加载失败:', err);
-      setStatus('加载失败，刷新重试');
-      messages = [];
-    }
-  }
-
-  // ============================================================
-  // 🔥 发送留言（双存储保障）
-  // ============================================================
-
-  async function sendMessage(text) {
-    if (!currentUser) return false;
-
-    // 普通用户：发送前校验是否被禁言
-    if (!isAdmin) {
-      try {
-        const users = await readUsersStrict();
-        const u = findUserByUsername(users, currentUser.username);
-        if (u && u.mutedUntil && u.mutedUntil > Date.now()) {
-          setStatus(`禁言中，解禁时间：${formatTime(u.mutedUntil)}`);
-          return false;
-        }
-      } catch (e) {
-        console.warn('状态校验失败，跳过:', e);
-      }
-    }
-
-    const newMsg = {
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      username: currentUser.username,
-      text: text.trim(),
-      timestamp: Date.now()
-    };
-
-    // 第 1 步：先备份到 pending（防止丢失）
-    try {
-      let pending = await readData(PENDING_KEY);
-      pending.push({
-        ...newMsg,
-        _backup: true,
-        _time: Date.now()
-      });
-      if (pending.length > 100) pending = pending.slice(-100);
-      await writeData(PENDING_KEY, pending);
-      console.log('📦 已备份到 pending');
-    } catch (err) {
-      console.warn('⚠️ pending 备份失败:', err);
-    }
-
-    // 第 2 步：读取最新聊天记录，追加，写回
-    try {
-      const latest = await readData(MSG_KEY);
-      messages = latest;
-
-      messages.push(newMsg);
-      if (messages.length > 500) messages.shift();
-
-      await writeData(MSG_KEY, messages);
-      console.log('✅ 写入聊天记录成功');
-
-      try {
-        await writeData(PENDING_KEY, []);
-        console.log('📦 已清空 pending');
-      } catch (e) {}
-
-      renderMessages();
-      setStatus(isAdmin ? `管理员模式 · ${messages.length} 条留言` : `${messages.length} 条留言`);
-      return true;
-    } catch (err) {
-      console.error('❌ 写入失败:', err);
-
-      // 第 3 步：如果失败，尝试从 pending 恢复
-      try {
-        const pendingData = await readData(PENDING_KEY);
-        if (pendingData.length > 0) {
-          console.log('🔄 尝试从 pending 恢复数据...');
-          const existingIds = new Set(messages.map(m => m.id));
-          for (const p of pendingData) {
-            if (!existingIds.has(p.id)) {
-              messages.push(p);
-              existingIds.add(p.id);
-            }
-          }
-          if (messages.length > 500) messages = messages.slice(-500);
-          await writeData(MSG_KEY, messages);
-          await writeData(PENDING_KEY, []);
-          renderMessages();
-          setStatus(`${messages.length} 条留言 (已恢复)`);
-          console.log('✅ 数据已从 pending 恢复');
-        }
-      } catch (recoverErr) {
-        console.error('❌ 恢复失败:', recoverErr);
-      }
-
-      setStatus('发送失败，请重试');
-      return false;
-    }
-  }
-
-  // ============================================================
-  // 🔥 清空（需要密码 admin）
-  // ============================================================
-
-  async function clearAllMessages() {
-    const password = prompt('⚠️ 清空所有留言需要密码：');
-    if (password !== 'admin') {
-      if (password !== null) alert('❌ 密码错误');
-      return;
-    }
-    if (!confirm('确定清空所有留言吗？此操作不可恢复！')) return;
-
-    messages = [];
-    try {
-      await writeData(MSG_KEY, []);
-      await writeData(PENDING_KEY, []);
-      renderMessages();
-      setStatus('已清空');
-      alert('✅ 留言已清空');
-    } catch (err) {
-      console.error('清空失败:', err);
-      setStatus('清空失败');
-      alert('❌ 清空失败');
-    }
-  }
-
-  // ============================================================
-  // 🔥 管理员面板
-  // ============================================================
-
-  function loadAdminData() {
-    renderAdminUsers();
-  }
-
-  async function renderAdminUsers() {
-    const users = await readUsers();
-    adminUserList.innerHTML = '';
-
-    const keys = Object.keys(users);
-    if (keys.length === 0) {
-      adminUserList.innerHTML = '<div class="admin-empty">暂无注册账户</div>';
-      return;
-    }
-
-    for (const key of keys) {
-      const u = users[key];
-      const muted = u.mutedUntil && u.mutedUntil > Date.now();
-
-      const row = document.createElement('div');
-      row.className = 'admin-row';
-
-      const main = document.createElement('div');
-      main.className = 'admin-row-main';
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'admin-row-name';
-      nameSpan.textContent = u.username || key;
-      const keySpan = document.createElement('span');
-      keySpan.className = 'admin-row-email';
-      keySpan.textContent = key;
-      main.appendChild(nameSpan);
-      main.appendChild(keySpan);
-
-      const sub = document.createElement('div');
-      sub.className = 'admin-row-sub';
-      sub.textContent = `密码：${u.password || '（无）'} ｜ 注册时间：${formatTime(u.createdAt || Date.now())} ｜ `;
-      const stateSpan = document.createElement('span');
-      if (muted) {
-        stateSpan.className = 'muted';
-        stateSpan.textContent = `禁言中，至 ${formatTime(u.mutedUntil)}`;
-      } else {
-        stateSpan.textContent = '状态正常';
-      }
-      sub.appendChild(stateSpan);
-
-      const actions = document.createElement('div');
-      actions.className = 'admin-row-actions';
-
-      if (muted) {
-        const unmuteBtn = document.createElement('button');
-        unmuteBtn.textContent = '解除禁言';
-        unmuteBtn.dataset.action = 'unmute';
-        unmuteBtn.dataset.userkey = key;
-        actions.appendChild(unmuteBtn);
-      } else {
-        const muteBtn = document.createElement('button');
-        muteBtn.textContent = '禁言';
-        muteBtn.dataset.action = 'mute';
-        muteBtn.dataset.userkey = key;
-        actions.appendChild(muteBtn);
-      }
-
-      const delBtn = document.createElement('button');
-      delBtn.textContent = '注销账户';
-      delBtn.className = 'danger';
-      delBtn.dataset.action = 'delete';
-      delBtn.dataset.userkey = key;
-      actions.appendChild(delBtn);
-
-      row.appendChild(main);
-      row.appendChild(sub);
-      row.appendChild(actions);
-      adminUserList.appendChild(row);
-    }
-  }
-
-  // 账户管理操作
-  adminUserList.addEventListener('click', async (e) => {
-    const btn = e.target.closest('button[data-action]');
-    if (!btn) return;
-    const key = btn.dataset.userkey;
-    const action = btn.dataset.action;
-
-    try {
-      const users = await readUsersStrict();
-      const target = users[key];
-      if (!target) { alert('该账户不存在'); return; }
-      const displayName = target.username || key;
-
-      if (action === 'mute') {
-        const input = prompt(`禁言「${displayName}」多久？\n输入分钟数（60 = 1小时，1440 = 1天，10080 = 7天）：`, '60');
-        if (input === null) return;
-        const mins = parseInt(input, 10);
-        if (!mins || mins <= 0) { alert('请输入有效的分钟数'); return; }
-        target.mutedUntil = Date.now() + mins * 60000;
-        await writeUsers(users);
-        await renderAdminUsers();
-      } else if (action === 'unmute') {
-        target.mutedUntil = 0;
-        await writeUsers(users);
-        await renderAdminUsers();
-      } else if (action === 'delete') {
-        if (!confirm(`确定注销账户「${displayName}」吗？\n注销后该用户将无法登录。`)) return;
-        delete users[key];
-        await writeUsers(users);
-        await renderAdminUsers();
-      }
-    } catch (err) {
-      console.error('操作失败:', err);
-      alert('操作失败：' + err.message);
-    }
-  });
-
-  adminRefreshBtn.addEventListener('click', loadAdminData);
-
-  // ============================================================
-  // 渲染
-  // ============================================================
-
-  function renderMessages() {
-    const items = msgList.querySelectorAll('.msg-item');
-    items.forEach(el => el.remove());
-
-    if (!messages || messages.length === 0) {
-      emptyPlaceholder.style.display = 'block';
-      return;
-    }
-    emptyPlaceholder.style.display = 'none';
-
-    // 按时间正序显示（像聊天软件），新消息在底部
-    for (const msg of messages) {
-      const div = document.createElement('div');
-      div.className = 'msg-item';
-
-      const top = document.createElement('div');
-      top.className = 'msg-top';
-      const userSpan = document.createElement('span');
-      userSpan.className = 'msg-user';
-      userSpan.textContent = msg.username || '兄弟';
-      const timeSpan = document.createElement('span');
-      timeSpan.className = 'msg-time';
-      timeSpan.textContent = formatTime(msg.timestamp);
-      top.appendChild(userSpan);
-      top.appendChild(timeSpan);
-
-      if (isAdmin) {
-        const delBtn = document.createElement('button');
-        delBtn.className = 'msg-del-btn';
-        delBtn.textContent = '删除';
-        delBtn.dataset.msgId = msg.id || '';
-        top.appendChild(delBtn);
-      }
-
-      const textDiv = document.createElement('div');
-      textDiv.className = 'msg-text';
-      textDiv.textContent = msg.text || '';
-
-      div.appendChild(top);
-      div.appendChild(textDiv);
-      msgList.appendChild(div);
-    }
-
-    // 自动滚动到最新消息
-    msgList.scrollTop = msgList.scrollHeight;
-  }
-
-  function updateUI() {
-    if (currentUser) {
-      authBox.classList.add('hidden');
-      inputArea.classList.remove('hidden');
-      userInfo.textContent = currentUser.username + (isAdmin ? '（管理员）' : '');
+      menuBox.classList.remove('hidden');
+      welcomeText.textContent = `${user.username}，想去哪儿逛逛？`;
+      userInfo.textContent = user.username;
       userInfo.classList.remove('hidden');
       logoutBtn.classList.remove('hidden');
     } else {
-      authBox.classList.remove('hidden');
-      inputArea.classList.add('hidden');
+      loginBox.classList.remove('hidden');
+      menuBox.classList.add('hidden');
       userInfo.classList.add('hidden');
       logoutBtn.classList.add('hidden');
+      loginName.focus();
     }
   }
 
-  // ============================================================
-  // 事件
-  // ============================================================
-
-  tabLogin.addEventListener('click', () => switchTab('login'));
-  tabRegister.addEventListener('click', () => switchTab('register'));
-
-  loginBtn.addEventListener('click', handleLogin);
-  loginPassword.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') handleLogin();
-  });
-
-  registerBtn.addEventListener('click', handleRegister);
-  regPassword.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') handleRegister();
-  });
-
-  logoutBtn.addEventListener('click', doLogout);
-
-  sendBtn.addEventListener('click', async () => {
-    if (!currentUser) return;
-    const text = msgInput.value.trim();
-    if (!text) {
-      msgInput.focus();
-      msgInput.style.borderColor = '#e74c3c';
-      setTimeout(() => msgInput.style.borderColor = '', 500);
+  function doLogin() {
+    const name = loginName.value.trim().slice(0, 20);
+    if (!name) {
+      loginName.focus();
+      loginName.style.borderColor = '#e74c3c';
+      setTimeout(() => loginName.style.borderColor = '', 500);
       return;
     }
-    sendBtn.disabled = true;
-    await sendMessage(text);
-    sendBtn.disabled = false;
-    msgInput.value = '';
-    msgInput.focus();
-  });
-
-  msgInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      sendBtn.click();
-    }
-  });
-
-  clearBtn.addEventListener('click', clearAllMessages);
-
-  // ============================================================
-  // 🔥 管理员删除任意留言
-  // ============================================================
-
-  async function deleteMessage(msgId) {
-    if (!isAdmin || !msgId) return;
-    if (!confirm('确定删除这条留言吗？')) return;
-    try {
-      // 重新读取最新留言再删除，避免误删期间的新消息
-      const latest = await readData(MSG_KEY);
-      const filtered = latest.filter(m => m.id !== msgId);
-      if (filtered.length === latest.length) {
-        alert('该留言已不存在');
-        await loadMessages();
-        return;
-      }
-      await writeData(MSG_KEY, filtered);
-      messages = filtered;
-      renderMessages();
-      setStatus(`管理员模式 · ${messages.length} 条留言`);
-    } catch (err) {
-      console.error('删除失败:', err);
-      alert('删除失败：' + err.message);
-    }
+    localStorage.setItem('bh_user', JSON.stringify({ username: name }));
+    render();
   }
 
-  msgList.addEventListener('click', (e) => {
-    const btn = e.target.closest('.msg-del-btn');
-    if (btn && btn.dataset.msgId) deleteMessage(btn.dataset.msgId);
+  loginBtn.addEventListener('click', doLogin);
+  loginName.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') doLogin();
   });
 
-  // ============================================================
-  // 启动
-  // ============================================================
+  logoutBtn.addEventListener('click', () => {
+    localStorage.removeItem('bh_user');
+    render();
+  });
 
-  async function init() {
-    try {
-      const saved = localStorage.getItem('bh_user');
-      if (saved) {
-        const user = JSON.parse(saved);
-        if (user && user.username) {
-          const adminFlag = user.admin === true;
-          await startSession({ username: user.username }, adminFlag);
-          setStatus(adminFlag ? '管理员模式' : `欢迎回来，${user.username}`);
-          return;
-        }
-      }
-    } catch (e) {}
-    updateUI();
-    await loadMessages();
-  }
-
-  init();
+  render();
 </script>
 </body>
 </html>
