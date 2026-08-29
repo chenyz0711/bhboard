@@ -153,13 +153,56 @@
     </div>
   </div>
 
-  <div class="footer">BHBoard · 兄弟广场</div>
+  <div class="footer">BHBoard · 兄弟广场 · made by chenyz</div>
 </div>
 
 <script>
   // ============================================================
   // SECTION: state
   // ============================================================
+  const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
+  const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
+  const PRESENCE_PREFIX = 'bh_member:';   // 在线心跳（兄弟管理页用）
+  const PRESENCE_TTL = 90;
+  const MEMBERS_KEY = 'bh_members';
+
+  // 在线心跳：心跳键 + 持久成员表（兄弟管理页判断在线状态）
+  async function beatPresence(name) {
+    if (!name) return;
+    try {
+      await fetch(
+        `${UPSTASH_URL}/set/${PRESENCE_PREFIX}${encodeURIComponent(name)}/${Date.now()}/ex/${PRESENCE_TTL}`,
+        { method: 'POST', headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` } }
+      );
+    } catch (e) {}
+    try {
+      const rawRes = await fetch(`${UPSTASH_URL}/get/${MEMBERS_KEY}`, {
+        headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
+      });
+      const rawData = await rawRes.json();
+      const raw = rawData.result;
+      let members = {};
+      if (raw) {
+        try { members = JSON.parse(raw); } catch (e) {}
+        if (!members || typeof members !== 'object' || Array.isArray(members)) members = {};
+      }
+      if (!members[name]) {
+        members[name] = Date.now();
+        await fetch(
+          `${UPSTASH_URL}/set/${MEMBERS_KEY}/${encodeURIComponent(JSON.stringify(members))}`,
+          { method: 'POST', headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` } }
+        );
+      }
+    } catch (e) {}
+  }
+
+  let presenceTimer = null;
+  function startPresence(name) {
+    if (presenceTimer) clearInterval(presenceTimer);
+    beatPresence(name);
+    presenceTimer = setInterval(() => beatPresence(name), 30000);
+  }
+
   const canvas = document.getElementById('stage');
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
@@ -271,6 +314,7 @@
 
   function enterPlaza(name) {
     localStorage.setItem('bh_user', JSON.stringify({ username: name }));
+    startPresence(name);
     userTag.textContent = name;
     nameBox.classList.add('hidden');
     stageWrap.classList.remove('hidden');
