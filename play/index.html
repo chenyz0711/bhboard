@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BHBoard · 兄弟广场</title>
+  <style>
+    /* SECTION: base */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #f5f5f5;
+      font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+    .container { max-width: 860px; width: 100%; }
+    .header {
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .header h1 { font-size: 22px; font-weight: 700; color: #1a1a1a; }
+    .header h1 span { color: #999; font-weight: 400; font-size: 13px; margin-left: 8px; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .back-btn {
+      font-size: 13px; color: #999; background: none; border: none;
+      cursor: pointer; padding: 4px 8px; border-radius: 4px; text-decoration: none;
+    }
+    .back-btn:hover { background: #f0f0f0; }
+    .user-tag { font-size: 13px; color: #333; }
+    .status-bar { color: #999; font-size: 13px; margin-bottom: 10px; }
+
+    /* SECTION: name-gate */
+    .name-box {
+      background: #fff; border-radius: 12px; padding: 28px 24px;
+      border: 1px solid #eee; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+      margin-bottom: 16px;
+    }
+    .name-box label { display: block; font-size: 13px; color: #666; margin-bottom: 6px; }
+    .name-box input {
+      width: 100%; padding: 10px 14px; border: 1px solid #e0e0e0;
+      border-radius: 8px; font-size: 14px; outline: none; background: #fafafa;
+      margin-bottom: 12px;
+    }
+    .name-box input:focus { border-color: #1a1a1a; background: #fff; }
+    .btn-main {
+      width: 100%; padding: 11px; background: #1a1a1a; color: #fff;
+      border: none; border-radius: 8px; font-size: 15px; cursor: pointer;
+    }
+    .btn-main:hover { background: #333; }
+
+    /* SECTION: stage */
+    .stage-wrap {
+      background: #fff; border: 1px solid #eee; border-radius: 12px;
+      padding: 10px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      position: relative;
+    }
+    canvas {
+      display: block; width: 100%; border-radius: 8px;
+      background: #cde8b5;
+      touch-action: none;
+    }
+    .hint-line {
+      text-align: center; font-size: 12px; color: #bbb; margin-top: 8px;
+    }
+
+    /* SECTION: chatbar */
+    .chat-bar {
+      display: flex; gap: 8px; margin-top: 10px;
+    }
+    .chat-bar input {
+      flex: 1; padding: 10px 14px; border: 1px solid #e0e0e0;
+      border-radius: 8px; font-size: 14px; outline: none; background: #fafafa;
+    }
+    .chat-bar input:focus { border-color: #1a1a1a; background: #fff; }
+    .chat-bar button {
+      padding: 10px 18px; background: #1a1a1a; color: #fff; border: none;
+      border-radius: 8px; font-size: 14px; cursor: pointer;
+    }
+    .chat-bar button:hover { background: #333; }
+
+    /* SECTION: touch-controls */
+    .touch-controls {
+      display: none;
+      margin-top: 12px;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .dpad {
+      display: grid;
+      grid-template-columns: 52px 52px 52px;
+      grid-template-rows: 52px 52px;
+      gap: 6px;
+    }
+    .dpad button, .punch-btn {
+      border: 1px solid #ddd; background: #fff; border-radius: 10px;
+      font-size: 20px; cursor: pointer; user-select: none;
+      -webkit-user-select: none; touch-action: none;
+    }
+    .dpad button:active, .punch-btn:active { background: #eee; }
+    .d-up { grid-column: 2; grid-row: 1; }
+    .d-left { grid-column: 1; grid-row: 2; }
+    .d-down { grid-column: 2; grid-row: 2; }
+    .d-right { grid-column: 3; grid-row: 2; }
+    .punch-btn {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: #e74c3c; color: #fff; border: none; font-size: 15px; font-weight: 600;
+    }
+    .punch-btn:active { background: #c0392b; }
+    @media (pointer: coarse) {
+      .touch-controls { display: flex; }
+    }
+    .footer { text-align: center; color: #ddd; font-size: 12px; margin-top: 16px; }
+    .hidden { display: none !important; }
+
+    /* SECTION: ko-overlay */
+    .ko-overlay {
+      position: absolute; inset: 10px; border-radius: 8px;
+      background: rgba(26, 26, 26, 0.55);
+      color: #fff; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 6px;
+      font-size: 20px; font-weight: 700;
+    }
+    .ko-overlay small { font-size: 13px; font-weight: 400; opacity: 0.85; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>BHBoard <span># 兄弟广场</span></h1>
+    <div class="header-right">
+      <a class="back-btn" href="/">← 回主页</a>
+      <span class="user-tag" id="userTag"></span>
+    </div>
+  </div>
+  <div class="status-bar" id="statusBar">进来就是兄弟，别客气</div>
+
+  <!-- SECTION: name-gate-html -->
+  <div class="name-box" id="nameBox">
+    <label>你的名字</label>
+    <input type="text" id="nameInput" placeholder="输入名字进场" maxlength="12" />
+    <button class="btn-main" id="nameBtn">进广场</button>
+  </div>
+
+  <!-- SECTION: stage-html -->
+  <div class="stage-wrap hidden" id="stageWrap">
+    <canvas id="stage" width="840" height="480"></canvas>
+    <div class="ko-overlay hidden" id="koOverlay">
+      你被打趴了
+      <small>马上就能站起来…</small>
+    </div>
+    <div class="hint-line">方向键 / WASD 走动 · 空格或 J 出拳 · 下面输入框说话</div>
+
+    <div class="chat-bar">
+      <input type="text" id="chatInput" placeholder="说句话…" maxlength="60" />
+      <button id="chatBtn">说话</button>
+    </div>
+
+    <div class="touch-controls">
+      <div class="dpad">
+        <button class="d-up" data-dir="up">▲</button>
+        <button class="d-left" data-dir="left">◀</button>
+        <button class="d-down" data-dir="down">▼</button>
+        <button class="d-right" data-dir="right">▶</button>
+      </div>
+      <button class="punch-btn" id="punchBtn">出拳</button>
+    </div>
+  </div>
+
+  <div class="footer">BHBoard · 兄弟广场</div>
+</div>
+
+<script>
+  // ============================================================
+  // SECTION: state
+  // ============================================================
+  const canvas = document.getElementById('stage');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  const NPC_NAMES = ['阿强', '老王', '大壮', '小虎', '铁蛋'];
+  const NPC_COLORS = ['#5b8def', '#e67e22', '#9b59b6', '#16a085', '#d35400'];
+  const NPC_LINES = [
+    '今天吃啥？', '兄弟来了！', '谁请客？', '走走走，打球去',
+    '我请客你买单', '哈哈哈', '在吗在吗', '晚上开黑不',
+    '别跑啊', '稳住，我们能赢', '666', '这天气真不错'
+  ];
+  const ANGRY_LINES = ['你敢打我？！', '找打是吧！', '给我站住！', '兄弟之间不讲武德', '看拳！'];
+  const REPLY_LINES = ['就是就是', '哈哈哈哈', '有道理', '确实', '你说得对', '牛啊兄弟', '细说细说'];
+
+  let player = null;
+  let npcs = [];
+  let floaters = [];   // 伤害飘字
+  let running = false;
+  let lastTime = 0;
+
+  const keys = {};
+  const touchDirs = { up: false, down: false, left: false, right: false };
+
+  function rand(a, b) { return a + Math.random() * (b - a); }
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  function makeChar(name, color, isPlayer) {
+    return {
+      name, color, isPlayer,
+      x: rand(80, W - 80), y: rand(80, H - 80),
+      r: 20,
+      hp: 100,
+      facing: Math.random() < 0.5 ? -1 : 1,   // -1 左 1 右
+      vx: 0, vy: 0,
+      speed: isPlayer ? 170 : rand(55, 85),
+      // 说话气泡
+      bubble: null, bubbleUntil: 0,
+      // 出拳
+      punchUntil: 0, punchCd: 0,
+      // 受伤闪烁
+      hitUntil: 0,
+      // 被打趴
+      down: false, respawnAt: 0,
+      // NPC 专用
+      wanderAngle: Math.random() * Math.PI * 2,
+      nextWanderAt: 0,
+      nextTalkAt: performance.now() + rand(2000, 8000),
+      angryUntil: 0
+    };
+  }
+
+  // ============================================================
+  // SECTION: name-gate-js
+  // ============================================================
+  const nameBox = document.getElementById('nameBox');
+  const nameInput = document.getElementById('nameInput');
+  const nameBtn = document.getElementById('nameBtn');
+  const stageWrap = document.getElementById('stageWrap');
+  const userTag = document.getElementById('userTag');
+  const statusBar = document.getElementById('statusBar');
+  const koOverlay = document.getElementById('koOverlay');
+
+  function enterPlaza(name) {
+    localStorage.setItem('bh_user', JSON.stringify({ username: name }));
+    userTag.textContent = name;
+    nameBox.classList.add('hidden');
+    stageWrap.classList.remove('hidden');
+    player = makeChar(name, '#1a1a1a', true);
+    npcs = NPC_NAMES.map((n, i) => makeChar(n, NPC_COLORS[i], false));
+    running = true;
+    lastTime = performance.now();
+    requestAnimationFrame(loop);
+  }
+
+  function tryEnter() {
+    let name = nameInput.value.trim().slice(0, 12);
+    // 名字和 NPC 撞了就换个称呼
+    if (NPC_NAMES.includes(name)) name = name + '哥';
+    if (!name) {
+      nameInput.style.borderColor = '#e74c3c';
+      setTimeout(() => nameInput.style.borderColor = '', 500);
+      return;
+    }
+    enterPlaza(name);
+  }
+
+  nameBtn.addEventListener('click', tryEnter);
+  nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryEnter(); });
+
+  // 启动：有登录名字就直接进
+  (function init() {
+    try {
+      const saved = localStorage.getItem('bh_user');
+      if (saved) {
+        const user = JSON.parse(saved);
+        if (user && user.username) {
+          nameInput.value = user.username;
+          tryEnter();
+          return;
+        }
+      }
+    } catch (e) {}
+    nameInput.focus();
+  })();
+
+  // ============================================================
+  // SECTION: input
+  // ============================================================
+  window.addEventListener('keydown', (e) => {
+    const k = e.key.toLowerCase();
+    if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'j'].includes(k)) {
+      if (document.activeElement !== document.getElementById('chatInput')) e.preventDefault();
+    }
+    keys[k] = true;
+    if ((k === ' ' || k === 'j') && document.activeElement !== document.getElementById('chatInput')) {
+      playerPunch();
+    }
+  });
+  window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+
+  // 触屏方向键
+  document.querySelectorAll('.dpad button').forEach((btn) => {
+    const dir = btn.dataset.dir;
+    const on = (e) => { e.preventDefault(); touchDirs[dir] = true; };
+    const off = (e) => { e.preventDefault(); touchDirs[dir] = false; };
+    btn.addEventListener('pointerdown', on);
+    btn.addEventListener('pointerup', off);
+    btn.addEventListener('pointercancel', off);
+    btn.addEventListener('pointerleave', off);
+  });
+  document.getElementById('punchBtn').addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    playerPunch();
+  });
+
+  // ============================================================
+  // SECTION: chat
+  // ============================================================
+  const chatInput = document.getElementById('chatInput');
+  const chatBtn = document.getElementById('chatBtn');
+
+  function say(c, text, dur) {
+    c.bubble = text;
+    c.bubbleUntil = performance.now() + dur;
+  }
+
+  function playerSay() {
+    const text = chatInput.value.trim();
+    if (!text || !player || player.down) return;
+    say(player, text.slice(0, 60), 3200);
+    chatInput.value = '';
+    // 大概率有兄弟搭话
+    if (Math.random() < 0.75) {
+      const npc = pick(npcs.filter(n => !n.down));
+      if (npc) setTimeout(() => { if (!npc.down) say(npc, pick(REPLY_LINES), 2600); }, rand(500, 1300));
+    }
+  }
+
+  chatBtn.addEventListener('click', playerSay);
+  chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); playerSay(); }
+  });
+
+  // ============================================================
+  // SECTION: combat
+  // ============================================================
+  const PUNCH_RANGE = 52;
+  const PUNCH_ARC = 70;      // 出拳判定宽度
+  const PUNCH_DMG_PLAYER = 16;
+  const PUNCH_DMG_NPC = 9;
+  const PUNCH_CD = 380;
+
+  function doPunch(attacker, dmg) {
+    const now = performance.now();
+    if (now < attacker.punchCd || attacker.down) return;
+    attacker.punchCd = now + PUNCH_CD;
+    attacker.punchUntil = now + 180;
+
+    const targets = attacker.isPlayer ? npcs : [player];
+    for (const t of targets) {
+      if (t.down) continue;
+      const dx = t.x - attacker.x, dy = t.y - attacker.y;
+      const dist = Math.hypot(dx, dy);
+      const inFront = (dx * attacker.facing) >= -10;
+      if (dist < PUNCH_RANGE && Math.abs(dy) < PUNCH_ARC && inFront) {
+        t.hp -= dmg;
+        t.hitUntil = now + 220;
+        // 击退
+        const kb = 46 / Math.max(dist, 1);
+        t.x += dx * kb; t.y += dy * kb;
+        clampPos(t);
+        floaters.push({ x: t.x, y: t.y - t.r - 8, text: `-${dmg}`, at: now });
+
+        if (t.hp <= 0) {
+          t.down = true;
+          t.respawnAt = now + 3000;
+          t.hp = 100;
+          if (t.isPlayer) {
+            koOverlay.classList.remove('hidden');
+            statusBar.textContent = '你被打趴了，马上就能站起来…';
+          } else {
+            statusBar.textContent = `${t.name} 被打趴了！`;
+            say(attacker, pick(['服不服？', '哈哈', '承让承让']), 2000);
+          }
+        } else if (!t.isPlayer) {
+          // NPC 被打：生气追打
+          t.angryUntil = now + 3500;
+          say(t, pick(ANGRY_LINES), 2200);
+        } else {
+          statusBar.textContent = `你被 ${attacker.name} 打了一拳！`;
+        }
+      }
+    }
+  }
+
+  function playerPunch() {
+    if (player && !player.down) doPunch(player, PUNCH_DMG_PLAYER);
+  }
+
+  function clampPos(c) {
+    c.x = Math.max(c.r, Math.min(W - c.r, c.x));
+    c.y = Math.max(c.r, Math.min(H - c.r, c.y));
+  }
+
+  // ============================================================
+  // SECTION: npc-ai
+  // ============================================================
+  function updateNPC(npc, dt, now) {
+    if (npc.down) {
+      if (now >= npc.respawnAt) {
+        npc.down = false;
+        npc.x = rand(80, W - 80);
+        npc.y = rand(80, H - 80);
+        npc.hp = 100;
+        npc.angryUntil = 0;
+      }
+      return;
+    }
+
+    let moving = false;
+
+    if (npc.angryUntil > now && player && !player.down) {
+      // 追玩家
+      const dx = player.x - npc.x, dy = player.y - npc.y;
+      const dist = Math.hypot(dx, dy);
+      npc.facing = dx >= 0 ? 1 : -1;
+      if (dist > 40) {
+        npc.x += (dx / dist) * npc.speed * 1.5 * dt;
+        npc.y += (dy / dist) * npc.speed * 1.5 * dt;
+        moving = true;
+      } else {
+        doPunch(npc, PUNCH_DMG_NPC);
+      }
+    } else {
+      // 闲逛
+      if (now >= npc.nextWanderAt) {
+        npc.wanderAngle = Math.random() * Math.PI * 2;
+        npc.nextWanderAt = now + rand(1200, 3200);
+        if (Math.random() < 0.25) npc.wanderAngle = null; // 站住歇歇
+      }
+      if (npc.wanderAngle !== null) {
+        npc.x += Math.cos(npc.wanderAngle) * npc.speed * dt;
+        npc.y += Math.sin(npc.wanderAngle) * npc.speed * dt;
+        npc.facing = Math.cos(npc.wanderAngle) >= 0 ? 1 : -1;
+        moving = true;
+      }
+    }
+
+    clampPos(npc);
+
+    // 随机说话
+    if (now >= npc.nextTalkAt) {
+      say(npc, pick(NPC_LINES), 2600);
+      npc.nextTalkAt = now + rand(4000, 12000);
+    }
+  }
+
+  // ============================================================
+  // SECTION: update
+  // ============================================================
+  function updatePlayer(dt, now) {
+    if (player.down) {
+      if (now >= player.respawnAt) {
+        player.down = false;
+        player.hp = 100;
+        player.x = rand(80, W - 80);
+        player.y = rand(80, H - 80);
+        koOverlay.classList.add('hidden');
+        statusBar.textContent = '站起来了，继续！';
+      }
+      return;
+    }
+
+    let dx = 0, dy = 0;
+    if (keys['w'] || keys['arrowup'] || touchDirs.up) dy -= 1;
+    if (keys['s'] || keys['arrowdown'] || touchDirs.down) dy += 1;
+    if (keys['a'] || keys['arrowleft'] || touchDirs.left) dx -= 1;
+    if (keys['d'] || keys['arrowright'] || touchDirs.right) dx += 1;
+
+    if (dx !== 0 || dy !== 0) {
+      const len = Math.hypot(dx, dy);
+      player.x += (dx / len) * player.speed * dt;
+      player.y += (dy / len) * player.speed * dt;
+      if (dx !== 0) player.facing = dx > 0 ? 1 : -1;
+      clampPos(player);
+    }
+  }
+
+  // ============================================================
+  // SECTION: render
+  // ============================================================
+  function drawChar(c, now) {
+    const hit = now < c.hitUntil;
+    const punching = now < c.punchUntil;
+
+    ctx.save();
+    ctx.translate(c.x, c.y);
+
+    if (c.down) {
+      // 打趴：倒地
+      ctx.globalAlpha = 0.45;
+      ctx.fillStyle = c.color;
+      ctx.beginPath();
+      ctx.ellipse(0, 6, c.r * 1.3, c.r * 0.6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#333';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('💫', 0, -8);
+      ctx.restore();
+      return;
+    }
+
+    // 影子
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.beginPath();
+    ctx.ellipse(0, c.r + 6, c.r * 0.9, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 出拳的拳头
+    if (punching) {
+      ctx.fillStyle = '#f0c27a';
+      ctx.beginPath();
+      ctx.arc(c.facing * (c.r + 14), -2, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+      ctx.stroke();
+    }
+
+    // 身体
+    ctx.fillStyle = hit ? '#e74c3c' : c.color;
+    ctx.beginPath();
+    ctx.arc(0, 0, c.r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 眼睛
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(c.facing * 6 - 3, -4, 3.4, 0, Math.PI * 2);
+    ctx.arc(c.facing * 6 + 5, -4, 3.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath();
+    ctx.arc(c.facing * 6 - 3 + c.facing, -4, 1.6, 0, Math.PI * 2);
+    ctx.arc(c.facing * 6 + 5 + c.facing, -4, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 生气标记
+    if (!c.isPlayer && c.angryUntil > now) {
+      ctx.font = '13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('💢', c.facing * 14, -c.r - 2);
+    }
+
+    ctx.restore();
+
+    // 名字
+    ctx.fillStyle = '#333';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(c.name, c.x, c.y - c.r - 10);
+
+    // 血条
+    const bw = 36, bh = 4;
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillRect(c.x - bw / 2, c.y - c.r - 7, bw, bh);
+    ctx.fillStyle = c.hp > 40 ? '#27ae60' : '#e67e22';
+    ctx.fillRect(c.x - bw / 2, c.y - c.r - 7, bw * Math.max(c.hp, 0) / 100, bh);
+
+    // 气泡
+    if (c.bubble && now < c.bubbleUntil) {
+      drawBubble(c.x, c.y - c.r - 26, c.bubble);
+    }
+  }
+
+  function drawBubble(x, y, text) {
+    ctx.font = '13px sans-serif';
+    const tw = Math.min(ctx.measureText(text).width, 180);
+    const pad = 8;
+    const bw = tw + pad * 2;
+    const bh = 24;
+    let bx = x - bw / 2;
+    bx = Math.max(4, Math.min(W - bw - 4, bx));
+    const by = Math.max(4, y - bh);
+
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#ddd';
+    ctx.beginPath();
+    ctx.roundRect(bx, by, bw, bh, 8);
+    ctx.fill();
+    ctx.stroke();
+    // 小尾巴
+    ctx.beginPath();
+    ctx.moveTo(x - 5, by + bh);
+    ctx.lineTo(x, by + bh + 6);
+    ctx.lineTo(x + 5, by + bh);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+
+    ctx.fillStyle = '#333';
+    ctx.textAlign = 'left';
+    const shown = text.length > 16 ? text.slice(0, 16) + '…' : text;
+    ctx.fillText(shown, bx + pad, by + 16);
+  }
+
+  function drawGround() {
+    // 草地底色
+    ctx.fillStyle = '#cde8b5';
+    ctx.fillRect(0, 0, W, H);
+    // 小路
+    ctx.fillStyle = '#e8dcc0';
+    ctx.fillRect(0, H / 2 - 28, W, 56);
+    // 装饰：几棵树和石头
+    const deco = [
+      [70, 70, 18], [760, 90, 22], [140, 400, 20], [700, 400, 18], [420, 60, 16]
+    ];
+    for (const [x, y, r] of deco) {
+      ctx.fillStyle = '#8fbf6f';
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#7aa95c';
+      ctx.beginPath();
+      ctx.arc(x - r * 0.3, y - r * 0.3, r * 0.55, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function loop(now) {
+    if (!running) return;
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+
+    updatePlayer(dt, now);
+    for (const npc of npcs) updateNPC(npc, dt, now);
+
+    // 飘字
+    floaters = floaters.filter(f => now - f.at < 700);
+
+    drawGround();
+    for (const npc of npcs) drawChar(npc, now);
+    if (player) drawChar(player, now);
+
+    // 画飘字
+    for (const f of floaters) {
+      const t = (now - f.at) / 700;
+      ctx.globalAlpha = 1 - t;
+      ctx.fillStyle = '#e74c3c';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(f.text, f.x, f.y - t * 26);
+      ctx.globalAlpha = 1;
+    }
+
+    requestAnimationFrame(loop);
+  }
+</script>
+</body>
+</html>
