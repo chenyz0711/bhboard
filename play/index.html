@@ -388,14 +388,14 @@
   }
 
   async function upSet(key, value) {
-    const res = await fetch(`${UPSTASH_URL}/set/${key}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${UPSTASH_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ value: value, EX: ROOM_TTL })
-    });
+    // 路径式写入：/set/键/值/ex/秒数（该接口不认 JSON 请求体）
+    const res = await fetch(
+      `${UPSTASH_URL}/set/${key}/${encodeURIComponent(value)}/ex/${ROOM_TTL}`,
+      {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
+      }
+    );
     if (!res.ok) throw new Error('网络写入失败');
     return await res.json();
   }
@@ -403,7 +403,14 @@
   async function getRoom(code) {
     const raw = await upGet(ROOM_PREFIX + code);
     if (!raw) return null;
-    try { return JSON.parse(raw); } catch (e) { return null; }
+    try {
+      let obj = JSON.parse(raw);
+      // 兼容旧版错误格式（{value, EX} 包裹）的历史房间数据
+      if (obj && typeof obj.value === 'string' && obj.status === undefined) {
+        try { obj = JSON.parse(obj.value); } catch (e) {}
+      }
+      return obj && typeof obj === 'object' ? obj : null;
+    } catch (e) { return null; }
   }
 
   async function putRoom(code, st) {
@@ -932,11 +939,7 @@
         lobbyError('这个房间的比赛已经结束了，换个房间吧');
         return;
       }
-      if (st.status !== 'waiting') { lobbyError('这个房间已经开局了'); return; }
-      if (st.players[0].name === name) {
-        lobbyError('这是你自己创建的房间，不能和自己对战');
-        return;
-      }
+      if (st.status !== 'waiting') { lobbyError('这个房间状态异常，换个房间吧'); return; }
 
       st.players[1].name = name;
       st.status = 'playing';
