@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BHBoard · 兄弟管理</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: radial-gradient(1200px 600px at 50% -100px, #2d1f2f, #171118);
+      min-height: 100vh;
+      font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+      color: #e8e0d8;
+      display: flex;
+      justify-content: center;
+      padding: 20px 14px 40px;
+    }
+    .container { max-width: 680px; width: 100%; }
+    .header {
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 8px; margin-bottom: 14px;
+    }
+    .header h1 { font-size: 21px; font-weight: 800; color: #f0d9a8; letter-spacing: 1px; }
+    .header h1 span { color: #8a7a6a; font-weight: 400; font-size: 12px; margin-left: 8px; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .link-btn {
+      font-size: 13px; color: #b9a88f; background: none; border: 1px solid #4a3d3f;
+      cursor: pointer; padding: 5px 10px; border-radius: 6px; text-decoration: none;
+    }
+    .link-btn:hover { background: #322632; }
+    .admin-tag {
+      font-size: 12px; padding: 4px 10px; border-radius: 20px;
+      background: #6b5320; color: #f0d9a8; font-weight: 700;
+    }
+    .hidden { display: none !important; }
+
+    .card {
+      background: #221a22;
+      border: 1px solid #3c2f3c;
+      border-radius: 14px;
+      padding: 18px 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+    }
+    .card h2 { font-size: 15px; color: #f0d9a8; margin-bottom: 12px; }
+    .card .sub { font-size: 12px; color: #8a7a6a; margin-bottom: 10px; }
+
+    .row {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      padding: 10px 12px; border: 1px solid #3c2f3c; border-radius: 10px;
+      margin-bottom: 8px; background: #1b141b; flex-wrap: wrap;
+    }
+    .row-main { font-size: 14px; color: #f5ede2; font-weight: 600; }
+    .row-meta { font-size: 12px; color: #8a7a6a; margin-top: 2px; }
+    .dot {
+      display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+      margin-right: 6px; vertical-align: middle;
+    }
+    .dot.on { background: #27ae60; box-shadow: 0 0 6px rgba(39,174,96,0.6); }
+    .dot.off { background: #6f6156; }
+    .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .act-btn {
+      padding: 6px 12px; border: none; border-radius: 8px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      background: #3c2f3c; color: #e8e0d8;
+    }
+    .act-btn:hover { background: #4d3c4d; }
+    .act-btn.danger { background: #6b2f2f; color: #ffb0a0; }
+    .act-btn.danger:hover { background: #843838; }
+    .empty-tip { font-size: 13px; color: #6f6156; text-align: center; padding: 14px 0; }
+
+    .admin-unlock {
+      display: flex; gap: 8px;
+    }
+    .admin-unlock input {
+      flex: 1; padding: 10px 13px; border: 1px solid #4a3d3f; border-radius: 9px;
+      background: #171118; color: #f5ede2; font-size: 14px; outline: none;
+    }
+    .admin-unlock input:focus { border-color: #d8b36a; }
+    .btn-gold {
+      padding: 10px 16px; border: none; border-radius: 9px;
+      background: #d8b36a; color: #241a10; font-size: 14px; font-weight: 600; cursor: pointer;
+    }
+    .btn-gold:hover { background: #e7c685; }
+    .err { color: #e07a6a; font-size: 13px; margin-top: 8px; min-height: 16px; }
+
+    .admin-tools { display: flex; gap: 8px; flex-wrap: wrap; }
+    .admin-tools .act-btn { padding: 10px 14px; font-size: 13px; }
+    .footer { text-align: center; color: #6f6156; font-size: 12px; margin-top: 18px; }
+    .refresh-tip { font-size: 11px; color: #6f6156; text-align: right; margin-top: 6px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>🛠️ 兄弟管理 <span># 大家都可以看</span></h1>
+    <div class="header-right">
+      <span class="admin-tag hidden" id="adminTag">管理员模式</span>
+      <a class="link-btn" href="/">← 回主页</a>
+    </div>
+  </div>
+
+  <!-- 管理员解锁 -->
+  <div class="card" id="unlockCard">
+    <h2>🔐 管理员解锁</h2>
+    <div class="sub">输入管理密码可以解锁管理操作（注销账号、清空论坛、删除对局）；不解锁也能看下面的信息</div>
+    <div class="admin-unlock">
+      <input type="password" id="adminPwd" placeholder="管理密码" autocomplete="off" />
+      <button class="btn-gold" id="unlockBtn">解锁</button>
+    </div>
+    <div class="err" id="unlockErr"></div>
+  </div>
+
+  <!-- 管理员工具（解锁后可见） -->
+  <div class="card hidden" id="adminToolsCard">
+    <h2>⚙️ 管理操作</h2>
+    <div class="admin-tools">
+      <button class="act-btn danger" id="clearForumBtn">🗑️ 清空论坛留言</button>
+    </div>
+    <div class="sub" style="margin-top:10px;">注销账号和删除对局在下方各自的列表里操作</div>
+  </div>
+
+  <!-- 成员列表 -->
+  <div class="card">
+    <h2>👥 兄弟们</h2>
+    <div class="sub">谁来过这个站都会登记在这里，绿点是在线（90 秒内有活跃），灰点是离线</div>
+    <div id="memberListBox"><div class="empty-tip">加载中…</div></div>
+  </div>
+
+  <!-- 对局列表 -->
+  <div class="card">
+    <h2>⚔️ 当前对局</h2>
+    <div class="sub">所有兄弟轮盘赌的对局都在这里，点「观战」可以去看</div>
+    <div id="gameListBox"><div class="empty-tip">加载中…</div></div>
+    <div class="refresh-tip">列表每 3 秒自动刷新</div>
+  </div>
+
+  <div class="footer">BHBoard · 兄弟管理 · made by chenyz</div>
+</div>
+
+<script>
+  // ============================================================
+  // SECTION: config
+  // ============================================================
+  const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
+  const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
+  const MEMBERS_KEY = 'bh_members';
+  const REGISTRY_KEY = 'bh_registry';
+  const PRESENCE_PREFIX = 'bh_member:';
+  const MSG_KEY = 'bh_messages';
+  const ROOM_PREFIX = 'bh_room:';
+  const ADMIN_PASSWORD = 'admin';
+  const REFRESH_MS = 3000;
+
+  let isAdmin = sessionStorage.getItem('bh_admin') === '1';
+
+  // ============================================================
+  // SECTION: dom
+  // ============================================================
+  const $ = id => document.getElementById(id);
+  const adminTag = $('adminTag');
+  const unlockCard = $('unlockCard');
+  const adminToolsCard = $('adminToolsCard');
+  const adminPwd = $('adminPwd');
+  const unlockBtn = $('unlockBtn');
+  const unlockErr = $('unlockErr');
+  const clearForumBtn = $('clearForumBtn');
+  const memberListBox = $('memberListBox');
+  const gameListBox = $('gameListBox');
+
+  // ============================================================
+  // SECTION: upstash
+  // ============================================================
+  async function upGet(key) {
+    const res = await fetch(`${UPSTASH_URL}/get/${key}`, {
+      headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
+    });
+    const data = await res.json();
+    return data.result;
+  }
+
+  async function upSetPlain(key, value) {
+    const res = await fetch(
+      `${UPSTASH_URL}/set/${key}/${encodeURIComponent(value)}`,
+      { method: 'POST', headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` } }
+    );
+    if (!res.ok) throw new Error('写入失败');
+    return await res.json();
+  }
+
+  async function upDel(key) {
+    const res = await fetch(`${UPSTASH_URL}/del/${key}`, {
+      method: 'POST', headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
+    });
+    return await res.json();
+  }
+
+  async function regList() {
+    const raw = await upGet(REGISTRY_KEY);
+    if (!raw) return {};
+    try {
+      const obj = JSON.parse(raw);
+      return (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
+    } catch (e) { return {}; }
+  }
+
+  async function regPut(reg) {
+    await upSetPlain(REGISTRY_KEY, JSON.stringify(reg));
+  }
+
+  // ============================================================
+  // SECTION: admin-unlock
+  // ============================================================
+  function applyAdminUI() {
+    adminTag.classList.toggle('hidden', !isAdmin);
+    unlockCard.classList.toggle('hidden', isAdmin);
+    adminToolsCard.classList.toggle('hidden', !isAdmin);
+  }
+
+  unlockBtn.addEventListener('click', () => {
+    if (adminPwd.value.trim() === ADMIN_PASSWORD) {
+      isAdmin = true;
+      sessionStorage.setItem('bh_admin', '1');
+      applyAdminUI();
+    } else {
+      unlockErr.textContent = '密码不对';
+      setTimeout(() => { if (unlockErr.textContent === '密码不对') unlockErr.textContent = ''; }, 3000);
+    }
+  });
+  adminPwd.addEventListener('keydown', e => { if (e.key === 'Enter') unlockBtn.click(); });
+
+  // ============================================================
+  // SECTION: members
+  // ============================================================
+  function fmtTime(ts) {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    const pad = n => String(n).padStart(2, '0');
+    return `${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  async function refreshMembers() {
+    try {
+      const raw = await upGet(MEMBERS_KEY);
+      let members = {};
+      if (raw) {
+        try { members = JSON.parse(raw); } catch (e) {}
+        // 兼容旧版包裹格式
+        if (members && typeof members.value === 'string') {
+          try { members = JSON.parse(members.value); } catch (e) {}
+        }
+        if (!members || typeof members !== 'object' || Array.isArray(members)) members = {};
+      }
+      const names = Object.keys(members).sort((a, b) => (members[b] || 0) - (members[a] || 0));
+      memberListBox.innerHTML = '';
+      if (names.length === 0) {
+        memberListBox.innerHTML = '<div class="empty-tip">还没有兄弟来过</div>';
+        return;
+      }
+      for (const name of names) {
+        // 查在线心跳键
+        let online = false;
+        try {
+          const beat = await upGet(PRESENCE_PREFIX + encodeURIComponent(name));
+          online = !!beat;
+        } catch (e) {}
+
+        const row = document.createElement('div');
+        row.className = 'row';
+
+        const left = document.createElement('div');
+        const main = document.createElement('div');
+        main.className = 'row-main';
+        const dot = document.createElement('span');
+        dot.className = 'dot ' + (online ? 'on' : 'off');
+        main.appendChild(dot);
+        main.appendChild(document.createTextNode(name + (online ? '（在线）' : '（离线）')));
+        const meta = document.createElement('div');
+        meta.className = 'row-meta';
+        meta.textContent = `首次出现：${fmtTime(members[name])}`;
+        left.appendChild(main);
+        left.appendChild(meta);
+        row.appendChild(left);
+
+        if (isAdmin) {
+          const acts = document.createElement('div');
+          acts.className = 'row-actions';
+          const delBtn = document.createElement('button');
+          delBtn.className = 'act-btn danger';
+          delBtn.textContent = '注销账号';
+          delBtn.onclick = () => unregisterMember(name);
+          acts.appendChild(delBtn);
+          row.appendChild(acts);
+        }
+
+        memberListBox.appendChild(row);
+      }
+    } catch (e) {
+      console.warn('成员列表刷新失败:', e);
+    }
+  }
+
+  async function unregisterMember(name) {
+    if (!isAdmin) return;
+    if (!confirm(`确定注销「${name}」吗？注销后他从成员名单里消失（他下次来还会重新登记）。`)) return;
+    try {
+      // 从成员表移除
+      const raw = await upGet(MEMBERS_KEY);
+      let members = {};
+      if (raw) {
+        try { members = JSON.parse(raw); } catch (e) {}
+        if (members && typeof members.value === 'string') {
+          try { members = JSON.parse(members.value); } catch (e) {}
+        }
+      }
+      if (members[name]) {
+        delete members[name];
+        await upSetPlain(MEMBERS_KEY, JSON.stringify(members));
+      }
+      // 删除在线心跳键
+      await upDel(PRESENCE_PREFIX + encodeURIComponent(name));
+      await refreshMembers();
+    } catch (err) {
+      alert('注销失败：' + err.message);
+    }
+  }
+
+  // ============================================================
+  // SECTION: games
+  // ============================================================
+  async function refreshGames() {
+    try {
+      const reg = await regList();
+      const entries = Object.values(reg).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      gameListBox.innerHTML = '';
+      if (entries.length === 0) {
+        gameListBox.innerHTML = '<div class="empty-tip">现在没有对局</div>';
+        return;
+      }
+      for (const g of entries) {
+        const row = document.createElement('div');
+        row.className = 'row';
+
+        const left = document.createElement('div');
+        const main = document.createElement('div');
+        main.className = 'row-main';
+        main.textContent = `${g.p0 || '(空)'} vs ${g.p1 || '(空)'}${g.bot ? ' 🤖' : ''}`;
+        const meta = document.createElement('div');
+        meta.className = 'row-meta';
+        let statusText = '等待加入';
+        if (g.status === 'playing') {
+          statusText = g.phase === 'roundEnd' ? '局间结算中' : '对局中';
+        } else if (g.status === 'finished') {
+          statusText = '比赛已结束';
+        }
+        meta.textContent = `房间 ${g.code} · ${statusText} · 比分 ${g.scores[0]}:${g.scores[1]} · 最近活跃 ${fmtTime(g.updatedAt)}`;
+        left.appendChild(main);
+        left.appendChild(meta);
+        row.appendChild(left);
+
+        const acts = document.createElement('div');
+        acts.className = 'row-actions';
+        const watchBtn = document.createElement('button');
+        watchBtn.className = 'act-btn';
+        watchBtn.textContent = '观战';
+        watchBtn.onclick = () => { location.href = `/play/?watch=${g.code}`; };
+        acts.appendChild(watchBtn);
+        if (isAdmin) {
+          const delBtn = document.createElement('button');
+          delBtn.className = 'act-btn danger';
+          delBtn.textContent = '删除对局';
+          delBtn.onclick = () => deleteGame(g.code);
+          acts.appendChild(delBtn);
+        }
+        row.appendChild(acts);
+
+        gameListBox.appendChild(row);
+      }
+    } catch (e) {
+      console.warn('对局列表刷新失败:', e);
+    }
+  }
+
+  async function deleteGame(code) {
+    if (!isAdmin) return;
+    if (!confirm(`确定删除对局 ${code} 吗？正在打的两个人会直接掉线。`)) return;
+    try {
+      await upDel(ROOM_PREFIX + code);
+      const reg = await regList();
+      if (reg[code]) {
+        delete reg[code];
+        await regPut(reg);
+      }
+      await refreshGames();
+    } catch (err) {
+      alert('删除失败：' + err.message);
+    }
+  }
+
+  // ============================================================
+  // SECTION: admin-tools
+  // ============================================================
+  clearForumBtn.addEventListener('click', async () => {
+    if (!isAdmin) return;
+    if (!confirm('确定清空论坛所有留言吗？此操作不可恢复！')) return;
+    try {
+      await upSetPlain(MSG_KEY, JSON.stringify([]));
+      alert('论坛留言已清空');
+    } catch (err) {
+      alert('清空失败：' + err.message);
+    }
+  });
+
+  // ============================================================
+  // SECTION: init
+  // ============================================================
+  applyAdminUI();
+  refreshMembers();
+  refreshGames();
+  setInterval(() => {
+    refreshMembers();
+    refreshGames();
+  }, REFRESH_MS);
+</script>
+</body>
+</html>
