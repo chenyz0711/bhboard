@@ -307,7 +307,9 @@
   const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
   const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
   const ROOM_PREFIX = 'bh_room:';
-  const ROOM_TTL = 24 * 3600;      // 房间 24 小时过期
+  const ROOM_TTL = 7 * 24 * 3600;      // 存储层兜底：7 天后自动消失
+  const ROOM_MAX_WAIT = 3600 * 1000;   // 等待中超过 1 小时自动清除
+  const ROOM_MAX_AGE = 7 * 24 * 3600 * 1000; // 房间存在超过 7 天自动清除
   const POLL_MS = 800;             // 对局轮询间隔
   const WAIT_POLL_MS = 1000;       // 等待加入轮询间隔
 
@@ -403,14 +405,34 @@
   async function getRoom(code) {
     const raw = await upGet(ROOM_PREFIX + code);
     if (!raw) return null;
+    let obj = null;
     try {
-      let obj = JSON.parse(raw);
+      obj = JSON.parse(raw);
       // 兼容旧版错误格式（{value, EX} 包裹）的历史房间数据
       if (obj && typeof obj.value === 'string' && obj.status === undefined) {
         try { obj = JSON.parse(obj.value); } catch (e) {}
       }
-      return obj && typeof obj === 'object' ? obj : null;
     } catch (e) { return null; }
+    if (!obj || typeof obj !== 'object') return null;
+
+    // 自动清理：等待超过 1 小时，或房间存在超过 7 天
+    const now = Date.now();
+    const bornAt = obj.createdAt || obj.updatedAt || 0;
+    const waitingTooLong = obj.status === 'waiting' && bornAt > 0 && (now - bornAt) > ROOM_MAX_WAIT;
+    const tooOld = bornAt > 0 && (now - bornAt) > ROOM_MAX_AGE;
+    if (waitingTooLong || tooOld) {
+      try { await upDel(ROOM_PREFIX + code); } catch (e) {}
+      return null;
+    }
+    return obj;
+  }
+
+  async function upDel(key) {
+    const res = await fetch(`${UPSTASH_URL}/del/${key}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
+    });
+    return await res.json();
   }
 
   async function putRoom(code, st) {
@@ -623,7 +645,7 @@
   async function mutate(fn) {
     try {
       const st = await getRoom(roomCode);
-      if (!st) { alert('房间没了（可能已过期）'); backToLobby(); return; }
+      if (!st) { alert('房间已被清除或丢失（等待超过1小时或存在超过7天的房间会自动清除），请回大厅重新开一局'); backToLobby(); return; }
       const ok = fn(st);
       if (ok === false) return;
       st.seq++;
@@ -835,7 +857,7 @@
       const st = await getRoom(roomCode);
       if (!st) {
         stopPolling();
-        alert('房间没了（可能已过期）');
+        alert('房间已被清除或丢失（等待超过1小时或存在超过7天的房间会自动清除），请回大厅重新开一局');
         backToLobby();
         return;
       }
