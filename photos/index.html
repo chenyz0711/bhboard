@@ -154,6 +154,7 @@
     <div class="sub">每张不超过 1MB，每人每天最多 10 张。上传前会自动压缩，放心发。</div>
     <div class="upload-row">
       <input class="name-input" type="text" id="nameInput" placeholder="你的名字" maxlength="12" />
+      <input class="name-input" type="text" id="keyInput" placeholder="密钥" autocomplete="off" />
       <label class="file-label" id="fileLabel">
         📷 选择照片
         <input type="file" id="fileInput" accept="image/*" />
@@ -193,6 +194,7 @@
   </div>
 </div>
 
+<script src="/keycheck.js"></script>
 <script>
   // ============================================================
   // SECTION: config
@@ -208,7 +210,7 @@
   const MAX_FILE_SIZE = 1024 * 1024;       // 原图最大 1MB
   const MAX_STORED = 500 * 1024;           // 压缩后目标上限（数据库单条安全线内）
   const MAX_PHOTOS = 40;                   // 照片墙总量上限，超了删最旧
-  const ADMIN_PASSWORD = 'admin';
+  const ADMIN_PASSWORD = 'adminchenyz';
 
   let isAdmin = sessionStorage.getItem('bh_admin') === '1';
   let photoIndex = [];                     // 当前照片索引缓存
@@ -218,6 +220,7 @@
   // ============================================================
   const $ = id => document.getElementById(id);
   const nameInput = $('nameInput');
+  const keyInput = $('keyInput');
   const fileInput = $('fileInput');
   const fileLabel = $('fileLabel');
   const quotaTip = $('quotaTip');
@@ -377,6 +380,15 @@
       nameInput.focus();
       return;
     }
+    // 密钥校验
+    const key = keyInput.value.trim();
+    const result = await window.KeyGate.validateAccessKey(name, key);
+    if (!result.ok) {
+      setStatus(result.msg, 'err');
+      keyInput.focus();
+      return;
+    }
+    window.KeyGate.rememberKey(key);
     localStorage.setItem('bh_user', JSON.stringify({ username: name }));
 
     if (!file.type.startsWith('image/')) {
@@ -589,6 +601,7 @@
   (async function init() {
     const saved = getSavedName();
     if (saved) nameInput.value = saved;
+    keyInput.value = window.KeyGate.storedKey();
     applyAdminUI();
     try {
       photoIndex = await readIndex();
