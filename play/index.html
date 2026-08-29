@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BHBoard · 恶魔轮盘赌</title>
+  <title>BHBoard · 兄弟轮盘赌</title>
   <style>
     /* SECTION: base */
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -67,6 +67,20 @@
     /* SECTION: lobby */
     .join-row { display: flex; gap: 8px; }
     .join-row input { flex: 1; text-transform: uppercase; letter-spacing: 3px; font-weight: 700; }
+    .match-row {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      padding: 10px 12px; border: 1px solid #3c2f3c; border-radius: 10px;
+      margin-bottom: 8px; background: #1b141b; flex-wrap: wrap;
+    }
+    .match-main { font-size: 14px; color: #f5ede2; font-weight: 600; }
+    .match-meta { font-size: 12px; color: #8a7a6a; margin-top: 2px; }
+    .match-btn {
+      padding: 7px 14px; border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      background: #d8b36a; color: #241a10;
+    }
+    .match-btn.watch { background: #3c2f3c; color: #e8e0d8; }
+    .match-empty { font-size: 13px; color: #6f6156; text-align: center; padding: 14px 0; }
     .rules {
       font-size: 13px; color: #c9bba8; line-height: 1.9;
       background: #1b141b; border: 1px solid #3c2f3c; border-radius: 10px;
@@ -177,7 +191,7 @@
 <body>
 <div class="container">
   <div class="header">
-    <h1>🔫 恶魔轮盘赌 <span># 兄弟对决</span></h1>
+    <h1>🔫 兄弟轮盘赌 <span># 兄弟对决</span></h1>
     <div class="header-right">
       <span class="room-tag" id="roomTag"></span>
       <a class="link-btn" href="/">← 回主页</a>
@@ -201,9 +215,15 @@
           <input class="txt" type="text" id="joinCodeInput" placeholder="房间号" maxlength="4" />
           <button class="btn btn-dark" id="joinBtn">加入</button>
         </div>
+        <button class="btn btn-dark btn-block" id="botBtn">🤖 没人陪？和人机来一局</button>
       </div>
       <div class="err" id="lobbyErr"></div>
       <div class="hint" id="resumeHint"></div>
+    </div>
+    <div class="card">
+      <h2>⚔️ 当前对局</h2>
+      <div id="matchListBox"><div class="match-empty">加载中…</div></div>
+      <div class="hint">人未满的对局可以加入对打，人满了或已结束可以进去观战</div>
     </div>
     <div class="card">
       <h2>📖 游戏规则</h2>
@@ -223,7 +243,7 @@
       <h2>把房间号发给兄弟</h2>
       <div class="code-big" id="waitCode"></div>
       <div class="waiting-tip">等待兄弟加入<span class="dots"></span></div>
-      <div class="hint" style="text-align:center;">他在主页进「恶魔轮盘赌」，输入这个房间号就能加入</div>
+      <div class="hint" style="text-align:center;">他在主页进「兄弟轮盘赌」，输入这个房间号就能加入</div>
       <div class="form-gap" style="margin-top:14px;">
         <button class="btn btn-dark btn-block" id="cancelWaitBtn">取消</button>
       </div>
@@ -288,7 +308,7 @@
     </div>
   </div>
 
-  <div class="footer">BHBoard · 恶魔轮盘赌 · 三局两胜</div>
+  <div class="footer">BHBoard · 兄弟轮盘赌 · 三局两胜 · made by chenyz</div>
 </div>
 
 <!-- SECTION: overlay -->
@@ -312,6 +332,11 @@
   const ROOM_MAX_AGE = 7 * 24 * 3600 * 1000; // 房间存在超过 7 天自动清除
   const POLL_MS = 800;             // 对局轮询间隔
   const WAIT_POLL_MS = 1000;       // 等待加入轮询间隔
+  const REGISTRY_KEY = 'bh_registry';   // 对局总列表（开局页/管理页共用）
+  const LIST_POLL_MS = 2500;       // 大厅对局列表刷新间隔
+  const PRESENCE_PREFIX = 'bh_member:'; // 在线心跳键前缀
+  const PRESENCE_TTL = 90;         // 心跳 90 秒不刷新视为离线
+  const MEMBERS_KEY = 'bh_members';     // 持久成员表（谁来过就登记，管理页列名单用）
 
   const ITEMS = {
     mag:  { icon: '🔍', name: '放大镜' },
@@ -440,6 +465,79 @@
   }
 
   // ============================================================
+  // SECTION: registry（对局总列表：开局页 / 兄弟管理页共用）
+  // ============================================================
+  async function regList() {
+    const raw = await upGet(REGISTRY_KEY);
+    if (!raw) return {};
+    try {
+      const obj = JSON.parse(raw);
+      return (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
+    } catch (e) { return {}; }
+  }
+
+  async function regPut(reg) {
+    await upSet(REGISTRY_KEY, JSON.stringify(reg));
+  }
+
+  // 房间每次变更后同步摘要到总列表（人机局不登记）
+  async function refreshGameRecord(st) {
+    try {
+      if (!st || !st.code) return;
+      const reg = await regList();
+      reg[st.code] = {
+        code: st.code,
+        status: st.status || 'waiting',
+        phase: st.phase || 'action',
+        p0: (st.players[0] && st.players[0].name) || '',
+        p1: (st.players[1] && st.players[1].name) || '',
+        bot: st.bot === true,
+        scores: st.scores || [0, 0],
+        updatedAt: Date.now()
+      };
+      await regPut(reg);
+    } catch (e) {
+      console.warn('列表同步失败:', e);
+    }
+  }
+
+  async function removeGameRecord(code) {
+    try {
+      const reg = await regList();
+      if (reg[code]) {
+        delete reg[code];
+        await regPut(reg);
+      }
+    } catch (e) {
+      console.warn('列表清理失败:', e);
+    }
+  }
+
+  // 在线心跳：页面定期调用，管理页据此判断在线状态；
+  // 同时把名字登记进持久成员表（离线也能在管理页看到）
+  async function beatPresence(name) {
+    if (!name) return;
+    try {
+      await fetch(
+        `${UPSTASH_URL}/set/${PRESENCE_PREFIX}${encodeURIComponent(name)}/${Date.now()}/ex/${PRESENCE_TTL}`,
+        { method: 'POST', headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` } }
+      );
+    } catch (e) {}
+    try {
+      const raw = await upGet(MEMBERS_KEY);
+      let members = {};
+      if (raw) {
+        try { members = JSON.parse(raw); } catch (e) {}
+        if (!members || typeof members !== 'object' || Array.isArray(members)) members = {};
+      }
+      if (!members[name]) {
+        members[name] = Date.now();   // 首次出现时间
+        await upSet(MEMBERS_KEY, JSON.stringify(members));
+      }
+    } catch (e) {}
+  }
+
+  // ============================================================
   // SECTION: session-state
   // ============================================================
   let roomCode = null;
@@ -447,7 +545,14 @@
   let myName = '';
   let lastSeq = -1;
   let pollTimer = null;
-  let mode = 'idle';                 // idle | waiting | playing
+  let mode = 'idle';                 // idle | waiting | playing | spectating | bot
+  let isBotMode = false;
+  let isSpectator = false;
+  let spectatingCode = null;
+  let joinCodeOverride = null;
+  let botTimer = null;
+  let isBotTurn = false;
+  let botState = null;               // 人机模式的本地对局数据
   let myReveal = null;               // { epoch, live } 放大镜看到的结果
   let overlayFor = null;             // 当前 overlay 对应的阶段
 
@@ -502,7 +607,6 @@
     st.roundResult = null;
     st.cuffed = [false, false];
     st.sawArmed = false;
-    st.usedItemThisTurn = false;
     st.players.forEach(p => { p.hp = 4; p.items = []; });
     pushLog(st, `—— 第 ${roundNum} 局开始 ——`, 'lg-sys');
     dealItemsBoth(st);
@@ -519,18 +623,17 @@
         { name: '', hp: 4, items: [] }
       ],
       scores: [0, 0], round: 0, turn: 0,
-      cuffed: [false, false], sawArmed: false, usedItemThisTurn: false,
+      cuffed: [false, false], sawArmed: false,
       shells: { cur: encShell('b'), live: 0, blank: 0 }, epoch: 0,
       phase: 'action', roundResult: null, matchWinner: null,
       log: []
     };
   }
 
-  // 使用道具（返回 false 表示操作无效）
+  // 使用道具（返回 false 表示操作无效）；一回合可以使用多个道具，用完直接开枪
   function applyUseItem(st, seat, idx) {
     if (st.status !== 'playing' || st.phase !== 'action') return false;
     if (st.turn !== seat) { alert('还没轮到你'); return false; }
-    if (st.usedItemThisTurn) { alert('这回合已经用过道具了'); return false; }
     const me = st.players[seat];
     if (idx < 0 || idx >= me.items.length) return false;
     const item = me.items[idx];
@@ -561,7 +664,6 @@
     }
 
     me.items.splice(idx, 1);
-    st.usedItemThisTurn = true;
     return true;
   }
 
@@ -588,7 +690,6 @@
     }
 
     st.sawArmed = false;
-    st.usedItemThisTurn = false;
 
     // 生命归零 → 本局结束
     if (st.players[targetSeat].hp <= 0) {
@@ -643,20 +744,143 @@
   // SECTION: mutate
   // ============================================================
   async function mutate(fn) {
+    if (isSpectator) return;   // 观战只能看，不能动手
     try {
-      const st = await getRoom(roomCode);
-      if (!st) { alert('房间已被清除或丢失（等待超过1小时或存在超过7天的房间会自动清除），请回大厅重新开一局'); backToLobby(); return; }
+      let st;
+      if (isBotMode) {
+        st = botState;
+        if (!st) { backToLobby(); return; }
+      } else {
+        st = await getRoom(roomCode);
+        if (!st) { alert('房间已被清除或丢失（等待超过1小时或存在超过7天的房间会自动清除），请回大厅重新开一局'); backToLobby(); return; }
+      }
       const ok = fn(st);
       if (ok === false) return;
       st.seq++;
       st.updatedAt = Date.now();
-      await putRoom(roomCode, st);
+      if (!isBotMode) {
+        await putRoom(roomCode, st);
+        await refreshGameRecord(st);
+      } else {
+        // 人机局也存到服务器，让兄弟能在列表里看到、进来观战
+        await putRoom(roomCode, st);
+        await refreshGameRecord(st);
+      }
       lastSeq = st.seq;
       render(st);
+      if (isBotMode) maybeScheduleBot(st);
     } catch (err) {
       console.error(err);
       alert('操作失败：' + err.message);
     }
+  }
+
+  // ============================================================
+  // SECTION: bot-mode（人机对战）
+  // ============================================================
+  const BOT_NAMES = ['老机器', '铁憨憨', '阿机', '赛博兄弟', '机器人老王', '电子狗蛋'];
+
+  function startBotGame() {
+    const name = getName();
+    if (!name) return;
+    const st = newRoomState(name);
+    // 人机局也用真实房间号并标记机器人，这样兄弟能在列表里看到并进来看
+    let code, existing;
+    const genAsync = async () => {
+      do {
+        code = genCode();
+        existing = await getRoom(code);
+      } while (existing);
+      st.code = code;
+      st.bot = true;
+      st.players[1].name = pick(BOT_NAMES);
+      st.status = 'playing';
+      pushLog(st, `🤖 ${name} 开了一局人机对战（对手：${st.players[1].name}）`, 'lg-sys');
+      initRound(st, 1, Math.floor(Math.random() * 2));
+      st.seq++;
+      st.updatedAt = Date.now();
+
+      roomCode = code;
+      mySeat = 0;
+      myName = name;
+      mode = 'bot';
+      isBotMode = true;
+      botState = st;
+      lastSeq = st.seq;
+      clearLocalRoom();   // 人机局不保存，刷新即结束
+      // 人机局也登记到服务器，兄弟可以在列表里看到并进来看
+      putRoom(st.code, st).then(() => refreshGameRecord(st)).catch(() => {});
+      showView('game');
+      render(st);
+      maybeScheduleBot(st);
+    };
+    genAsync().catch(err => {
+      console.error(err);
+      lobbyError('开局失败：' + err.message);
+    });
+  }
+
+  function clearBotMode() {
+    isBotMode = false;
+    isBotTurn = false;
+    if (botTimer) { clearTimeout(botTimer); botTimer = null; }
+    botState = null;
+  }
+
+  function maybeScheduleBot(st) {
+    if (!isBotMode) return;
+    if (st.status !== 'playing' || st.phase !== 'action') return;
+    if (st.turn !== 1 || isBotTurn) return;
+    isBotTurn = true;
+    botTimer = setTimeout(() => {
+      isBotTurn = false;
+      botTakeTurn();
+    }, 1100 + Math.random() * 900);
+  }
+
+  function botTakeTurn() {
+    if (!isBotMode) return;
+    const st = botState;
+    if (!st || st.status !== 'playing' || st.phase !== 'action' || st.turn !== 1) return;
+
+    const acted = botChooseItem(st) || botShoot(st);
+    if (!acted) return;
+    st.seq++;
+    st.updatedAt = Date.now();
+    render(st);
+    maybeScheduleBot(st);
+  }
+
+  // 人机道具决策（有点小聪明，一回合可用多个）
+  function botChooseItem(st) {
+    const me = st.players[1];
+    if (me.items.length === 0) return false;
+    const items = me.items;
+    const curLive = decShell(st.shells.cur) === 'l';
+    const findIdx = id => items.indexOf(id);
+
+    // 血不多先抽烟
+    const cigIdx = findIdx('cig');
+    if (cigIdx >= 0 && me.hp <= 2) return applyUseItem(st, 1, cigIdx);
+    // 手铐：一半概率用
+    const cuffIdx = findIdx('cuff');
+    if (cuffIdx >= 0 && Math.random() < 0.5) return applyUseItem(st, 1, cuffIdx);
+    // 当前是实弹：啤酒退掉
+    const beerIdx = findIdx('beer');
+    if (beerIdx >= 0 && curLive) return applyUseItem(st, 1, beerIdx);
+    // 当前是实弹：手锯加伤
+    const sawIdx = findIdx('saw');
+    if (sawIdx >= 0 && curLive) return applyUseItem(st, 1, sawIdx);
+    // 当前是空包：放大镜确认一下，然后射自己白赚一枪
+    const magIdx = findIdx('mag');
+    if (magIdx >= 0 && !curLive && Math.random() < 0.6) return applyUseItem(st, 1, magIdx);
+    return false;
+  }
+
+  // 人机开枪：实弹打你，空包打自己（白赚回合）
+  function botShoot(st) {
+    const curLive = decShell(st.shells.cur) === 'l';
+    return applyShoot(st, 1, curLive ? 'opponent' : 'self');
   }
 
   // ============================================================
@@ -720,12 +944,11 @@
     };
     if (st.cuffed[seat]) add('🔗 被铐住', 'warn');
     if (seat === st.turn && st.sawArmed) add('🔪 伤害 +1', 'gold');
-    if (seat === st.turn && st.usedItemThisTurn) add('本回合道具已用');
   }
 
   function render(st) {
     if (!st) return;
-    roomTag.textContent = `房间 ${st.code}`;
+    roomTag.textContent = isBotMode ? '🤖 人机局' : (isSpectator ? `👀 观战 · 房间 ${st.code}` : `房间 ${st.code}`);
     const oppSeat = 1 - mySeat;
 
     // 记分板
@@ -744,8 +967,8 @@
     $('meHearts').textContent = hearts(st.players[mySeat].hp);
     $('oppHearts').textContent = hearts(st.players[oppSeat].hp);
 
-    const myTurn = st.status === 'playing' && st.phase === 'action' && st.turn === mySeat;
-    const canUseItem = myTurn && !st.usedItemThisTurn;
+    const myTurn = st.status === 'playing' && st.phase === 'action' && st.turn === mySeat && !isSpectator;
+    const canUseItem = myTurn && !isSpectator;
     renderItems(st, mySeat, $('meItems'), canUseItem);
     renderItems(st, oppSeat, $('oppItems'), false);
     renderChips(st, mySeat, $('meChips'));
@@ -776,9 +999,12 @@
 
     // 操作区
     const tip = $('turnTip');
-    if (st.status === 'playing' && st.phase === 'action') {
+    if (isSpectator) {
+      tip.textContent = `👀 观战中：${st.players[0].name} 对战 ${st.players[1].name}${st.bot ? '（人机）' : ''}`;
+      tip.className = 'turn-tip';
+    } else if (st.status === 'playing' && st.phase === 'action') {
       if (myTurn) {
-        tip.textContent = st.usedItemThisTurn ? '道具已用，现在开枪（或用过的话直接开枪）' : '轮到你了：可以先用 1 个道具，再开枪';
+        tip.textContent = '轮到你了：想用几个道具就用几个，用完开枪';
         tip.className = 'turn-tip mine';
       } else {
         tip.textContent = `等 ${st.players[oppSeat].name} 行动…`;
@@ -790,15 +1016,23 @@
     $('shootOppBtn').disabled = !myTurn;
     $('shootSelfBtn').disabled = !myTurn;
 
-    // 对面离线提示
+    // 无动静提示（人机模式不需要）
     const stale = Date.now() - (st.updatedAt || 0);
-    $('staleTip').textContent = stale > 90000 ? '⚠️ 对面超过 1 分半没动静了，可能掉线了' : '';
+    $('staleTip').textContent = (!isBotMode && stale > 90000)
+      ? (isSpectator ? '⏳ 场上有一阵没动静了' : '⚠️ 对面超过 1 分半没动静了，可能掉线了')
+      : '';
 
     renderLog(st);
     renderOverlay(st);
   }
 
   function renderOverlay(st) {
+    // 观战者不弹结算窗（没有操作权，看记分板和日志即可）
+    if (isSpectator) {
+      overlay.classList.add('hidden');
+      overlayFor = null;
+      return;
+    }
     let want = null;
     if (st.status === 'playing' && st.phase === 'roundEnd') want = 'roundEnd';
     if (st.phase === 'matchEnd') want = 'matchEnd';
@@ -875,9 +1109,11 @@
         lastSeq = st.seq;
         render(st);
       } else {
-        // 仅刷新离线提示
+        // 仅刷新无动静提示
         const stale = Date.now() - (st.updatedAt || 0);
-        $('staleTip').textContent = stale > 90000 ? '⚠️ 对面超过 1 分半没动静了，可能掉线了' : '';
+        $('staleTip').textContent = (stale > 90000)
+          ? (isSpectator ? '⏳ 场上有一阵没动静了' : '⚠️ 对面超过 1 分半没动静了，可能掉线了')
+          : '';
       }
     } catch (e) {
       console.warn('轮询失败:', e);
@@ -918,6 +1154,7 @@
       st.code = code;
       pushLog(st, `${name} 创建了房间`, 'lg-sys');
       await putRoom(code, st);
+      await refreshGameRecord(st);
 
       roomCode = code; mySeat = 0; myName = name; mode = 'waiting';
       saveLocalRoom(code, 0);
@@ -936,7 +1173,9 @@
   async function joinRoom() {
     const name = getName();
     if (!name) return;
-    const code = joinCodeInput.value.trim().toUpperCase();
+    // 从对局列表点加入时，房间号以列表为准
+    const code = (joinCodeOverride || joinCodeInput.value.trim()).toUpperCase();
+    joinCodeOverride = null;
     if (code.length !== 4) { lobbyError('房间号是 4 位'); return; }
 
     // 本机创建/玩过这个房间 → 走恢复流程（房主回等待页，玩家回对局），
@@ -953,12 +1192,9 @@
     try {
       const st = await getRoom(code);
       if (!st) { lobbyError('找不到这个房间，检查一下房间号'); return; }
-      if (st.status === 'playing') {
-        lobbyError(`这个房间正在对局中（${st.players[0].name} 对战 ${st.players[1].name}），换个房间号吧`);
-        return;
-      }
-      if (st.status === 'finished') {
-        lobbyError('这个房间的比赛已经结束了，换个房间吧');
+      if (st.status === 'playing' || st.status === 'finished') {
+        // 人满了（或已结束）→ 进去观战
+        startSpectating(st);
         return;
       }
       if (st.status !== 'waiting') { lobbyError('这个房间状态异常，换个房间吧'); return; }
@@ -970,6 +1206,7 @@
       st.seq++;
       st.updatedAt = Date.now();
       await putRoom(code, st);
+      await refreshGameRecord(st);
 
       roomCode = code; mySeat = 1; myName = name; mode = 'playing';
       lastSeq = st.seq;
@@ -983,6 +1220,23 @@
     } finally {
       joinBtn.disabled = false;
     }
+  }
+
+  // 观战：人满或已结束的对局进去看
+  function startSpectating(st) {
+    stopPolling();
+    clearBotMode();
+    roomCode = st.code;
+    mySeat = 0;
+    myName = getSavedUser() || '观众';
+    mode = 'spectating';
+    isSpectator = true;
+    spectatingCode = st.code;
+    lastSeq = st.seq;
+    saveUser(myName);
+    showView('game');
+    render(st);
+    startPolling(POLL_MS);
   }
 
   async function resumeRoom() {
@@ -1040,12 +1294,16 @@
 
   function backToLobby() {
     stopPolling();
+    clearBotMode();
     clearLocalRoom();
     roomCode = null; mode = 'idle'; myReveal = null; overlayFor = null;
+    isSpectator = false; spectatingCode = null; joinCodeOverride = null;
     overlay.classList.add('hidden');
     roomTag.textContent = '';
     showView('lobby');
     refreshResumeHint();
+    refreshMatchList();
+    startLobbyPolling();
   }
 
   function refreshResumeHint() {
@@ -1054,17 +1312,83 @@
   }
 
   // ============================================================
+  // SECTION: match-list（大厅对局列表）
+  // ============================================================
+  let lobbyListTimer = null;
+
+  function startLobbyPolling() {
+    if (lobbyListTimer) { clearInterval(lobbyListTimer); lobbyListTimer = null; }
+    lobbyListTimer = setInterval(() => {
+      if (mode === 'idle') refreshMatchList();
+    }, LIST_POLL_MS);
+  }
+
+  async function refreshMatchList() {
+    if (mode !== 'idle') return;
+    try {
+      const reg = await regList();
+      const box = $('matchListBox');
+      box.innerHTML = '';
+      const entries = Object.values(reg).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      if (entries.length === 0) {
+        box.innerHTML = '<div class="match-empty">现在没有对局，自己开一个吧</div>';
+        return;
+      }
+      for (const g of entries) {
+        const row = document.createElement('div');
+        row.className = 'match-row';
+
+        const left = document.createElement('div');
+        const main = document.createElement('div');
+        main.className = 'match-main';
+        main.textContent = `${g.p0 || '(空)'} vs ${g.p1 || '(空)'}${g.bot ? ' 🤖' : ''}`;
+        const meta = document.createElement('div');
+        meta.className = 'match-meta';
+        let statusText = '等待加入';
+        if (g.status === 'playing') {
+          statusText = g.phase === 'roundEnd' ? '局间结算中' : '对局中';
+        } else if (g.status === 'finished') {
+          statusText = '比赛已结束';
+        }
+        meta.textContent = `房间 ${g.code} · ${statusText} · 比分 ${g.scores[0]}:${g.scores[1]}${g.bot ? ' · 人机局' : ''}`;
+        left.appendChild(main);
+        left.appendChild(meta);
+
+        const canJoin = g.status === 'waiting' && !g.p1;
+        const btn = document.createElement('button');
+        btn.className = 'match-btn' + (canJoin ? '' : ' watch');
+        btn.textContent = canJoin ? '加入' : '观战';
+        btn.onclick = () => {
+          joinCodeOverride = g.code;
+          joinRoom();   // 加入函数会根据房间状态自动转观战
+        };
+
+        row.appendChild(left);
+        row.appendChild(btn);
+        box.appendChild(row);
+      }
+    } catch (e) {
+      console.warn('对局列表刷新失败:', e);
+    }
+  }
+
+  // ============================================================
   // SECTION: events
   // ============================================================
   createBtn.addEventListener('click', createRoom);
   joinBtn.addEventListener('click', joinRoom);
+  $('botBtn').addEventListener('click', startBotGame);
   joinCodeInput.addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
   joinCodeInput.addEventListener('input', () => {
     joinCodeInput.value = joinCodeInput.value.toUpperCase();
   });
   cancelWaitBtn.addEventListener('click', backToLobby);
   leaveBtn.addEventListener('click', () => {
-    if (confirm('退出房间？（对局还在，你可以随时用房间号回来）')) backToLobby();
+    if (isSpectator) { backToLobby(); return; }   // 观战随时走，不用确认
+    const msg = isBotMode
+      ? '退出人机对战？这一局会直接结束'
+      : '退出房间？（对局还在，你可以随时用房间号回来）';
+    if (confirm(msg)) backToLobby();
   });
 
   $('shootOppBtn').addEventListener('click', () => mutate(s => applyShoot(s, mySeat, 'opponent')));
@@ -1078,6 +1402,30 @@
     if (savedName) nameInput.value = savedName;
     refreshResumeHint();
     showView('lobby');
+    refreshMatchList();
+    startLobbyPolling();
+    // 在线心跳：让管理页知道谁在线
+    beatPresence(getSavedUser());
+    setInterval(() => beatPresence(getSavedUser()), 30000);
+
+    // 从管理页带 ?watch=房间号 进来 → 直接观战
+    const watchCode = new URLSearchParams(location.search).get('watch');
+    if (watchCode && watchCode.length === 4) {
+      const code = watchCode.toUpperCase();
+      history.replaceState(null, '', location.pathname);   // 清掉参数，刷新不会重复触发
+      (async () => {
+        try {
+          const st = await getRoom(code);
+          if (!st) { lobbyError('这个对局已经没了'); return; }
+          startSpectating(st);
+        } catch (e) {
+          console.error(e);
+          lobbyError('观战失败：' + e.message);
+        }
+      })();
+      return;
+    }
+
     // 有未打完的局，直接恢复
     if (getLocalRoom()) resumeRoom();
   })();
