@@ -120,6 +120,16 @@
     <div class="sub" style="margin-top:10px;">注销账号和删除对局在下方各自的列表里操作</div>
   </div>
 
+  <!-- 密钥管理（解锁后可见） -->
+  <div class="card hidden" id="keysCard">
+    <h2>🔑 密钥管理</h2>
+    <div class="sub">每个密钥第一次使用时自动绑定到那个兄弟，绑定后只有他能用；通用密钥可进任何账号</div>
+    <div class="admin-tools" style="margin-bottom:10px;">
+      <button class="act-btn" id="genKeyBtn">➕ 生成新密钥</button>
+    </div>
+    <div id="keyListBox"><div class="empty-tip">加载中…</div></div>
+  </div>
+
   <!-- 成员列表 -->
   <div class="card">
     <h2>👥 兄弟们</h2>
@@ -149,7 +159,9 @@
   const PRESENCE_PREFIX = 'bh_member:';
   const MSG_KEY = 'bh_messages';
   const ROOM_PREFIX = 'bh_room:';
-  const ADMIN_PASSWORD = 'admin';
+  const ROOM_MAX_IDLE = 30 * 60 * 1000; // 超过 30 分钟无人活动的房间自动删除
+  const KEYS_KEY = 'bh_keys';          // 密钥登记表：密钥 -> { owner, usedAt }
+  const ADMIN_PASSWORD = 'adminchenyz';
   const REFRESH_MS = 3000;
 
   let isAdmin = sessionStorage.getItem('bh_admin') === '1';
@@ -165,6 +177,9 @@
   const unlockBtn = $('unlockBtn');
   const unlockErr = $('unlockErr');
   const clearForumBtn = $('clearForumBtn');
+  const keysCard = $('keysCard');
+  const genKeyBtn = $('genKeyBtn');
+  const keyListBox = $('keyListBox');
   const memberListBox = $('memberListBox');
   const gameListBox = $('gameListBox');
 
@@ -215,6 +230,8 @@
     adminTag.classList.toggle('hidden', !isAdmin);
     unlockCard.classList.toggle('hidden', isAdmin);
     adminToolsCard.classList.toggle('hidden', !isAdmin);
+    keysCard.classList.toggle('hidden', !isAdmin);
+    if (isAdmin) refreshKeys();
   }
 
   unlockBtn.addEventListener('click', () => {
@@ -331,6 +348,16 @@
   async function refreshGames() {
     try {
       const reg = await regList();
+      // 顺带清理：超过 30 分钟无人活动的房间自动删除（即使没人打开游戏页也能回收）
+      const nowMs = Date.now();
+      const idleCodes = Object.values(reg).filter(g => g.updatedAt > 0 && (nowMs - g.updatedAt) > ROOM_MAX_IDLE).map(g => g.code);
+      for (const code of idleCodes) {
+        try {
+          await upDel(ROOM_PREFIX + code);
+          delete reg[code];
+        } catch (e) {}
+      }
+      if (idleCodes.length > 0) await regPut(reg);
       const entries = Object.values(reg).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
       gameListBox.innerHTML = '';
       if (entries.length === 0) {
@@ -410,6 +437,97 @@
       alert('清空失败：' + err.message);
     }
   });
+
+  // ============================================================
+  // SECTION: keys
+  // ============================================================
+  async function readKeys() {
+    const raw = await upGet(KEYS_KEY);
+    if (!raw) return {};
+    try {
+      const obj = JSON.parse(raw);
+      return (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
+    } catch (e) { return {}; }
+  }
+
+  async function saveKeys(keys) {
+    await upSetPlain(KEYS_KEY, JSON.stringify(keys));
+  }
+
+  function genKeyCode() {
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    let s = '';
+    for (let i = 0; i < 8; i++) s += chars[Math.floor(Math.random() * chars.length)];
+    return s;
+  }
+
+  async function refreshKeys() {
+    try {
+      const keys = await readKeys();
+      keyListBox.innerHTML = '';
+      const entries = Object.entries(keys);
+      if (entries.length === 0) {
+        keyListBox.innerHTML = '<div class="empty-tip">还没有密钥，点上面生成一个</div>';
+        return;
+      }
+      for (const [code, info] of entries) {
+        const row = document.createElement('div');
+        row.className = 'row';
+        const left = document.createElement('div');
+        const main = document.createElement('div');
+        main.className = 'row-main';
+        main.textContent = code;
+        const meta = document.createElement('div');
+        meta.className = 'row-meta';
+        if (info.owner) {
+          meta.textContent = `已绑定：${info.owner} · 首次使用 ${fmtTime(info.usedAt)}`;
+        } else {
+          meta.textContent = '未使用';
+        }
+        left.appendChild(main);
+        left.appendChild(meta);
+        row.appendChild(left);
+        const acts = document.createElement('div');
+        acts.className = 'row-actions';
+        const delBtn = document.createElement('button');
+        delBtn.className = 'act-btn danger';
+        delBtn.textContent = '删除';
+        delBtn.onclick = () => deleteKey(code);
+        acts.appendChild(delBtn);
+        row.appendChild(acts);
+        keyListBox.appendChild(row);
+      }
+    } catch (e) {
+      console.warn('密钥列表刷新失败:', e);
+    }
+  }
+
+  genKeyBtn.addEventListener('click', async () => {
+    if (!isAdmin) return;
+    try {
+      const keys = await readKeys();
+      let code;
+      do { code = genKeyCode(); } while (keys[code] || code === ADMIN_PASSWORD);
+      keys[code] = { owner: null, usedAt: null };
+      await saveKeys(keys);
+      await refreshKeys();
+    } catch (err) {
+      alert('生成失败：' + err.message);
+    }
+  });
+
+  async function deleteKey(code) {
+    if (!isAdmin) return;
+    if (!confirm(`确定删除密钥 ${code} 吗？删除后用它进来的兄弟将无法再进。`)) return;
+    try {
+      const keys = await readKeys();
+      delete keys[code];
+      await saveKeys(keys);
+      await refreshKeys();
+    } catch (err) {
+      alert('删除失败：' + err.message);
+    }
+  }
 
   // ============================================================
   // SECTION: init
