@@ -1,1 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BHBoard · 兄弟论坛</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #f5f5f5;
+      font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+    .container { max-width: 600px; width: 100%; }
+    .header {
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .header h1 { font-size: 24px; font-weight: 700; color: #1a1a1a; }
+    .header h1 span { color: #999; font-weight: 400; font-size: 14px; margin-left: 8px; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .header-right .user-info { font-size: 14px; color: #333; }
+    .header-right .back-btn, .header-right .logout-btn {
+      font-size: 13px; color: #999; background: none; border: none;
+      cursor: pointer; padding: 4px 8px; border-radius: 4px;
+    }
+    .header-right .back-btn:hover, .header-right .logout-btn:hover { background: #f0f0f0; }
+    .status { color: #999; font-size: 13px; margin-bottom: 16px; }
+    .auth-box {
+      background: #fff;
+      border-radius: 12px;
+      padding: 32px 28px;
+      border: 1px solid #eee;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+      margin-bottom: 20px;
+    }
+    .auth-box .field { margin-bottom: 14px; }
+    .auth-box .field label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; }
+    .auth-box .field input {
+      width: 100%; padding: 10px 14px;
+      border: 1px solid #e0e0e0; border-radius: 8px;
+      font-size: 14px; outline: none; background: #fafafa;
+      transition: 0.15s;
+    }
+    .auth-box .field input:focus { border-color: #1a1a1a; background: #fff; }
+    .auth-box .btn-auth {
+      width: 100%; padding: 11px;
+      background: #1a1a1a; color: #fff; border: none; border-radius: 8px;
+      font-size: 15px; font-weight: 500; cursor: pointer; transition: 0.15s;
+      margin-top: 4px;
+    }
+    .auth-box .btn-auth:hover { background: #333; }
+    .auth-hint {
+      text-align: center; font-size: 13px; color: #999;
+      margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee;
+    }
+    .msg-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 20px;
+      min-height: 200px;
+    }
+    .msg-item {
+      background: #fff;
+      border-radius: 12px;
+      padding: 14px 18px;
+      border: 1px solid #eee;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+    .msg-top { display: flex; align-items: baseline; gap: 12px; margin-bottom: 2px; }
+    .msg-user { font-weight: 600; color: #1a1a1a; font-size: 14px; }
+    .msg-time { color: #bbb; font-size: 12px; }
+    .msg-text { color: #333; font-size: 15px; line-height: 1.6; word-break: break-word; }
+    .empty { text-align: center; color: #ccc; padding: 50px 0; font-size: 14px; }
+    .empty .icon { font-size: 32px; display: block; margin-bottom: 10px; }
+    .input-area {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px 18px 18px;
+      border: 1px solid #eee;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+    .input-area .input-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    .input-area .input-row input {
+      flex: 1; padding: 10px 14px;
+      border: 1px solid #e0e0e0; border-radius: 8px;
+      font-size: 14px; outline: none; background: #fafafa;
+      transition: 0.15s;
+    }
+    .input-area .input-row input:focus { border-color: #1a1a1a; background: #fff; }
+    .input-area .input-row input::placeholder { color: #ccc; }
+    .input-area .btn-row { display: flex; gap: 10px; }
+    .input-area .btn-send {
+      flex: 1; padding: 10px;
+      background: #1a1a1a; color: #fff; border: none; border-radius: 8px;
+      font-size: 14px; font-weight: 500; cursor: pointer; transition: 0.15s;
+    }
+    .input-area .btn-send:hover { background: #333; }
+    .footer { text-align: center; color: #ddd; font-size: 12px; margin-top: 20px; }
+    .hidden { display: none !important; }
+    @media (max-width: 480px) {
+      body { padding: 16px 12px; }
+      .auth-box { padding: 24px 18px; }
+      .msg-item { padding: 12px 14px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>BHBoard <span># 兄弟论坛</span></h1>
+    <div class="header-right">
+      <button class="back-btn" onclick="location.href='/'">← 回主页</button>
+      <span class="user-info hidden" id="userInfo"></span>
+      <button class="logout-btn hidden" id="logoutBtn">退出</button>
+    </div>
+  </div>
+  <div class="status" id="statusText">加载中...</div>
+
+  <div class="auth-box" id="authBox">
+    <div class="field">
+      <label>你的名字（随便填）</label>
+      <input type="text" id="loginName" placeholder="输入你想显示的名字" value="兄弟" maxlength="20" />
+    </div>
+    <button class="btn-auth" id="loginBtn">进入论坛</button>
+    <div class="auth-hint">
+      💡 只需要名字，没有密码
+    </div>
+  </div>
+
+  <div class="msg-list" id="msgList">
+    <div class="empty" id="emptyPlaceholder">
+      <span class="icon">💬</span>
+      还没有留言，兄弟你先来
+    </div>
+  </div>
+
+  <div class="input-area hidden" id="inputArea">
+    <div class="input-row">
+      <input type="text" id="msgInput" placeholder="说点什么..." maxlength="500" />
+    </div>
+    <div class="btn-row">
+      <button class="btn-send" id="sendBtn">发送</button>
+    </div>
+  </div>
+
+  <div class="footer">BHBoard · 兄弟们畅聊</div>
+</div>
+
+<script>
+  // ============================================================
+  // 🔥 Upstash 配置
+  const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
+  const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
+  const MSG_KEY = 'bh_messages';      // 聊天记录
+  const PENDING_KEY = 'bh_pending';   // 待处理消息（备份）
+  // ============================================================
+
+  let currentUser = null;
+  let messages = [];
+
+  // DOM
+  const authBox = document.getElementById('authBox');
+  const loginName = document.getElementById('loginName');
+  const loginBtn = document.getElementById('loginBtn');
+  const msgList = document.getElementById('msgList');
+  const emptyPlaceholder = document.getElementById('emptyPlaceholder');
+  const msgInput = document.getElementById('msgInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const statusText = document.getElementById('statusText');
+  const userInfo = document.getElementById('userInfo');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const inputArea = document.getElementById('inputArea');
+
+  function formatTime(ts) {
+    const d = new Date(ts);
+    const pad = n => String(n).padStart(2, '0');
+    return `${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function setStatus(text) {
+    statusText.textContent = text;
+  }
+
+  // ============================================================
+  // 🔥 Upstash 读写
+  // ============================================================
+
+  async function upstashGet(key) {
+    const res = await fetch(`${UPSTASH_URL}/get/${key}`, {
+      headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
+    });
+    const data = await res.json();
+    return data.result;
+  }
+
+  async function upstashSet(key, value) {
+    const response = await fetch(`${UPSTASH_URL}/set/${key}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${UPSTASH_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ value: value })
+    });
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error('写入失败: ' + err);
+    }
+    return await response.json();
+  }
+
+  async function readData(key) {
+    try {
+      const raw = await upstashGet(key);
+      if (raw === null || raw === undefined || raw === '') return [];
+      let data = JSON.parse(raw);
+      if (Array.isArray(data)) return data;
+      if (data && data.value) {
+        if (Array.isArray(data.value)) return data.value;
+        try { return JSON.parse(data.value); } catch (e) {}
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async function writeData(key, data) {
+    const arr = Array.isArray(data) ? data : [];
+    return await upstashSet(key, JSON.stringify(arr));
+  }
+
+  // ============================================================
+  // 🔥 加载聊天记录
+  // ============================================================
+
+  async function loadMessages() {
+    try {
+      messages = await readData(MSG_KEY);
+      renderMessages();
+      setStatus(`${messages.length} 条留言`);
+    } catch (err) {
+      console.error('加载失败:', err);
+      setStatus('加载失败，刷新重试');
+      messages = [];
+    }
+  }
+
+  // ============================================================
+  // 🔥 发送留言（双存储保障）
+  // ============================================================
+
+  async function sendMessage(text) {
+    if (!currentUser) return false;
+
+    const newMsg = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      username: currentUser.username,
+      text: text.trim(),
+      timestamp: Date.now()
+    };
+
+    // 第 1 步：先备份到 pending（防止丢失）
+    try {
+      let pending = await readData(PENDING_KEY);
+      pending.push({ ...newMsg, _backup: true, _time: Date.now() });
+      if (pending.length > 100) pending = pending.slice(-100);
+      await writeData(PENDING_KEY, pending);
+    } catch (err) {
+      console.warn('⚠️ pending 备份失败:', err);
+    }
+
+    // 第 2 步：读取最新聊天记录，追加，写回
+    try {
+      const latest = await readData(MSG_KEY);
+      messages = latest;
+      messages.push(newMsg);
+      if (messages.length > 500) messages.shift();
+      await writeData(MSG_KEY, messages);
+
+      try { await writeData(PENDING_KEY, []); } catch (e) {}
+
+      renderMessages();
+      setStatus(`${messages.length} 条留言`);
+      return true;
+    } catch (err) {
+      console.error('❌ 写入失败:', err);
+
+      // 第 3 步：失败时从 pending 恢复
+      try {
+        const pendingData = await readData(PENDING_KEY);
+        if (pendingData.length > 0) {
+          const existingIds = new Set(messages.map(m => m.id));
+          for (const p of pendingData) {
+            if (!existingIds.has(p.id)) {
+              messages.push(p);
+              existingIds.add(p.id);
+            }
+          }
+          if (messages.length > 500) messages = messages.slice(-500);
+          await writeData(MSG_KEY, messages);
+          await writeData(PENDING_KEY, []);
+          renderMessages();
+          setStatus(`${messages.length} 条留言 (已恢复)`);
+        }
+      } catch (recoverErr) {
+        console.error('❌ 恢复失败:', recoverErr);
+      }
+
+      setStatus('发送失败，请重试');
+      return false;
+    }
+  }
+
+  // ============================================================
+  // 渲染
+  // ============================================================
+
+  function renderMessages() {
+    const items = msgList.querySelectorAll('.msg-item');
+    items.forEach(el => el.remove());
+
+    if (!messages || messages.length === 0) {
+      emptyPlaceholder.style.display = 'block';
+      return;
+    }
+    emptyPlaceholder.style.display = 'none';
+
+    const reversed = [...messages].reverse();
+    for (const msg of reversed) {
+      const div = document.createElement('div');
+      div.className = 'msg-item';
+
+      const top = document.createElement('div');
+      top.className = 'msg-top';
+      const userSpan = document.createElement('span');
+      userSpan.className = 'msg-user';
+      userSpan.textContent = msg.username || '兄弟';
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'msg-time';
+      timeSpan.textContent = formatTime(msg.timestamp);
+      top.appendChild(userSpan);
+      top.appendChild(timeSpan);
+
+      const textDiv = document.createElement('div');
+      textDiv.className = 'msg-text';
+      textDiv.textContent = msg.text || '';
+
+      div.appendChild(top);
+      div.appendChild(textDiv);
+      msgList.appendChild(div);
+    }
+  }
+
+  function updateUI() {
+    if (currentUser) {
+      authBox.classList.add('hidden');
+      inputArea.classList.remove('hidden');
+      userInfo.textContent = currentUser.username;
+      userInfo.classList.remove('hidden');
+      logoutBtn.classList.remove('hidden');
+    } else {
+      authBox.classList.remove('hidden');
+      inputArea.classList.add('hidden');
+      userInfo.classList.add('hidden');
+      logoutBtn.classList.add('hidden');
+    }
+  }
+
+  // ============================================================
+  // 事件
+  // ============================================================
+
+  function handleLogin() {
+    const name = loginName.value.trim() || '兄弟';
+    currentUser = { username: name.slice(0, 20) };
+    localStorage.setItem('bh_user', JSON.stringify(currentUser));
+    updateUI();
+    loadMessages();
+    setStatus(`欢迎，${currentUser.username}`);
+    loginName.value = '';
+  }
+
+  loginBtn.addEventListener('click', handleLogin);
+  loginName.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleLogin();
+  });
+
+  logoutBtn.addEventListener('click', () => {
+    currentUser = null;
+    localStorage.removeItem('bh_user');
+    updateUI();
+    setStatus('已退出');
+    messages = [];
+    renderMessages();
+  });
+
+  sendBtn.addEventListener('click', async () => {
+    if (!currentUser) return;
+    const text = msgInput.value.trim();
+    if (!text) {
+      msgInput.focus();
+      msgInput.style.borderColor = '#e74c3c';
+      setTimeout(() => msgInput.style.borderColor = '', 500);
+      return;
+    }
+    await sendMessage(text);
+    msgInput.value = '';
+    msgInput.focus();
+  });
+
+  msgInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      sendBtn.click();
+    }
+  });
+
+  // ============================================================
+  // 启动
+  // ============================================================
+
+  async function init() {
+    try {
+      const saved = localStorage.getItem('bh_user');
+      if (saved) {
+        const user = JSON.parse(saved);
+        if (user && user.username) {
+          currentUser = { username: user.username };
+          updateUI();
+          await loadMessages();
+          setStatus(`欢迎回来，${user.username}`);
+          msgInput.focus();
+          return;
+        }
+      }
+    } catch (e) {}
+    updateUI();
+    await loadMessages();
+  }
+
+  init();
+</script>
+</body>
+</html>
 
