@@ -65,14 +65,20 @@
       flex-direction: column;
       gap: 14px;
       margin-bottom: 20px;
-      min-height: 200px;
+      height: 430px;
+      max-height: calc(100vh - 300px);
+      overflow-y: auto;
+      padding-right: 4px;
     }
+    .msg-list::-webkit-scrollbar { width: 6px; }
+    .msg-list::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
     .msg-item {
       background: #fff;
       border-radius: 12px;
       padding: 14px 18px;
       border: 1px solid #eee;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      flex-shrink: 0;
     }
     .msg-top { display: flex; align-items: baseline; gap: 12px; margin-bottom: 2px; }
     .msg-user { font-weight: 600; color: #1a1a1a; font-size: 14px; }
@@ -334,8 +340,8 @@
     }
     emptyPlaceholder.style.display = 'none';
 
-    const reversed = [...messages].reverse();
-    for (const msg of reversed) {
+    // 按时间正序显示（像聊天软件），越往下越新
+    for (const msg of messages) {
       const div = document.createElement('div');
       div.className = 'msg-item';
 
@@ -358,6 +364,9 @@
       div.appendChild(textDiv);
       msgList.appendChild(div);
     }
+
+    // 自动滚动到最新消息（贴着输入框）
+    msgList.scrollTop = msgList.scrollHeight;
   }
 
   function updateUI() {
@@ -451,4 +460,3 @@
 </script>
 </body>
 </html>
-
