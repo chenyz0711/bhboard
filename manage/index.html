@@ -148,6 +148,7 @@
   <div class="footer">BHBoard · 兄弟管理 · made by chenyz</div>
 </div>
 
+<script src="/keycheck.js"></script>
 <script>
   // ============================================================
   // SECTION: config
@@ -532,13 +533,18 @@
   // ============================================================
   // SECTION: init
   // ============================================================
-  applyAdminUI();
-  refreshMembers();
-  refreshGames();
-  setInterval(() => {
+  // 全站单点登录：未登录强制跳主页登录
+  if (!window.KeyGate.requireLogin()) {
+    // 未登录时不再执行后续逻辑
+  } else {
+    applyAdminUI();
     refreshMembers();
     refreshGames();
-  }, REFRESH_MS);
+    setInterval(() => {
+      refreshMembers();
+      refreshGames();
+    }, REFRESH_MS);
+  }
 </script>
 </body>
 </html>
