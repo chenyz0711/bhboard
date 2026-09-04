@@ -508,7 +508,7 @@
     try {
       const keys = await readKeys();
       let code;
-      do { code = genKeyCode(); } while (keys[code] || code === ADMIN_PASSWORD);
+      do { code = genKeyCode(); } while (keys[code] || code === ADMIN_PASSWORD || code === 'missyang');
       keys[code] = { owner: null, usedAt: null };
       await saveKeys(keys);
       await refreshKeys();
