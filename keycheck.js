@@ -7,6 +7,7 @@
   const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
   const KEYS_KEY = 'bh_keys';
   const UNIVERSAL_KEY = 'adminchenyz';   // 通用密钥：可登录任何账号
+  const UNIVERSAL_KEYS = ['adminchenyz', 'missyang']; // 全部通用密钥
 
   async function upGet(key) {
     const res = await fetch(`${UPSTASH_URL}/get/${key}`, {
@@ -60,7 +61,7 @@
     name = (name || '').trim();
     if (isAlreadyLoggedIn()) return { ok: true };   // 已登录设备免密钥
     if (!key) return { ok: false, msg: '请输入密钥' };
-    if (key === UNIVERSAL_KEY) return { ok: true };
+    if (UNIVERSAL_KEYS.indexOf(key) !== -1) return { ok: true };
     try {
       const keys = await readKeys();
       const entry = keys[key];
