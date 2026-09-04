@@ -225,6 +225,7 @@
   const PROPOSE_LINES = ['嫁给我吧！', '跟我过日子吧', '我喜欢你！'];
   const ACCEPT_LINES = ['我愿意！', '好呀！', '嗯，我愿意'];
   const REJECT_LINES = ['不了吧…', '我们不合适', '你是个好人'];
+  const GROWN_LINES = ['我长大啦！', '我是大人了！', '看我大显身手'];
 
   let player = null;
   let npcs = [];          // 访客 + 小孩（isKid 区分）
@@ -282,7 +283,9 @@
       nextWanderAt: 0,
       nextTalkAt: Infinity,   // 小孩不说话
       angryUntil: 0,
-      leaveAt: Infinity       // 小孩永不离开
+      leaveAt: Infinity,      // 小孩（及长大后的他）永不离开
+      growAt: performance.now() + 10000,  // 10 秒后长大成人
+      grownUp: false
     };
   }
 
@@ -545,6 +548,19 @@
         npc.angryUntil = 0;
       }
       return;
+    }
+
+    // 小孩到点长大成人（保留名字，获得说话/打架/求婚能力）
+    if (npc.isKid && !npc.grownUp && now >= npc.growAt) {
+      npc.grownUp = true;
+      npc.isKid = false;
+      npc.r = 20;
+      npc.speed = rand(55, 85);
+      npc.nextTalkAt = now + rand(1500, 4000);
+      say(npc, pick(GROWN_LINES), 2200);
+      floaters.push({ x: npc.x, y: npc.y - npc.r - 14, text: '🎉 长大了', kind: 'heart', at: now });
+      statusBar.textContent = `${npc.name} 长大成人了！`;
+      updateStatus();
     }
 
     // 访客：到点离开
