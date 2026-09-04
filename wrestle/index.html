@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BHBoard · 兄弟掰手腕</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: #f5f1e8; color: #1a1a1a; min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .header { width: 100%; padding: 18px 24px; display: flex; justify-content: space-between; align-items: center; }
+  .logo { font-weight: 800; font-size: 18px; letter-spacing: 1px; }
+  .back { text-decoration: none; color: #1a1a1a; font-size: 13px; border: 1.5px solid #1a1a1a; padding: 5px 14px; border-radius: 999px; }
+  .back:hover { background: #1a1a1a; color: #fff; }
+  .view { width: 100%; max-width: 640px; padding: 8px 20px 40px; }
+  .hidden { display: none !important; }
+  h1.title { text-align: center; font-size: 30px; margin: 18px 0 4px; }
+  .subtitle { text-align: center; color: #888; font-size: 13px; margin-bottom: 22px; }
+  .card { background: #fff; border-radius: 16px; padding: 22px; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+  .card h3 { font-size: 15px; margin-bottom: 12px; }
+  .who-line { font-size: 14px; color: #555; margin-bottom: 14px; }
+  .who-line b { color: #1a1a1a; }
+  .btn { display: block; width: 100%; padding: 13px; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; background: #1a1a1a; color: #fff; margin-bottom: 10px; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn.ghost { background: #fff; color: #1a1a1a; border: 1.5px solid #1a1a1a; }
+  .join-row { display: flex; gap: 8px; }
+  .join-row input { flex: 1; padding: 12px; border: 1.5px solid #ddd; border-radius: 12px; font-size: 16px; text-transform: uppercase; outline: none; }
+  .join-row input:focus { border-color: #1a1a1a; }
+  .join-row .btn { flex: 0 0 auto; width: auto; padding: 12px 22px; margin: 0; }
+  .err { color: #e74c3c; font-size: 13px; margin-top: 8px; min-height: 16px; }
+  .big-code { text-align: center; font-size: 52px; font-weight: 800; letter-spacing: 10px; margin: 12px 0; }
+  .wait-tip { text-align: center; color: #888; font-size: 13px; }
+  /* 对局列表 */
+  .match-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+  .match-item:last-child { border-bottom: none; }
+  .match-item .mi-info { flex: 1; min-width: 0; }
+  .match-item .mi-vs { font-weight: 700; }
+  .match-item .mi-status { font-size: 12px; color: #888; margin-top: 2px; }
+  .match-item .btn { width: auto; margin: 0; padding: 7px 16px; font-size: 13px; flex: 0 0 auto; }
+  .empty-tip { color: #aaa; font-size: 13px; text-align: center; padding: 12px 0; }
+  /* 游戏区 */
+  .game-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .room-tag { font-size: 13px; color: #888; }
+  .vs-line { text-align: center; font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .vs-line .me { color: #2980b9; }
+  .vs-line .op { color: #c0392b; }
+  #wheelCanvas { display: block; margin: 0 auto; }
+  .count-line { display: flex; justify-content: space-around; margin: 10px 0; }
+  .count-box { text-align: center; }
+  .count-box .cn { font-size: 13px; color: #888; }
+  .count-box .cv { font-size: 30px; font-weight: 800; }
+  .count-box.me .cv { color: #2980b9; }
+  .count-box.op .cv { color: #c0392b; }
+  .time-line { text-align: center; font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+  .bind-tip { text-align: center; font-size: 15px; color: #555; line-height: 1.9; }
+  .bind-key { display: inline-block; min-width: 40px; padding: 4px 12px; border: 2px solid #1a1a1a; border-radius: 8px; font-weight: 800; background: #fffbe6; }
+  .key-hint { text-align: center; color: #888; font-size: 13px; margin-top: 6px; }
+  .tap-btn { display: none; margin: 12px auto 0; width: 180px; height: 180px; border-radius: 50%; border: none; background: #e74c3c; color: #fff; font-size: 24px; font-weight: 800; cursor: pointer; box-shadow: 0 6px 0 #a93226; -webkit-tap-highlight-color: transparent; }
+  .tap-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #a93226; }
+  .tap-btn.bind-mode { background: #2980b9; box-shadow: 0 6px 0 #1f618d; width: 150px; height: 150px; font-size: 18px; }
+  body.touch .tap-btn { display: block; }
+  .footer { margin-top: auto; padding: 16px; color: #bbb; font-size: 12px; }
+  /* 弹窗 */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 50; }
+  .ov-card { background: #fff; border-radius: 18px; padding: 30px 36px; text-align: center; min-width: 260px; max-width: 90vw; }
+  .ov-card h2 { font-size: 24px; margin-bottom: 8px; }
+  .ov-card p { color: #666; font-size: 14px; margin-bottom: 18px; line-height: 1.6; }
+  .ov-card .btn { margin-bottom: 8px; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">BHBoard</div>
+    <a class="back" href="/">← 回主页</a>
+  </div>
+
+  <!-- 大厅 -->
+  <div class="view" id="lobbyView">
+    <h1 class="title">💪 兄弟掰手腕</h1>
+    <div class="subtitle">绑定一个键 · 20 秒疯狂按 · 轮盘转到谁那边谁赢</div>
+
+    <div class="card">
+      <div class="who-line">你是 <b id="nameTag"></b></div>
+      <button class="btn" id="createBtn">🏟️ 创建对局</button>
+      <div class="join-row">
+        <input id="joinCodeInput" maxlength="4" placeholder="房间号" />
+        <button class="btn" id="joinBtn">加入</button>
+      </div>
+      <div class="err" id="lobbyErr"></div>
+    </div>
+
+    <div class="card">
+      <h3>⚔️ 当前对局</h3>
+      <div id="matchListBox"><div class="empty-tip">加载中…</div></div>
+    </div>
+  </div>
+
+  <!-- 等待对手 -->
+  <div class="view hidden" id="waitingView">
+    <div class="card" style="text-align:center;">
+      <h3>把房间号发给兄弟</h3>
+      <div class="big-code" id="waitCode"></div>
+      <div class="wait-tip">等兄弟输入房间号加入…</div>
+      <button class="btn ghost" id="cancelWaitBtn" style="margin-top:16px;">取消等待</button>
+    </div>
+  </div>
+
+  <!-- 绑键 -->
+  <div class="view hidden" id="bindView">
+    <div class="card" style="text-align:center;">
+      <h3>⌨️ 绑定你的使劲键</h3>
+      <div class="bind-tip">
+        现在随便按一个键盘按键，就是你等下的使劲键
+        <div style="margin-top:10px;">你的键：<span class="bind-key" id="myBindKey">?</span></div>
+        <div style="margin-top:6px;">对手：<span id="oppBindStatus">还没绑定…</span></div>
+      </div>
+      <button class="tap-btn bind-mode" id="bindTapBtn">点我绑定</button>
+      <div class="key-hint" id="bindHint"></div>
+      <button class="btn ghost" id="cancelBindBtn" style="margin-top:16px;">退出</button>
+    </div>
+  </div>
+
+  <!-- 对局 -->
+  <div class="view hidden" id="gameView">
+    <div class="game-top">
+      <div class="room-tag" id="roomTag"></div>
+      <button class="btn ghost" id="leaveBtn" style="width:auto;margin:0;padding:6px 16px;font-size:13px;">离开</button>
+    </div>
+    <div class="vs-line"><span class="me" id="vsMe"></span> VS <span class="op" id="vsOp"></span></div>
+    <div class="time-line" id="timeLine"></div>
+    <canvas id="wheelCanvas" width="320" height="320"></canvas>
+    <div class="count-line">
+      <div class="count-box me"><div class="cn" id="cnMeName">你</div><div class="cv" id="cvMe">0</div></div>
+      <div class="count-box op"><div class="cn" id="cnOpName">对手</div><div class="cv" id="cvOp">0</div></div>
+    </div>
+    <div class="key-hint" id="gameKeyHint"></div>
+    <button class="tap-btn" id="tapBtn">按我！</button>
+  </div>
+
+  <!-- 弹窗 -->
+  <div class="overlay hidden" id="overlay">
+    <div class="ov-card">
+      <h2 id="ovTitle"></h2>
+      <p id="ovSub"></p>
+      <div id="ovBtns"></div>
+    </div>
+  </div>
+
+  <div class="footer">BHBoard · 兄弟掰手腕 · made by chenyz</div>
+
+<script src="/keycheck.js"></script>
+<script>
+  // ============================================================
+  // SECTION: config
+  // ============================================================
+  const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
+  const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
+  const ROOM_PREFIX = 'bh_wrestle:';
+  const CNT_PREFIX = 'bh_wrestle_cnt:';
+  const REGISTRY_KEY = 'bh_wrestle_registry';
+  const CREATE_LIMIT_KEY = 'bh_room_creates';   // 与轮盘赌共享每日建房额度
+  const DAILY_CREATE_LIMIT = 10;
+  const ROOM_TTL = 86400;             // 存储层兜底 1 天
+  const CNT_TTL = 3600;               // 计数键 1 小时过期
+  const ROOM_MAX_WAIT = 3600 * 1000;  // 等待超过 1 小时清除
+  const ROOM_MAX_IDLE = 30 * 60 * 1000; // 30 分钟无人活动删除
+  const MATCH_SECONDS = 20;           // 一局 20 秒
+  const COUNTDOWN_MS = 3000;          // 开局倒计时 3 秒
+  const PRESENCE_PREFIX = 'bh_member:';
+  const PRESENCE_TTL = 90;
+  const MEMBERS_KEY = 'bh_members';
+
+  // ============================================================
+  // SECTION: dom
+  // ============================================================
+  const $ = id => document.getElementById(id);
+  const lobbyView = $('lobbyView'), waitingView = $('waitingView'), bindView = $('bindView'), gameView = $('gameView');
+  const overlay = $('overlay'), ovTitle = $('ovTitle'), ovSub = $('ovSub'), ovBtns = $('ovBtns');
+  const wheelCtx = $('wheelCanvas').getContext('2d');
+
+  if (navigator.maxTouchPoints > 0) document.body.classList.add('touch');
+
+  // ============================================================
+  // SECTION: utils
+  // ============================================================
+  function genCode() {
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    let s = '';
+    for (let i = 0; i < 4; i++) s += chars[Math.floor(Math.random() * chars.length)];
+    return s;
+  }
+
+  function getSavedUser() {
+    try {
+      const s = localStorage.getItem('bh_user');
+      const u = s ? JSON.parse(s) : null;
+      return u && u.username ? u.username : '';
+    } catch (e) { return ''; }
+  }
+
+  function lobbyError(msg) {
+    $('lobbyErr').textContent = msg;
+    if (msg) setTimeout(() => { if ($('lobbyErr').textContent === msg) $('lobbyErr').textContent = ''; }, 5000);
+  }
+
+  function showView(name) {
+    lobbyView.classList.toggle('hidden', name !== 'lobby');
+    waitingView.classList.toggle('hidden', name !== 'waiting');
+    bindView.classList.toggle('hidden', name !== 'bind');
+    gameView.classList.toggle('hidden', name !== 'game');
+  }
+
+  function saveLocalRoom(code, seat) {
+    localStorage.setItem('bh_wrestle_room', JSON.stringify({ code, seat }));
+  }
+  function getLocalRoom() {
+    try {
+      const s = localStorage.getItem('bh_wrestle_room');
+      return s ? JSON.parse(s) : null;
+    } catch (e) { return null; }
+  }
+  function clearLocalRoom() { localStorage.removeItem('bh_wrestle_room'); }
+
+  // ============================================================
+  // SECTION: upstash
+  // ============================================================
+  async function upGet(key) {
+    const res = await fetch(`${UPSTASH_URL}/get/${key}`, {
+      headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
+    });
+    const data = await res.json();
+    return data.result;
+  }
+
+  async function upSet(key, value, ttl) {
+    const res = await fetch(
+      `${UPSTASH_URL}/set/${key}/${encodeURIComponent(value)}/ex/${ttl || ROOM_TTL}`,
+      { method: 'POST', headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` } }
+    );
+    if (!res.ok) throw new Error('网络写入失败');
+    return await res.json();
+  }
+
+  async function upDel(key) {
+    const res = await fetch(`${UPSTASH_URL}/del/${key}`, {
+      method: 'POST', headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
+    });
+    return await res.json();
+  }
+
+  async function incrBy(key, n) {
+    const res = await fetch(`${UPSTASH_URL}/incrby/${key}/${n}`, {
+      method: 'POST', headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
+    });
+    const data = await res.json();
+    return data.result;
+  }
+
+  async function getRoom(code) {
+    const raw = await upGet(ROOM_PREFIX + code);
+    if (!raw) return null;
+    let obj = null;
+    try { obj = JSON.parse(raw); } catch (e) { return null; }
+    if (!obj || typeof obj !== 'object') return null;
+
+    // 自动清理：等待超过 1 小时 / 超过 30 分钟无人活动
+    const now = Date.now();
+    const bornAt = obj.createdAt || obj.updatedAt || 0;
+    const waitingTooLong = obj.status === 'waiting' && bornAt > 0 && (now - bornAt) > ROOM_MAX_WAIT;
+    const idleTooLong = obj.updatedAt > 0 && (now - obj.updatedAt) > ROOM_MAX_IDLE;
+    if (waitingTooLong || idleTooLong) {
+      try {
+        await upDel(ROOM_PREFIX + code);
+        await removeGameRecord(code);
+      } catch (e) {}
+      return null;
+    }
+    return obj;
+  }
+
+  async function putRoom(code, st) {
+    return await upSet(ROOM_PREFIX + code, JSON.stringify(st));
+  }
+
+  // ============================================================
+  // SECTION: registry（对局列表）
+  // ============================================================
+  async function regList() {
+    const raw = await upGet(REGISTRY_KEY);
+    if (!raw) return {};
+    try {
+      const obj = JSON.parse(raw);
+      return (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
+    } catch (e) { return {}; }
+  }
+
+  async function regPut(reg) {
+    await upSet(REGISTRY_KEY, JSON.stringify(reg));
+  }
+
+  async function refreshGameRecord(st) {
+    try {
+      if (!st || !st.code) return;
+      const reg = await regList();
+      reg[st.code] = {
+        code: st.code,
+        status: st.status || 'waiting',
+        p0: (st.players[0] && st.players[0].name) || '',
+        p1: (st.players[1] && st.players[1].name) || '',
+        updatedAt: Date.now()
+      };
+      await regPut(reg);
+    } catch (e) { console.warn('列表同步失败:', e); }
+  }
+
+  async function removeGameRecord(code) {
+    try {
+      const reg = await regList();
+      if (reg[code]) { delete reg[code]; await regPut(reg); }
+    } catch (e) { console.warn('列表清理失败:', e); }
+  }
+
+  // ============================================================
+  // SECTION: create-limit（与轮盘赌共享每日建房额度）
+  // ============================================================
+  function todayKey() {
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  async function readCreates() {
+    const raw = await upGet(CREATE_LIMIT_KEY);
+    if (!raw) return {};
+    try {
+      const obj = JSON.parse(raw);
+      return (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
+    } catch (e) { return {}; }
+  }
+
+  async function todayCreateCount(name) {
+    const all = await readCreates();
+    const mine = all[name] || {};
+    return mine[todayKey()] || 0;
+  }
+
+  async function recordCreate(name) {
+    const all = await readCreates();
+    const mine = all[name] || {};
+    mine[todayKey()] = (mine[todayKey()] || 0) + 1;
+    all[name] = mine;
+    // 顺手清理 3 天前的旧记录，防止表无限增长
+    const tk = todayKey();
+    for (const u in all) {
+      const rec = all[u];
+      for (const d in rec) {
+        if (d < tk.slice(0, 8) + String(Math.max(1, Number(tk.slice(8)) - 3)).padStart(2, '0')) delete rec[d];
+      }
+    }
+    await upSet(CREATE_LIMIT_KEY, JSON.stringify(all));
+  }
+
+  // ============================================================
+  // SECTION: presence
+  // ============================================================
+  async function beatPresence(name) {
+    if (!name) return;
+    try {
+      await fetch(
+        `${UPSTASH_URL}/set/${PRESENCE_PREFIX}${encodeURIComponent(name)}/${Date.now()}/ex/${PRESENCE_TTL}`,
+        { method: 'POST', headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` } }
+      );
+    } catch (e) {}
+    try {
+      const raw = await upGet(MEMBERS_KEY);
+      let members = {};
+      if (raw) {
+        try { members = JSON.parse(raw); } catch (e) {}
+        if (!members || typeof members !== 'object' || Array.isArray(members)) members = {};
+      }
+      if (!members[name]) {
+        members[name] = Date.now();
+        await upSet(MEMBERS_KEY, JSON.stringify(members));
+      }
+    } catch (e) {}
+  }
+
+  // ============================================================
+  // SECTION: session-state
+  // ============================================================
+  let roomCode = null;
+  let mySeat = 0;
+  let myName = '';
+  let myBindKey = '';
+  let isSpectator = false;
+  let spectatingCode = null;
+  let joinCodeOverride = null;
+  let seq = 0;
+  let stTimer = null;      // 房间状态轮询
+  let cntTimer = null;     // 计数器轮询
+  let sendTimer = null;    // 按键批量提交
+  let listTimer = null;    // 大厅列表轮询
+  let presenceTimer = null;
+  let pendingPresses = 0;  // 待提交的按键数
+  let myTotal = 0;         // 本地累计（显示用，服务器计数为准）
+  let curCounts = [0, 0];
+  let curSt = null;
+  let wheelAngle = 0;      // 轮盘当前角度（平滑过渡）
+  let overlayShown = '';
+  let runAnimId = null;
+
+  // ============================================================
+  // SECTION: room-lifecycle
+  // ============================================================
+  function newRoomState(name) {
+    return {
+      status: 'waiting', code: '', seq: 0, createdAt: Date.now(), updatedAt: Date.now(),
+      players: [{ name: name }, { name: '' }],
+      binds: ['', ''],
+      startAt: 0, endAt: 0,
+      winner: null
+    };
+  }
+
+  async function createRoom() {
+    if (!window.KeyGate.requireLogin()) return;
+    const name = getSavedUser();
+    const btn = $('createBtn');
+    btn.disabled = true;
+    try {
+      const used = await todayCreateCount(name);
+      if (used >= DAILY_CREATE_LIMIT) {
+        lobbyError(`今天已经建了 ${DAILY_CREATE_LIMIT} 个房间（含轮盘赌），明天再来吧`);
+        return;
+      }
+      let code, existing;
+      do {
+        code = genCode();
+        existing = await getRoom(code);
+      } while (existing);
+
+      const st = newRoomState(name);
+      st.code = code;
+      await putRoom(code, st);
+      await refreshGameRecord(st);
+      await recordCreate(name);
+
+      roomCode = code; mySeat = 0; myName = name; isSpectator = false;
+      saveLocalRoom(code, 0);
+      $('waitCode').textContent = code;
+      showView('waiting');
+      startStatePoll(1000);
+    } catch (err) {
+      console.error(err);
+      lobbyError('创建失败：' + err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function joinRoom() {
+    if (!window.KeyGate.requireLogin()) return;
+    const name = getSavedUser();
+    const code = (joinCodeOverride || $('joinCodeInput').value.trim()).toUpperCase();
+    joinCodeOverride = null;
+    if (code.length !== 4) { lobbyError('房间号是 4 位'); return; }
+
+    // 本机玩过这个房间 → 恢复
+    const saved = getLocalRoom();
+    if (saved && saved.code === code) {
+      roomCode = code; mySeat = saved.seat; myName = name; isSpectator = false;
+      const st = await getRoom(code);
+      if (st) { enterByStatus(st); return; }
+      clearLocalRoom();
+    }
+
+    const btn = $('joinBtn');
+    btn.disabled = true;
+    try {
+      const st = await getRoom(code);
+      if (!st) { lobbyError('找不到这个房间，检查一下房间号'); return; }
+      if (st.status !== 'waiting') {
+        startSpectating(st);
+        return;
+      }
+      if (st.players[0].name === name && st.players[1].name === '') {
+        lobbyError('这是你自己创建的房间，去等待页等兄弟加入');
+        return;
+      }
+
+      st.players[1].name = name;
+      st.status = 'bind';
+      st.seq++;
+      st.updatedAt = Date.now();
+      await putRoom(code, st);
+      await refreshGameRecord(st);
+
+      roomCode = code; mySeat = 1; myName = name; isSpectator = false; myBindKey = '';
+      saveLocalRoom(code, 1);
+      enterByStatus(st);
+    } catch (err) {
+      console.error(err);
+      lobbyError('加入失败：' + err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // 按房间状态进入对应界面
+  function enterByStatus(st) {
+    stopAll();
+    curSt = st;
+    seq = st.seq;
+    if (st.status === 'waiting' && mySeat === 0) {
+      $('waitCode').textContent = st.code;
+      showView('waiting');
+      startStatePoll(1000);
+    } else if (st.status === 'bind') {
+      showView('bind');
+      renderBind(st);
+      startStatePoll(800);
+    } else if (st.status === 'countdown' || st.status === 'run' || st.status === 'finished') {
+      showView('game');
+      startGameLoops(st);
+    } else {
+      startSpectating(st);
+    }
+  }
+
+  // 观战
+  function startSpectating(st) {
+    stopAll();
+    roomCode = st.code; mySeat = 0; myName = getSavedUser() || '观众';
+    isSpectator = true; spectatingCode = st.code;
+    $('leaveBtn').textContent = '退出观战';
+    curSt = st;
+    showView('game');
+    startGameLoops(st);
+  }
+
+  // ============================================================
+  // SECTION: bind（绑键）
+  // ============================================================
+  function renderBind(st) {
+    const mine = st.binds[mySeat];
+    const opp = st.binds[1 - mySeat];
+    $('myBindKey').textContent = mine ? (mine === '__TAP__' ? '触屏按钮' : mine) : '?';
+    $('oppBindStatus').textContent = opp ? ('已绑定' + (opp === '__TAP__' ? '（触屏）' : ' ' + opp)) : '还没绑定…';
+    $('bindHint').textContent = mine ? '等对面绑好就开始' : '按一下键盘（或点下面的按钮）选定你的使劲键';
+  }
+
+  async function sendBind(key) {
+    if (myBindKey || isSpectator) return;
+    myBindKey = key.toUpperCase();
+    $('myBindKey').textContent = myBindKey === '__TAP__' ? '触屏按钮' : myBindKey;
+    $('bindHint').textContent = '等对面绑好就开始…';
+    try {
+      const st = await getRoom(roomCode);
+      if (!st || st.status !== 'bind') return;
+      st.binds[mySeat] = myBindKey;
+      st.seq++;
+      st.updatedAt = Date.now();
+      // 双方都绑好 → 进入倒计时
+      if (st.binds[0] && st.binds[1]) {
+        st.status = 'countdown';
+        st.startAt = Date.now() + COUNTDOWN_MS;
+        st.endAt = st.startAt + MATCH_SECONDS * 1000;
+        st.winner = null;
+      }
+      await putRoom(roomCode, st);
+      if (st.status === 'countdown') await refreshGameRecord(st);
+    } catch (err) {
+      console.error(err);
+      myBindKey = '';
+      $('bindHint').textContent = '绑定失败，再按一次';
+    }
+  }
+
+  // ============================================================
+  // SECTION: run（对局进行）
+  // ============================================================
+  function cntKey(seat) {
+    return CNT_PREFIX + roomCode + ':' + seat;
+  }
+
+  function pressOnce() {
+    if (!curSt || isSpectator) return;
+    if (curSt.status !== 'run') return;
+    const now = Date.now();
+    if (now < curSt.startAt || now >= curSt.endAt) return;
+    pendingPresses++;
+    myTotal++;
+    // 本地立即反馈：轮盘抖一下
+    curCounts[mySeat] = myTotal;
+  }
+
+  async function flushPresses() {
+    if (pendingPresses <= 0 || isSpectator) return;
+    const n = pendingPresses;
+    pendingPresses = 0;
+    try {
+      await incrBy(cntKey(mySeat), n);
+    } catch (e) {
+      pendingPresses += n;   // 失败补回，下批重试
+    }
+  }
+
+  async function pollCounts() {
+    try {
+      const raws = await Promise.all([upGet(cntKey(0)), upGet(cntKey(1))]);
+      curCounts = [Number(raws[0]) || 0, Number(raws[1]) || 0];
+      if (curCounts[mySeat] > myTotal) myTotal = curCounts[mySeat];
+    } catch (e) {}
+  }
+
+  async function pollState() {
+    if (!roomCode) return;
+    try {
+      const st = await getRoom(roomCode);
+      if (!st) {
+        if (!isSpectator) {
+          alert('房间已被清除或丢失，请回大厅重新开一局');
+        }
+        backToLobby();
+        return;
+      }
+      if (isSpectator || st.seq !== seq) {
+        seq = st.seq;
+        curSt = st;
+        onStateChange(st);
+      }
+      // 房主职责：倒计时结束后把状态推进为"对局中"
+      if (!isSpectator && mySeat === 0 && st.status === 'countdown' && Date.now() >= st.startAt) {
+        st.status = 'run';
+        st.seq++;
+        st.updatedAt = Date.now();
+        await putRoom(roomCode, st);
+        await refreshGameRecord(st);
+        seq = st.seq;
+        curSt = st;
+      }
+      // 玩家职责：跑完 20 秒后结算（任意一方都可以发起，结果以服务器计数为准）
+      if (!isSpectator && (st.status === 'run' || st.status === 'countdown') && st.endAt > 0 && Date.now() >= st.endAt) {
+        await finishMatch(st);
+      }
+    } catch (e) {}
+  }
+
+  function onStateChange(st) {
+    if (st.status === 'bind' && !isSpectator) {
+      if (bindView.classList.contains('hidden')) showView('bind');
+      myBindKey = st.binds[mySeat] || '';
+      renderBind(st);
+      startStatePoll(800);
+    } else if (st.status === 'countdown' || st.status === 'run') {
+      if (gameView.classList.contains('hidden')) showView('game');
+      renderGameStatic(st);
+    } else if (st.status === 'finished') {
+      showResult(st);
+    }
+  }
+
+  function startGameLoops(st) {
+    renderGameStatic(st);
+    stopStatePoll();
+    startStatePoll(1200);
+    stopCntPoll();
+    cntTimer = setInterval(pollCounts, 400);
+    pollCounts();
+    stopSendLoop();
+    if (!isSpectator) sendTimer = setInterval(flushPresses, 120);
+    if (runAnimId) { cancelAnimationFrame(runAnimId); runAnimId = null; }
+    runAnimId = requestAnimationFrame(runLoop);
+    if (st.status === 'finished') showResult(st);
+  }
+
+  function renderGameStatic(st) {
+    $('roomTag').textContent = isSpectator ? `👀 观战 · 房间 ${st.code}` : `房间 ${st.code}`;
+    const meIdx = mySeat, opIdx = 1 - mySeat;
+    $('vsMe').textContent = st.players[meIdx].name || '???';
+    $('vsOp').textContent = st.players[opIdx].name || '???';
+    $('cnMeName').textContent = st.players[meIdx].name || '你';
+    $('cnOpName').textContent = st.players[opIdx].name || '对手';
+    const myKeyLabel = st.binds[meSeat] === '__TAP__' ? '屏幕按钮' : st.binds[meSeat];
+    $('gameKeyHint').textContent = isSpectator
+      ? '观战模式 · 不能操作'
+      : `疯狂按「${myKeyLabel}」使劲！`;
+  }
+
+  async function finishMatch(st) {
+    if (st.status === 'finished') { showResult(st); return; }
+    const c0 = Number(await upGet(cntKey(0))) || 0;
+    const c1 = Number(await upGet(cntKey(1))) || 0;
+    curCounts = [c0, c1];
+    st.winner = c0 > c1 ? 0 : (c1 > c0 ? 1 : 'draw');
+    st.status = 'finished';
+    st.seq++;
+    st.updatedAt = Date.now();
+    await putRoom(roomCode, st);
+    await refreshGameRecord(st);
+    showResult(st);
+  }
+
+  function showResult(st) {
+    stopSendLoop();
+    const w = st.winner;
+    let title, sub;
+    if (w === 'draw') {
+      title = '🤝 平局！';
+      sub = `两人都按了 ${curCounts[0]} 下，再来一把分胜负！`;
+    } else {
+      const wName = st.players[w].name;
+      if (isSpectator) {
+        title = '🏆 ' + wName + ' 获胜';
+        sub = `${st.players[0].name} 按了 ${curCounts[0]} 下 · ${st.players[1].name} 按了 ${curCounts[1]} 下`;
+      } else if (w === mySeat) {
+        title = '🏆 你赢了！';
+        sub = `你按了 ${curCounts[mySeat]} 下，对面 ${curCounts[1 - mySeat]} 下，手腕子够硬！`;
+      } else {
+        title = '😵 你输了';
+        sub = `你按了 ${curCounts[mySeat]} 下，对面按了 ${curCounts[1 - mySeat]} 下，练练再来！`;
+      }
+    }
+    ovTitle.textContent = title;
+    ovSub.textContent = sub;
+    ovBtns.innerHTML = '';
+    if (!isSpectator) {
+      const again = document.createElement('button');
+      again.className = 'btn';
+      again.textContent = '🔁 再来一把';
+      again.addEventListener('click', () => rematch());
+      ovBtns.appendChild(again);
+    }
+    const back = document.createElement('button');
+    back.className = 'btn ghost';
+    back.textContent = '回大厅';
+    back.addEventListener('click', () => { hideOverlay(); backToLobby(); });
+    ovBtns.appendChild(back);
+    overlayShown = 'result';
+    overlay.classList.remove('hidden');
+  }
+
+  async function rematch() {
+    hideOverlay();
+    try {
+      const st = await getRoom(roomCode);
+      if (!st) { alert('房间没了，回大厅重新开'); backToLobby(); return; }
+      // 只有 0 号位发起重开
+      if (mySeat !== 0) {
+        // 非房主：等房主重开，回到绑键等待状态由轮询驱动
+        alert('等房主发起再来一把…');
+        return;
+      }
+      st.status = 'bind';
+      st.binds = ['', ''];
+      st.startAt = 0; st.endAt = 0; st.winner = null;
+      st.seq++;
+      st.updatedAt = Date.now();
+      myBindKey = ''; myTotal = 0; pendingPresses = 0; curCounts = [0, 0];
+      await upDel(cntKey(0));
+      await upDel(cntKey(1));
+      await putRoom(roomCode, st);
+      await refreshGameRecord(st);
+      seq = st.seq; curSt = st;
+      showView('bind');
+      renderBind(st);
+      startStatePoll(800);
+    } catch (err) {
+      console.error(err);
+      alert('重开失败：' + err.message);
+    }
+  }
+
+  // ============================================================
+  // SECTION: wheel（轮盘渲染）
+  // ============================================================
+  function drawWheel() {
+    const ctx = wheelCtx;
+    const W = 320, cx = W / 2, cy = W / 2, R = 130;
+    ctx.clearRect(0, 0, W, W);
+
+    // 双方区域：左半 = 我（蓝），右半 = 对手（红）
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, Math.PI / 2, Math.PI * 1.5);
+    ctx.fillStyle = 'rgba(41,128,185,0.18)';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, -Math.PI / 2, Math.PI / 2);
+    ctx.fillStyle = 'rgba(231,76,60,0.18)';
+    ctx.fill();
+
+    // 外圈
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // 中线（正上方 = 平衡点）
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - R);
+    ctx.lineTo(cx, cy - R + 16);
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // 刻度
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 2;
+    for (let a = -70; a <= 70; a += 35) {
+      const rad = a * Math.PI / 180;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.sin(rad) * (R - 8), cy - Math.cos(rad) * (R - 8));
+      ctx.lineTo(cx + Math.sin(rad) * R, cy - Math.cos(rad) * R);
+      ctx.stroke();
+    }
+
+    // 指针：按双方计数比例倾斜（我多 → 往左转）
+    const total = curCounts[0] + curCounts[1];
+    const ratio = total > 0 ? curCounts[mySeat === undefined ? 0 : mySeat] / total : 0.5;
+    const targetAngle = (0.5 - ratio) * 150;   // 度，正 = 往右（对手侧）
+    wheelAngle += (targetAngle - wheelAngle) * 0.25;
+    const rad = wheelAngle * Math.PI / 180;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(rad);
+    ctx.beginPath();
+    ctx.moveTo(0, -R + 22);
+    ctx.lineTo(-7, 10);
+    ctx.lineTo(7, 10);
+    ctx.closePath();
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(0, 0, 12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 左右标签
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#2980b9';
+    const leftLabel = curSt && curSt.players[mySeat] ? (curSt.players[mySeat].name || '你') : '你';
+    const rightLabel = curSt && curSt.players[1 - mySeat] ? (curSt.players[1 - mySeat].name || '对手') : '对手';
+    ctx.fillText(leftLabel.slice(0, 6), cx - R + 38, cy + 4);
+    ctx.fillStyle = '#c0392b';
+    ctx.fillText(rightLabel.slice(0, 6), cx + R - 40, cy + 4);
+  }
+
+  function runLoop() {
+    const st = curSt;
+    if (!st) {
+      // 没进对局时保持低频自检，进局后由 startGameLoops 重启
+      runAnimId = requestAnimationFrame(runLoop);
+      return;
+    }
+    const now = Date.now();
+
+    if (st.status === 'countdown') {
+      const left = Math.ceil((st.startAt - now) / 1000);
+      if (left > 0) {
+        $('timeLine').textContent = `准备… ${left}`;
+      } else {
+        // 到点开跑（状态由房主写入，这里本地先切显示）
+        st.status = 'run';
+        $('timeLine').textContent = String(MATCH_SECONDS);
+      }
+    } else if (st.status === 'run') {
+      const remain = Math.max(0, Math.ceil((st.endAt - now) / 1000));
+      $('timeLine').textContent = `⏱️ ${remain} 秒`;
+    }
+
+    $('cvMe').textContent = curCounts[mySeat];
+    $('cvOp').textContent = curCounts[1 - mySeat];
+    drawWheel();
+
+    if (st.status !== 'finished') {
+      runAnimId = requestAnimationFrame(runLoop);
+    }
+  }
+
+  // ============================================================
+  // SECTION: lobby-list
+  // ============================================================
+  async function refreshMatchList() {
+    try {
+      const reg = await regList();
+      const box = $('matchListBox');
+      const codes = Object.keys(reg);
+      if (codes.length === 0) {
+        box.innerHTML = '<div class="empty-tip">现在没有对局，建一个等兄弟来掰！</div>';
+        return;
+      }
+      codes.sort((a, b) => (reg[b].updatedAt || 0) - (reg[a].updatedAt || 0));
+      let html = '';
+      for (const code of codes) {
+        const m = reg[code];
+        const statusText = { waiting: '⏳ 等待加入', bind: '⌨️ 绑键中', countdown: '⏳ 准备中', run: '🔥 掰腕中', finished: '✅ 已结束' }[m.status] || m.status;
+        const vs = m.status === 'waiting'
+          ? `${m.p0 || '?'} 等待加入`
+          : `${m.p0 || '?'} VS ${m.p1 || '?'}`;
+        const full = m.status !== 'waiting';
+        html += `<div class="match-item">
+          <div class="mi-info">
+            <div class="mi-vs">${code} · ${vs}</div>
+            <div class="mi-status">${statusText}</div>
+          </div>
+          <button class="btn" data-code="${code}" data-full="${full ? 1 : 0}">${full ? '观战' : '加入'}</button>
+        </div>`;
+      }
+      box.innerHTML = html;
+    } catch (e) {}
+  }
+
+  $('matchListBox').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-code]');
+    if (!btn) return;
+    const code = btn.dataset.code;
+    if (btn.dataset.full === '1') {
+      try {
+        const st = await getRoom(code);
+        if (!st) { refreshMatchList(); return; }
+        startSpectating(st);
+      } catch (err) { console.error(err); }
+    } else {
+      joinCodeOverride = code;
+      joinRoom();
+    }
+  });
+
+  // ============================================================
+  // SECTION: timers
+  // ============================================================
+  function stopStatePoll() { if (stTimer) { clearInterval(stTimer); stTimer = null; } }
+  function startStatePoll(ms) {
+    stopStatePoll();
+    stTimer = setInterval(pollState, ms);
+  }
+  function stopCntPoll() { if (cntTimer) { clearInterval(cntTimer); cntTimer = null; } }
+  function stopSendLoop() { if (sendTimer) { clearInterval(sendTimer); sendTimer = null; } }
+  function stopAll() {
+    stopStatePoll();
+    stopCntPoll();
+    stopSendLoop();
+    if (runAnimId) { cancelAnimationFrame(runAnimId); runAnimId = null; }
+  }
+
+  function hideOverlay() {
+    overlay.classList.add('hidden');
+    overlayShown = '';
+  }
+
+  function backToLobby() {
+    stopAll();
+    hideOverlay();
+    roomCode = null; isSpectator = false; spectatingCode = null;
+    myBindKey = ''; myTotal = 0; pendingPresses = 0; curCounts = [0, 0]; curSt = null;
+    clearLocalRoom();
+    $('leaveBtn').textContent = '离开';
+    showView('lobby');
+    refreshMatchList();
+  }
+
+  // ============================================================
+  // SECTION: events
+  // ============================================================
+  $('createBtn').addEventListener('click', createRoom);
+  $('joinBtn').addEventListener('click', joinRoom);
+  $('joinCodeInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') joinRoom();
+  });
+  $('cancelWaitBtn').addEventListener('click', backToLobby);
+  $('cancelBindBtn').addEventListener('click', backToLobby);
+  $('leaveBtn').addEventListener('click', () => {
+    if (isSpectator) { backToLobby(); return; }
+    if (confirm('确定离开对局吗？')) backToLobby();
+  });
+  $('tapBtn').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    pressOnce();
+  });
+  $('tapBtn').addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    pressOnce();
+  });
+  $('bindTapBtn').addEventListener('click', () => sendBind('__TAP__'));
+
+  document.addEventListener('keydown', (e) => {
+    if (e.repeat) return;   // 长按连发不算，必须真的狂按
+    // 绑键阶段：按任意键绑定
+    if (!bindView.classList.contains('hidden') && !isSpectator && !myBindKey) {
+      if (e.key.length === 1 || ['Enter', 'Space'].indexOf(e.key) !== -1) {
+        e.preventDefault();
+        sendBind(e.key === ' ' ? 'SPACE' : e.key);
+      }
+      return;
+    }
+    // 对局阶段：按绑定的键使劲
+    if (!gameView.classList.contains('hidden') && !isSpectator && curSt && curSt.status === 'run') {
+      const bound = myBindKey || (curSt.binds[mySeat] || '').toUpperCase();
+      const pressed = e.key === ' ' ? 'SPACE' : e.key.toUpperCase();
+      if (bound && pressed === bound) {
+        e.preventDefault();
+        pressOnce();
+      }
+    }
+  });
+
+  // ============================================================
+  // SECTION: init
+  // ============================================================
+  (function init() {
+    if (!window.KeyGate.requireLogin()) return;
+    const name = getSavedUser();
+    $('nameTag').textContent = name;
+    showView('lobby');
+    refreshMatchList();
+    listTimer = setInterval(refreshMatchList, 2500);
+    beatPresence(name);
+    presenceTimer = setInterval(() => beatPresence(name), 30000);
+    runAnimId = requestAnimationFrame(runLoop);
+  })();
+</script>
+</body>
+</html>
