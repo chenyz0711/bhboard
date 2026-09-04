@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BHBoard · 南外生存指南</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; }
+  body {
+    font-family:'PingFang SC','Microsoft YaHei',sans-serif;
+    background:#1a2332; color:#fff;
+    display:flex; flex-direction:column; align-items:center;
+    min-height:100vh;
+  }
+  .header { width:100%; max-width:680px; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; }
+  .logo { font-weight:800; font-size:17px; color:#4fc3f7; letter-spacing:1px; }
+  .back { text-decoration:none; color:#8892b0; font-size:13px; border:1px solid #3a4a63; padding:5px 14px; border-radius:999px; }
+  .back:hover { color:#fff; border-color:#4fc3f7; }
+
+  .wrap { width:100%; max-width:680px; padding:0 16px 40px; flex:1; }
+  .hidden { display:none !important; }
+  .screen { animation:fade .3s ease; }
+  @keyframes fade { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:none;} }
+
+  h1.game-title { text-align:center; font-size:32px; margin:26px 0 6px; color:#fff; letter-spacing:2px; }
+  .subtitle { text-align:center; color:#8892b0; font-size:13px; margin-bottom:26px; line-height:1.6; }
+  .subtitle b { color:#4fc3f7; }
+
+  .btn { display:inline-block; padding:13px 22px; border:none; border-radius:12px; font-size:16px; font-weight:700; cursor:pointer; background:#4fc3f7; color:#0d1520; transition:transform .08s, filter .15s; }
+  .btn:hover { filter:brightness(1.1); }
+  .btn:active { transform:scale(.97); }
+  .btn.block { display:block; width:100%; margin:0 auto; max-width:340px; }
+  .btn.ghost { background:transparent; color:#8892b0; border:1px solid #3a4a63; }
+  .btn.ghost:hover { color:#fff; }
+  .btn.small { padding:9px 16px; font-size:14px; }
+
+  /* 角色卡 */
+  .char-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+  .char-card { background:#223047; border:2px solid #3a4a63; border-radius:16px; padding:16px; cursor:pointer; transition:border-color .15s, transform .1s; }
+  .char-card:hover { border-color:#4fc3f7; transform:translateY(-2px); }
+  .char-card .cname { font-size:18px; font-weight:800; margin-bottom:2px; }
+  .char-card .cg { font-size:12px; color:#8892b0; margin-bottom:8px; }
+  .char-card .cstats { font-size:12px; color:#4fc3f7; margin-bottom:8px; }
+  .char-card .ctrait { font-size:12px; color:#c8d3e8; line-height:1.5; }
+  .char-card .ctrait b { color:#ffd166; }
+  .char-card .cmate { font-size:11px; color:#51cf66; margin-top:6px; line-height:1.4; }
+
+  /* 同桌卡 */
+  .mate-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .mate-card { background:#223047; border:2px solid #3a4a63; border-radius:14px; padding:12px; cursor:pointer; text-align:center; transition:border-color .15s; }
+  .mate-card:hover { border-color:#51cf66; }
+  .mate-card .cname { font-weight:800; margin-bottom:4px; }
+  .mate-card .cstats { font-size:11px; color:#4fc3f7; margin-bottom:6px; }
+  .mate-card .ceff { font-size:11px; color:#51cf66; line-height:1.4; }
+
+  /* 状态面板 */
+  .panel { background:#223047; border-radius:16px; padding:14px 16px; margin-bottom:12px; }
+  .dayline { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:6px; }
+  .dayline .d { font-size:15px; font-weight:800; color:#ffd166; }
+  .dayline .mate { font-size:12px; color:#8892b0; }
+  .stat { margin-bottom:8px; }
+  .stat .lb { display:flex; justify-content:space-between; font-size:12px; color:#c8d3e8; margin-bottom:3px; }
+  .bar { height:10px; background:#141d2b; border-radius:6px; overflow:hidden; }
+  .bar i { display:block; height:100%; border-radius:6px; transition:width .3s; }
+  .bar.happy i { background:linear-gradient(90deg,#ffd166,#ff9f43); }
+  .bar.hunger i { background:linear-gradient(90deg,#51cf66,#94d82d); }
+  .attr-row { display:flex; gap:8px; margin-top:10px; }
+  .attr { flex:1; background:#141d2b; border-radius:10px; padding:8px 6px; text-align:center; }
+  .attr .av { font-size:18px; font-weight:800; color:#4fc3f7; }
+  .attr .al { font-size:11px; color:#8892b0; margin-top:2px; }
+
+  /* 事件区 */
+  .event .etitle { font-size:18px; font-weight:800; color:#4fc3f7; margin-bottom:8px; }
+  .event .elines { font-size:14px; line-height:1.8; color:#e6edf7; margin-bottom:14px; }
+  .event .elines .good { color:#51cf66; }
+  .event .elines .bad { color:#ff6b6b; }
+  .event .elines .sys { color:#8892b0; }
+  .event .elines .gold { color:#ffd166; }
+  .choices { display:flex; flex-direction:column; gap:10px; }
+  .choices .btn { width:100%; max-width:none; }
+
+  /* 日志 */
+  .log-panel { background:#182234; border-radius:12px; padding:10px 14px; margin-top:12px; max-height:150px; overflow-y:auto; }
+  .log-panel .lg { font-size:12px; color:#8892b0; line-height:1.6; }
+  .log-panel .lg.good { color:#51cf66; }
+  .log-panel .lg.bad { color:#ff6b6b; }
+
+  /* 结算 */
+  .end-emoji { text-align:center; font-size:64px; margin:20px 0 10px; }
+  .end-title { text-align:center; font-size:26px; font-weight:800; margin-bottom:6px; }
+  .end-sub { text-align:center; color:#8892b0; font-size:14px; margin-bottom:20px; }
+  .settle { background:#223047; border-radius:16px; padding:18px; margin-bottom:16px; }
+  .settle .srow { display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid #2e3d57; font-size:14px; }
+  .settle .srow:last-child { border-bottom:none; }
+  .settle .srow .k { color:#8892b0; }
+  .settle .srow .v { color:#fff; font-weight:700; }
+  .title-badge { text-align:center; background:linear-gradient(135deg,#ffd166,#ff9f43); color:#3d2c00; font-weight:800; font-size:20px; padding:14px; border-radius:14px; margin-bottom:16px; }
+  .footer { padding:16px; color:#3a4a63; font-size:12px; text-align:center; }
+  @media (max-width:480px){
+    .char-grid { grid-template-columns:1fr; }
+    .mate-grid { grid-template-columns:1fr; }
+    h1.game-title { font-size:26px; }
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">BHBoard</div>
+    <a class="back" href="/">← 回主页</a>
+  </div>
+
+  <div class="wrap">
+    <!-- 标题 -->
+    <div class="screen" id="scr-title">
+      <h1 class="game-title">南外生存指南</h1>
+      <div class="subtitle">
+        你是一名 NFLS 初三学生。<br>
+        开学第一周（<b>9月1日 - 9月10日</b>），上课、吃饭、社交、作业、诱惑……<br>
+        饿了难受，不快乐会崩溃。<b>撑到教师节就是胜利。</b>
+      </div>
+      <button class="btn block" id="btn-start">开始生存</button>
+      <div class="subtitle" style="margin-top:18px;">快乐归零 = 游戏结束 · 共 10 天</div>
+    </div>
+
+    <!-- 选角色 -->
+    <div class="screen hidden" id="scr-char">
+      <h1 class="game-title" style="font-size:24px;">选择你的角色</h1>
+      <div class="subtitle">不同角色，完全不同的活法</div>
+      <div class="char-grid" id="char-grid"></div>
+    </div>
+
+    <!-- 选同桌 -->
+    <div class="screen hidden" id="scr-mate">
+      <h1 class="game-title" style="font-size:24px;">选择你的同桌</h1>
+      <div class="subtitle" id="mate-tip">同桌会深刻影响你的生存</div>
+      <div class="mate-grid" id="mate-grid"></div>
+    </div>
+
+    <!-- 游戏主界面 -->
+    <div class="screen hidden" id="scr-game">
+      <div class="panel">
+        <div class="dayline">
+          <span class="d" id="g-day"></span>
+          <span class="mate" id="g-mate"></span>
+        </div>
+        <div class="stat">
+          <div class="lb"><span>😊 快乐</span><span id="lb-happy"></span></div>
+          <div class="bar happy"><i id="bar-happy"></i></div>
+        </div>
+        <div class="stat" style="margin-bottom:0;">
+          <div class="lb"><span>🍚 饥饿</span><span id="lb-hunger"></span></div>
+          <div class="bar hunger"><i id="bar-hunger"></i></div>
+        </div>
+        <div class="attr-row">
+          <div class="attr"><div class="av" id="av-looks"></div><div class="al">颜值</div></div>
+          <div class="attr"><div class="av" id="av-body"></div><div class="al">身体</div></div>
+          <div class="attr"><div class="av" id="av-int"></div><div class="al">智力</div></div>
+        </div>
+      </div>
+
+      <div class="panel event">
+        <div class="etitle" id="ev-title"></div>
+        <div class="elines" id="ev-lines"></div>
+        <div class="choices" id="ev-choices"></div>
+      </div>
+
+      <div class="log-panel" id="log-panel"></div>
+    </div>
+
+    <!-- 结算 -->
+    <div class="screen hidden" id="scr-end">
+      <div class="end-emoji" id="end-emoji"></div>
+      <div class="end-title" id="end-title"></div>
+      <div class="end-sub" id="end-sub"></div>
+      <div class="title-badge hidden" id="title-badge"></div>
+      <div class="settle" id="settle"></div>
+      <button class="btn block" id="btn-again">再活一次</button>
+    </div>
+  </div>
+
+  <div class="footer">BHBoard · 南外生存指南 · made by chenyz</div>
+
+<script src="/keycheck.js"></script>
+<script>
+  // ============================================================
+  // SECTION: config / presence
+  // ============================================================
+  const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
+  const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
+  const PRESENCE_PREFIX = 'bh_member:';
+  const PRESENCE_TTL = 90;
+  const MEMBERS_KEY = 'bh_members';
+
+  function getSavedUser() {
+    try { const s = localStorage.getItem('bh_user'); const u = s ? JSON.parse(s) : null; return u && u.username ? u.username : ''; }
+    catch (e) { return ''; }
+  }
+  async function beatPresence(name) {
+    if (!name) return;
+    try {
+      await fetch(`${UPSTASH_URL}/set/${PRESENCE_PREFIX}${encodeURIComponent(name)}/${Date.now()}/ex/${PRESENCE_TTL}`,
+        { method:'POST', headers:{ 'Authorization':'Bearer '+UPSTASH_TOKEN } });
+    } catch (e) {}
+    try {
+      const r = await fetch(`${UPSTASH_URL}/get/${MEMBERS_KEY}`, { headers:{ 'Authorization':'Bearer '+UPSTASH_TOKEN } });
+      const d = await r.json();
+      let members = {};
+      if (d.result) { try { members = JSON.parse(d.result); } catch(e){} if (!members || typeof members!=='object' || Array.isArray(members)) members = {}; }
+      if (!members[name]) {
+        members[name] = Date.now();
+        await fetch(`${UPSTASH_URL}/set/${MEMBERS_KEY}/${encodeURIComponent(JSON.stringify(members))}`,
+          { method:'POST', headers:{ 'Authorization':'Bearer '+UPSTASH_TOKEN } });
+      }
+    } catch (e) {}
+  }
+
+  // ============================================================
+  // SECTION: data —— 角色 / 同桌 / 课表 / 日历
+  // ============================================================
+  const CHARACTERS = [
+    { id:'chen', name:'陈仰正', gender:'男', looks:7, body:5, intelligence:7, happyCap:20,
+      traits:[
+        { name:'哲学家', desc:'快乐上限为 20（其他人上限 10）' },
+        { name:'机缘巧合', desc:'开局可以选择同桌' },
+        { name:'不要造谣', desc:'同桌是徐悠然时，下课呆在教室额外 +1 快乐' },
+        { name:'千恋万花', desc:'半夜玩千恋万花时，快乐直接恢复满' }
+      ],
+      mateEffect:'作为同桌：你的快乐上限 +5', canChooseMate:true },
+    { id:'wang', name:'王浩宇', gender:'男', looks:7, body:6, intelligence:8, happyCap:10,
+      traits:[ { name:'风纪委员', desc:'永远不会被记违纪' } ],
+      mateEffect:'作为同桌：每节课恢复 0.5 快乐', canChooseMate:false },
+    { id:'hou', name:'侯景瑞', gender:'男', looks:3, body:9, intelligence:2, happyCap:10, hungerCap:25,
+      traits:[ { name:'大胃袋', desc:'饥饿上限为 25（其他人 20）' } ],
+      mateEffect:'作为同桌：智力 +3，但每节课 -0.5 快乐', canChooseMate:false },
+    { id:'xu', name:'徐悠然', gender:'女', looks:10, body:6, intelligence:9, happyCap:10,
+      traits:[
+        { name:'副班长', desc:'开局可以选择同桌' },
+        { name:'故意的', desc:'同桌是陈仰正时，双方快乐上限再 +5' }
+      ],
+      mateEffect:'作为同桌：智力 +2', canChooseMate:true }
+  ];
+
+  // 课表（来自 初三课表.xlsx），周一~周五，每天 9 节
+  const SCHEDULE = [
+    ['语文','物理','化学','体育','数学','政治','历史','英语','班会'],   // 周一
+    ['语文','数学','物理','英语','英语','音乐','语辅','体育','化辅'],   // 周二
+    ['历史','语文','政治','数学','化学','数学1','物理','英语1','英语1'], // 周三
+    ['物理','数学','语文','语文','语文','英语','英语','历史','数辅'],   // 周四
+    ['英语','英语','语文','数学','体育','物辅','美术','化学','政治']    // 周五
+  ];
+
+  // 9月1日(周二) ~ 9月10日(周四)，sched:-1 表示周末
+  const DAY_INFO = [
+    { date:'9月1日',  week:'星期二', sched:1 },
+    { date:'9月2日',  week:'星期三', sched:2 },
+    { date:'9月3日',  week:'星期四', sched:3 },
+    { date:'9月4日',  week:'星期五', sched:4 },
+    { date:'9月5日',  week:'星期六', sched:-1 },
+    { date:'9月6日',  week:'星期日', sched:-1 },
+    { date:'9月7日',  week:'星期一', sched:0 },
+    { date:'9月8日',  week:'星期二', sched:1 },
+    { date:'9月9日',  week:'星期三', sched:2 },
+    { date:'9月10日', week:'星期四', sched:3 }
+  ];
+
+  const QUESTION_CHANCE = 0.45;   // 每节课被提问的概率
+
+  // ============================================================
+  // SECTION: 工具
+  // ============================================================
+  const $ = id => document.getElementById(id);
+  function rand(a,b){ return a + Math.random()*(b-a); }
+  function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  function chance(p){ return Math.random() < p; }
+  function clamp(v,lo,hi){ return Math.max(lo, Math.min(hi, v)); }
+  function fmt(v){ return (Math.round(v*10)/10).toString(); }
+
+  function showScreen(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
+    $(id).classList.remove('hidden');
+    window.scrollTo(0,0);
+  }
+
+  // ============================================================
+  // SECTION: 游戏状态
+  // ============================================================
+  let G = null;
+
+  function getChar(id){ return CHARACTERS.find(c=>c.id===id); }
+
+  function startGame(charId, mateId){
+    const c = getChar(charId), m = getChar(mateId);
+    G = {
+      charId, mateId,
+      char:c, mate:m,
+      day:1, stepIndex:0, daySteps:[],
+      looks:c.looks, body:c.body, intelligence:c.intelligence,
+      happyCap:c.happyCap, hungerCap:c.hungerCap||20,
+      happy:0, hunger:0,
+      stats:{ correct:0, goals:0, crashes:0, mateInteractions:0, survived:0 },
+      log:[], alive:true
+    };
+    applyMatePassives();
+    G.happy = G.happyCap;          // 初始满快乐
+    G.hunger = Math.round(G.hungerCap*0.8);
+    buildDay();
+    showScreen('scr-game');
+    renderHeader(); renderStats();
+    runStep();
+  }
+
+  // 同桌对主角的被动加成（开局生效）
+  function applyMatePassives(){
+    const m = G.mate;
+    if (m.id==='chen') G.happyCap += 5;                       // 陈仰正同桌：快乐上限+5
+    if (m.id==='hou')  G.intelligence = clamp(G.intelligence+3,1,10); // 侯景瑞同桌：智力+3
+    if (m.id==='xu')   G.intelligence = clamp(G.intelligence+2,1,10); // 徐悠然同桌：智力+2
+    // 徐悠然"故意的"：同桌是陈仰正，双方快乐上限再+5
+    if (G.charId==='xu' && m.id==='chen') G.happyCap += 5;
+    if (G.charId==='chen' && m.id==='xu') G.happyCap += 5;    // 陈仰正视角也+5
+  }
+
+  function changeHappy(d){
+    if (!G.alive) return;
+    G.happy = clamp(G.happy + d, 0, G.happyCap);
+    if (G.happy <= 0) { G.stats.crashes++; G.alive = false; }
+    renderStats();
+  }
+  function changeHunger(d){
+    G.hunger = clamp(G.hunger + d, 0, G.hungerCap);
+    renderStats();
+  }
+
+  // ============================================================
+  // SECTION: 日程构建
+  // ============================================================
+  function isWeekend(){ return DAY_INFO[G.day-1].sched === -1; }
+  function todaySchedule(){ return SCHEDULE[DAY_INFO[G.day-1].sched] || []; }
+
+  function buildDay(){
+    G.stepIndex = 0;
+    if (isWeekend()){
+      G.daySteps = [
+        { f: stepWeekendMorning },
+        { f: stepWeekendLeisure },
+        { f: stepEvening }
+      ];
+    } else {
+      G.daySteps = [
+        { f: stepMorning },
+        { f: stepMorningStudy },
+        { f: ()=>stepClasses([0,1]) },
+        { f: stepBreak },
+        { f: ()=>stepClasses([2,3,4]) },
+        { f: stepLunch },
+        { f: ()=>stepClasses([5,6]) },
+        { f: stepBigBreak },
+        { f: ()=>stepClasses([7,8]) },
+        { f: stepEvening }
+      ];
+    }
+  }
+
+  function advance(){
+    if (!G.alive) { gameOver(); return; }
+    G.stepIndex++;
+    if (G.stepIndex >= G.daySteps.length) { nextDay(); return; }
+    runStep();
+  }
+  function runStep(){
+    if (!G.alive) { gameOver(); return; }
+    G.daySteps[G.stepIndex].f();
+  }
+  function nextDay(){
+    G.stats.survived = G.day;
+    G.day++;
+    if (G.day > 10) { victory(); return; }
+    buildDay();
+    renderHeader();
+    runStep();
+  }
+
+  // ============================================================
+  // SECTION: 渲染
+  // ============================================================
+  function renderHeader(){
+    const info = DAY_INFO[G.day-1];
+    $('g-day').textContent = `${info.date} ${info.week} · Day ${G.day}`;
+    $('g-mate').textContent = `同桌：${G.mate.name}`;
+  }
+  function renderStats(){
+    $('lb-happy').textContent = `${fmt(G.happy)} / ${G.happyCap}`;
+    $('bar-happy').style.width = (G.happy/G.happyCap*100)+'%';
+    $('lb-hunger').textContent = `${fmt(G.hunger)} / ${G.hungerCap}`;
+    $('bar-hunger').style.width = (G.hunger/G.hungerCap*100)+'%';
+    $('av-looks').textContent = G.looks;
+    $('av-body').textContent = G.body;
+    $('av-int').textContent = G.intelligence;
+  }
+
+  // lines: [{t:'文本', c:'good|bad|sys|gold'}]
+  function showStep(title, lines, buttons){
+    $('ev-title').textContent = title;
+    const el = $('ev-lines');
+    el.innerHTML = '';
+    lines.forEach(l=>{
+      const d = document.createElement('div');
+      if (l.c) d.className = l.c;
+      d.textContent = l.t;
+      el.appendChild(d);
+    });
+    const cb = $('ev-choices');
+    cb.innerHTML = '';
+    buttons.forEach(b=>{
+      const btn = document.createElement('button');
+      btn.className = 'btn' + (b.ghost?' ghost':'');
+      btn.textContent = b.text;
+      btn.onclick = b.onClick;
+      cb.appendChild(btn);
+    });
+    renderLog();
+  }
+  function log(text, cls){
+    G.log.push({ text, cls: cls||'' });
+    if (G.log.length>60) G.log.shift();
+    renderLog();
+  }
+  function renderLog(){
+    const p = $('log-panel');
+    p.innerHTML = '';
+    G.log.slice(-12).forEach(l=>{
+      const d = document.createElement('div');
+      d.className = 'lg ' + l.cls;
+      d.textContent = l.text;
+      p.appendChild(d);
+    });
+    p.scrollTop = p.scrollHeight;
+  }
+
+  // ============================================================
+  // SECTION: 步骤逻辑 —— 上学日
+  // ============================================================
+  function stepMorning(){
+    const restore = G.happyCap*0.2;
+    G.happy = clamp(G.happy + restore, 0, G.happyCap);
+    G.hunger = Math.round(G.hungerCap*0.8);
+    renderStats();
+    log(`早晨：快乐恢复 ${fmt(restore)}，饥饿恢复到 80%`, 'good');
+    showStep('🌅 早晨', [
+      { t:'新的一天开始了。', c:'sys' },
+      { t:`睡了个好觉，快乐 +${fmt(restore)}，肚子填到了八分饱。`, c:'good' }
+    ], [{ text:'去上学 →', onClick: advance }]);
+  }
+
+  function stepMorningStudy(){
+    showStep('📖 早自习', [
+      { t:'早自习，老师还没来。你要……', c:'sys' }
+    ], [
+      { text:'待在座位上（稳）', onClick: ()=>{
+          changeHappy(1); log('早自习：你乖乖坐在座位上，快乐 +1','good');
+          advance();
+      }},
+      { text:'下座位聊天（风险）', onClick: ()=>{
+          const wangImmune = G.charId==='wang';
+          if (chance(0.5) || wangImmune){
+            changeHappy(2); log('早自习：你和同学聊得很开心，快乐 +2','good');
+          } else {
+            changeHappy(-1); log('早自习：被老师抓到讲话，快乐 -1','bad');
+          }
+          maybeForgotHomework();
+          advance();
+      }}
+    ]);
+  }
+  function maybeForgotHomework(){
+    if (chance(0.3)){
+      changeHappy(-2); log('坏消息：你发现作业忘带了，快乐 -2','bad');
+    }
+  }
+
+  // 上一组课，idx 为课表下标数组
+  function stepClasses(idxs){
+    const sched = todaySchedule();
+    const lines = [];
+    idxs.forEach(i=>{
+      const subj = sched[i];
+      // 饥饿消耗
+      if (G.hunger > 0){ changeHunger(-1); }
+      else { changeHappy(-1); lines.push({ t:`${subj}：你饿得头晕，快乐 -1`, c:'bad' }); }
+      // 提问
+      if (chance(QUESTION_CHANCE)){
+        if (chance(G.intelligence*0.1)){
+          changeHappy(1); G.stats.correct++;
+          lines.push({ t:`${subj}：老师提问，你答对了！快乐 +1`, c:'good' });
+        } else {
+          changeHappy(-2);
+          lines.push({ t:`${subj}：老师提问，你答错了……快乐 -2`, c:'bad' });
+        }
+      } else {
+        lines.push({ t:`${subj}：平安上完了一节课。`, c:'sys' });
+      }
+      // 同桌每节课被动
+      mateClassPassive(lines);
+      if (!G.alive) return;
+    });
+    lines.forEach(l=>log(l.t, l.c));
+    showStep('📚 上课', lines.length?lines:[{t:'课平稳地进行着。',c:'sys'}],
+      [{ text:'下课 →', onClick: advance }]);
+  }
+  function mateClassPassive(lines){
+    if (G.mate.id==='wang'){ changeHappy(0.5); G.stats.mateInteractions++; }
+    if (G.mate.id==='hou'){ changeHappy(-0.5); G.stats.mateInteractions++; }
+  }
+
+  // 课间 / 午自习：呆在座位 或 蹴瓶子
+  function breakChoice(stepName){
+    showStep(stepName, [
+      { t:'下课了，短暂休息。', c:'sys' }
+    ], [
+      { text:'呆在座位上（50% +1 快乐）', onClick: ()=>{
+          let gain = chance(0.5)?1:0;
+          // 陈仰正"不要造谣"：同桌徐悠然，下课呆教室额外+1
+          if (G.charId==='chen' && G.mate.id==='xu') { gain += 1; G.stats.mateInteractions++; }
+          changeHappy(gain);
+          log(gain>0?`课间：你坐在座位上放松，快乐 +${gain}`:'课间：你坐在座位上，没什么特别的', gain>0?'good':'sys');
+          advance();
+      }},
+      { text:'🍾 蹴瓶子（消耗 1 饥饿，身体判定进球）', onClick: ()=>{
+          if (G.hunger < 1){ log('你太饿了，踢不动瓶子','sys'); advance(); return; }
+          changeHunger(-1);
+          if (chance(G.body*0.1)){
+            changeHappy(2); G.stats.goals++;
+            log('课间：你一脚把瓶子蹴进垃圾桶，进球！快乐 +2','good');
+          } else {
+            log('课间：瓶子飞了出去，没进。','sys');
+          }
+          advance();
+      }}
+    ]);
+  }
+  function stepBreak(){ breakChoice('☕ 课间'); }
+  function stepLunch(){ breakChoice('🍱 午自习'); }
+
+  // 大课间（第7节后）：快乐加倍
+  function stepBigBreak(){
+    showStep('🏃 大课间', [
+      { t:'大课间！这段时间的快乐加倍！', c:'gold' }
+    ], [
+      { text:'出去活动（快乐 +4）', onClick: ()=>{
+          changeHappy(4); log('大课间：你冲出去疯玩，快乐 +4（加倍！）','gold'); advance();
+      }},
+      { text:'教室休息（快乐 +2）', onClick: ()=>{
+          changeHappy(2); log('大课间：你在教室趴着休息，快乐 +2（加倍！）','gold'); advance();
+      }}
+    ]);
+  }
+
+  // 晚上
+  function stepEvening(){
+    showStep('🌙 晚上', [
+      { t:'写完作业了。今晚……', c:'sys' }
+    ], [
+      { text:'😴 好好睡觉（快乐 +20%）', onClick: ()=>{
+          const g = G.happyCap*0.2;
+          changeHappy(g); log(`晚上：你睡了个好觉，快乐 +${fmt(g)}`,'good'); advance();
+      }},
+      { text:'🌸 半夜玩《千恋万花》（风险）', onClick: ()=>{
+          if (G.charId==='chen'){
+            G.happy = G.happyCap; renderStats();
+            log('晚上：千恋万花！你的快乐直接恢复满！','gold');
+          } else if (chance(G.looks*0.1)){
+            const g = G.happyCap*0.8;
+            G.happy = clamp(G.happy+g,0,G.happyCap); renderStats();
+            log(`晚上：你偷偷玩到很晚，快乐 +${fmt(g)}`,'good');
+          } else {
+            G.happy = Math.floor(G.happy*0.5); renderStats();
+            log('晚上：玩千恋万花被家长发现！快乐减半！','bad');
+          }
+          advance();
+      }}
+    ]);
+  }
+
+  // ============================================================
+  // SECTION: 步骤逻辑 —— 周末
+  // ============================================================
+  function stepWeekendMorning(){
+    const restore = G.happyCap*0.3;
+    G.happy = clamp(G.happy+restore,0,G.happyCap);
+    G.hunger = Math.round(G.hungerCap*0.8);
+    renderStats();
+    log('周末：睡到自然醒，快乐 +'+fmt(restore), 'gold');
+    showStep('🛌 周末早晨', [
+      { t:'今天是周末，不用上课！', c:'gold' },
+      { t:`你睡到自然醒，快乐 +${fmt(restore)}。`, c:'good' }
+    ], [{ text:'开始周末 →', onClick: advance }]);
+  }
+  function stepWeekendLeisure(){
+    showStep('🎉 周末时光', [
+      { t:'难得休息，你想干点啥？', c:'sys' }
+    ], [
+      { text:'出门玩（快乐 +3，饥饿 -2）', onClick: ()=>{
+          changeHappy(3); changeHunger(-2); log('周末：你出去疯玩了一通，快乐 +3','good'); advance();
+      }},
+      { text:'在家写作业（快乐 +1，智力 +1）', onClick: ()=>{
+          changeHappy(1); G.intelligence = clamp(G.intelligence+1,1,10); renderStats();
+          log('周末：你认真写了作业，智力 +1','good'); advance();
+      }},
+      { text:'打游戏（快乐 +2，30% 被发现 -3）', onClick: ()=>{
+          changeHappy(2);
+          if (chance(0.3)){ changeHappy(-3); log('周末：打游戏被家长逮到，快乐 -3','bad'); }
+          else log('周末：你愉快地打了一天游戏，快乐 +2','good');
+          advance();
+      }}
+    ]);
+  }
+
+  // ============================================================
+  // SECTION: 结局
+  // ============================================================
+  function getTitle(){
+    // 按 GDD 顺序：先判属性称号，最后才是"存活10天未崩溃"的生存大师
+    if (G.happy>=18) return '南外快乐星';
+    if (G.intelligence>=9) return '南外卷王';
+    if (G.body>=9) return '南外体育生';
+    if (G.looks>=9) return '南外校草/花';
+    if (G.looks<=3 && G.body<=3 && G.intelligence<=3) return '南外咸鱼';
+    if (G.stats.crashes===0) return '南外生存大师';
+    return '南外普通学生';
+  }
+
+  function gameOver(){
+    $('end-emoji').textContent = '💔';
+    $('end-title').textContent = '你崩溃了';
+    $('end-sub').textContent = `快乐值归零。你在第 ${G.day} 天倒下了。`;
+    $('title-badge').classList.add('hidden');
+    $('settle').innerHTML = settleRows();
+    showScreen('scr-end');
+  }
+  function victory(){
+    const title = getTitle();
+    $('end-emoji').textContent = '🎓';
+    $('end-title').textContent = '撑到教师节了！';
+    $('end-sub').textContent = '9月10日，你活过了开学第一周。老师，节日快乐。';
+    const badge = $('title-badge');
+    badge.textContent = '🏅 ' + title;
+    badge.classList.remove('hidden');
+    $('settle').innerHTML = settleRows();
+    showScreen('scr-end');
+  }
+  function settleRows(){
+    const r = [
+      ['存活天数', G.stats.survived + ' 天'],
+      ['最终快乐', fmt(G.happy) + ' / ' + G.happyCap],
+      ['颜值 / 身体 / 智力', `${G.looks} / ${G.body} / ${G.intelligence}`],
+      ['上课答对次数', G.stats.correct + ' 次'],
+      ['蹴瓶子进球', G.stats.goals + ' 次'],
+      ['快乐见底次数', G.stats.crashes + ' 次'],
+      ['与同桌互动', G.stats.mateInteractions + ' 次'],
+      ['角色 / 同桌', `${G.char.name} / ${G.mate.name}`]
+    ];
+    return r.map(([k,v])=>`<div class="srow"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
+  }
+
+  // ============================================================
+  // SECTION: 角色 / 同桌 选择界面
+  // ============================================================
+  let pickedChar = null;
+
+  function renderCharSelect(){
+    const grid = $('char-grid');
+    grid.innerHTML = '';
+    CHARACTERS.forEach(c=>{
+      const card = document.createElement('div');
+      card.className = 'char-card';
+      card.innerHTML = `
+        <div class="cname">${c.name} <span style="font-size:12px;color:#8892b0;">${c.gender}</span></div>
+        <div class="cstats">颜值 ${c.looks} · 身体 ${c.body} · 智力 ${c.intelligence}</div>
+        ${c.traits.map(t=>`<div class="ctrait"><b>${t.name}</b>：${t.desc}</div>`).join('')}
+        <div class="cmate">${c.mateEffect}</div>
+      `;
+      card.onclick = ()=>{ pickedChar = c; onCharPicked(); };
+      grid.appendChild(card);
+    });
+  }
+
+  function onCharPicked(){
+    if (pickedChar.canChooseMate){
+      renderMateSelect(true);
+      showScreen('scr-mate');
+    } else {
+      // 随机分配同桌
+      const others = CHARACTERS.filter(c=>c.id!==pickedChar.id);
+      const mate = pick(others);
+      $('mate-tip').textContent = '系统已为你随机分配同桌';
+      startGame(pickedChar.id, mate.id);
+    }
+  }
+
+  function renderMateSelect(){
+    $('mate-tip').textContent = `${pickedChar.name}，挑一个同桌吧`;
+    const grid = $('mate-grid');
+    grid.innerHTML = '';
+    CHARACTERS.filter(c=>c.id!==pickedChar.id).forEach(c=>{
+      const card = document.createElement('div');
+      card.className = 'mate-card';
+      card.innerHTML = `
+        <div class="cname">${c.name}</div>
+        <div class="cstats">颜${c.looks} 体${c.body} 智${c.intelligence}</div>
+        <div class="ceff">${c.mateEffect.replace('作为同桌：','')}</div>
+      `;
+      card.onclick = ()=>startGame(pickedChar.id, c.id);
+      grid.appendChild(card);
+    });
+  }
+
+  // ============================================================
+  // SECTION: 事件绑定 / 初始化
+  // ============================================================
+  $('btn-start').addEventListener('click', ()=>{ renderCharSelect(); showScreen('scr-char'); });
+  $('btn-again').addEventListener('click', ()=>{ renderCharSelect(); showScreen('scr-char'); });
+
+  (function init(){
+    if (!window.KeyGate.requireLogin()) return;
+    const name = getSavedUser();
+    beatPresence(name);
+    setInterval(()=>beatPresence(name), 30000);
+    showScreen('scr-title');
+  })();
+</script>
+</body>
+</html>
