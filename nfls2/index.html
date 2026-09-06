@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BHBoard · 南外生存·联机</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    font-family:'PingFang SC','Microsoft YaHei',sans-serif;
+    background:#1a2332; color:#fff; min-height:100vh;
+    display:flex; flex-direction:column; align-items:center;
+  }
+  .header { width:100%; max-width:720px; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .logo { font-weight:800; font-size:17px; color:#4fc3f7; }
+  .hdr-right { display:flex; align-items:center; gap:8px; }
+  .back { text-decoration:none; color:#8892b0; font-size:13px; border:1px solid #3a4a63; padding:5px 14px; border-radius:999px; }
+  .back:hover { color:#fff; border-color:#4fc3f7; }
+  .room-tag { font-size:12px; color:#8892b0; }
+  .wrap { width:100%; max-width:720px; padding:0 16px 40px; flex:1; }
+  .hidden { display:none !important; }
+  .screen { animation:fade .25s ease; }
+  @keyframes fade { from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:none;} }
+
+  h1.title { text-align:center; font-size:28px; margin:20px 0 6px; letter-spacing:2px; }
+  .subtitle { text-align:center; color:#8892b0; font-size:13px; margin-bottom:20px; line-height:1.7; }
+  .subtitle b { color:#4fc3f7; }
+
+  .card { background:#223047; border-radius:16px; padding:18px; margin-bottom:14px; box-shadow:0 2px 10px rgba(0,0,0,.25); }
+  .card h3 { font-size:15px; color:#4fc3f7; margin-bottom:10px; }
+  .sub { font-size:12px; color:#8892b0; line-height:1.7; margin-bottom:10px; }
+
+  .btn { display:block; width:100%; padding:13px; border:none; border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; background:#4fc3f7; color:#0d1520; margin-bottom:8px; transition:filter .15s, transform .08s; }
+  .btn:hover { filter:brightness(1.1); }
+  .btn:active { transform:scale(.985); }
+  .btn:disabled { opacity:.45; cursor:not-allowed; }
+  .btn.ghost { background:transparent; color:#8892b0; border:1px solid #3a4a63; }
+  .btn.ghost:hover { color:#fff; border-color:#4fc3f7; }
+  .btn.danger { background:#ff6b6b; color:#2a0d0d; }
+  .btn.gold { background:#ffd166; color:#3d2c00; }
+  .join-row { display:flex; gap:8px; }
+  .join-row input { flex:1; padding:12px; border:1.5px solid #3a4a63; border-radius:12px; background:#16233a; color:#fff; font-size:16px; text-transform:uppercase; letter-spacing:3px; outline:none; }
+  .join-row input:focus { border-color:#4fc3f7; }
+  .join-row .btn { width:auto; margin:0; padding:12px 20px; flex:0 0 auto; }
+  .err { color:#ff6b6b; font-size:13px; margin-top:6px; min-height:16px; }
+
+  .big-code { text-align:center; font-size:50px; font-weight:800; letter-spacing:10px; color:#ffd166; margin:10px 0; font-family:Consolas,Menlo,monospace; }
+  .dots::after { content:''; animation:dots 1.2s steps(4) infinite; }
+  @keyframes dots { 0%{content:'';} 25%{content:'.';} 50%{content:'..';} 75%{content:'...';} }
+
+  /* 角色选择 */
+  .char-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+  .char-card { background:#16233a; border:2px solid #3a4a63; border-radius:14px; padding:13px; cursor:pointer; transition:border-color .15s; }
+  .char-card:hover { border-color:#4fc3f7; }
+  .char-card.picked { border-color:#51cf66; background:#16281f; }
+  .char-card.taken { opacity:.45; cursor:not-allowed; }
+  .char-card .cname { font-size:16px; font-weight:800; margin-bottom:2px; }
+  .char-card .cg { font-size:11px; color:#8892b0; }
+  .char-card .cstats { font-size:11px; color:#4fc3f7; margin:6px 0; }
+  .char-card .ctrait { font-size:11px; color:#c8d3e8; line-height:1.5; }
+  .char-card .ctrait b { color:#ffd166; }
+  .char-card .cmate { font-size:11px; color:#51cf66; margin-top:5px; line-height:1.4; }
+  .pick-status { text-align:center; font-size:13px; color:#8892b0; margin-top:12px; }
+
+  /* 双方面板 */
+  .duo { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+  .p-card { background:#223047; border-radius:14px; padding:12px; border:2px solid transparent; }
+  .p-card.me { border-color:#4fc3f7; }
+  .p-card.down { border-color:#ff6b6b; opacity:.85; }
+  .p-name { font-size:14px; font-weight:800; margin-bottom:2px; }
+  .p-role { font-size:11px; color:#8892b0; margin-bottom:8px; }
+  .p-tag { display:inline-block; font-size:10px; padding:1px 7px; border-radius:10px; background:#4fc3f7; color:#0d1520; font-weight:700; margin-left:5px; }
+  .p-tag.opp { background:#3a4a63; color:#c8d3e8; }
+  .bar { height:8px; background:#16233a; border-radius:5px; overflow:hidden; margin:3px 0 7px; }
+  .bar i { display:block; height:100%; transition:width .3s; }
+  .bar.hp i { background:linear-gradient(90deg,#ffd166,#ff9f43); }
+  .bar.hg i { background:linear-gradient(90deg,#51cf66,#94d82d); }
+  .bl { display:flex; justify-content:space-between; font-size:11px; color:#c8d3e8; }
+  .attrs { display:flex; gap:5px; margin-top:7px; }
+  .attr { flex:1; background:#16233a; border-radius:8px; padding:5px 2px; text-align:center; }
+  .attr .av { font-size:15px; font-weight:800; color:#4fc3f7; }
+  .attr .al { font-size:10px; color:#8892b0; }
+  .mate-eff { font-size:11px; color:#51cf66; margin-top:7px; line-height:1.5; }
+  .revived-tag { font-size:10px; color:#ffd166; margin-top:5px; }
+
+  /* 事件区 */
+  .event { background:#223047; border-radius:16px; padding:16px; margin-bottom:12px; }
+  .ev-head { display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+  .ev-title { font-size:17px; font-weight:800; color:#4fc3f7; }
+  .ev-day { font-size:12px; color:#ffd166; font-weight:700; }
+  .ev-lines { font-size:13px; line-height:1.85; color:#e6edf7; margin-bottom:12px; }
+  .ev-lines div.good { color:#51cf66; }
+  .ev-lines div.bad { color:#ff6b6b; }
+  .ev-lines div.sys { color:#8892b0; }
+  .ev-lines div.gold { color:#ffd166; }
+  .choices { display:flex; flex-direction:column; gap:8px; }
+  .choices .btn { margin-bottom:0; text-align:left; }
+  .sync-tip { text-align:center; font-size:13px; color:#ffd166; margin-top:10px; min-height:18px; }
+  .sync-tip.wait { color:#8892b0; }
+
+  .log-panel { background:#16233a; border-radius:12px; padding:10px 13px; max-height:160px; overflow-y:auto; }
+  .log-panel .lg { font-size:12px; color:#8892b0; line-height:1.65; }
+  .log-panel .lg.good { color:#51cf66; }
+  .log-panel .lg.bad { color:#ff6b6b; }
+  .log-panel .lg.gold { color:#ffd166; }
+  .log-panel .lg.who { color:#4fc3f7; font-weight:700; }
+
+  .rules-box { background:#16233a; border-radius:14px; padding:16px; margin-top:12px; font-size:12px; color:#c8d3e8; line-height:1.95; text-align:left; max-height:50vh; overflow-y:auto; }
+  .rules-box h4 { color:#4fc3f7; font-size:13px; margin:13px 0 4px; }
+  .rules-box h4:first-child { margin-top:0; }
+  .rules-box b { color:#ffd166; }
+  .rules-box .rg { color:#51cf66; }
+  .rules-box .rb { color:#ff6b6b; }
+
+  /* 结算 */
+  .end-emoji { text-align:center; font-size:60px; margin:18px 0 8px; }
+  .end-title { text-align:center; font-size:25px; font-weight:800; margin-bottom:6px; }
+  .end-sub { text-align:center; color:#8892b0; font-size:13px; margin-bottom:18px; line-height:1.7; }
+  .settle .srow { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #2e3d57; font-size:13px; gap:10px; }
+  .settle .srow:last-child { border-bottom:none; }
+  .settle .k { color:#8892b0; flex:0 0 auto; }
+  .settle .v { color:#fff; font-weight:700; text-align:right; }
+  .footer { padding:16px; color:#3a4a63; font-size:12px; text-align:center; }
+  @media (max-width:520px){
+    .char-grid { grid-template-columns:1fr; }
+    .duo { grid-template-columns:1fr; }
+    .big-code { font-size:38px; letter-spacing:6px; }
+    h1.title { font-size:23px; }
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">BHBoard</div>
+    <div class="hdr-right">
+      <span class="room-tag" id="roomTag"></span>
+      <a class="back" href="/">← 回主页</a>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <!-- SECTION: title -->
+    <div class="screen" id="scr-title">
+      <h1 class="title">南外生存·联机</h1>
+      <div class="subtitle">
+        两个人，各选一个角色，<b>互为同桌</b>。<br>
+        一起活过开学第一周（9月1日 - 9月10日）。<br>
+        每一步都要<b>两人都提交</b>才推进，谁也别想抢跑。
+      </div>
+      <button class="btn" id="btn-start">开始联机</button>
+      <button class="btn ghost" id="btn-rules">📖 查看完整规则与概率</button>
+      <div class="rules-box hidden" id="rules-box"></div>
+    </div>
+
+    <!-- SECTION: lobby -->
+    <div class="screen hidden" id="scr-lobby">
+      <h1 class="title" style="font-size:22px;">开局</h1>
+      <div class="card">
+        <div class="sub">你是 <b id="nameTag" style="color:#fff;"></b></div>
+        <button class="btn" id="createBtn">🏟️ 创建房间，等同桌来</button>
+        <div class="join-row">
+          <input id="joinCodeInput" maxlength="4" placeholder="房间号" />
+          <button class="btn" id="joinBtn">加入</button>
+        </div>
+        <div class="err" id="lobbyErr"></div>
+      </div>
+    </div>
+
+    <!-- SECTION: waiting -->
+    <div class="screen hidden" id="scr-waiting">
+      <div class="card" style="text-align:center;">
+        <h3>把房间号发给你的同桌</h3>
+        <div class="big-code" id="waitCode"></div>
+        <div class="sub" style="text-align:center;">等待加入<span class="dots"></span><br>他在主页进「南外生存·联机」，输入这个房间号</div>
+        <button class="btn ghost" id="cancelWaitBtn">取消等待</button>
+      </div>
+    </div>
+
+    <!-- SECTION: pick -->
+    <div class="screen hidden" id="scr-pick">
+      <h1 class="title" style="font-size:22px;">选择你的角色</h1>
+      <div class="subtitle" style="margin-bottom:12px;">你们两个互为同桌，同桌效果会作用到对方身上</div>
+      <div class="char-grid" id="charGrid"></div>
+      <div class="pick-status" id="pickStatus"></div>
+    </div>
+
+    <!-- SECTION: game -->
+    <div class="screen hidden" id="scr-game">
+      <div class="duo" id="duoBox"></div>
+      <div class="event">
+        <div class="ev-head">
+          <div class="ev-title" id="evTitle"></div>
+          <div class="ev-day" id="evDay"></div>
+        </div>
+        <div class="ev-lines" id="evLines"></div>
+        <div class="choices" id="evChoices"></div>
+        <div class="sync-tip" id="syncTip"></div>
+      </div>
+      <div class="card" style="padding:12px;">
+        <h3 style="margin-bottom:8px;">📜 记录</h3>
+        <div class="log-panel" id="logPanel"></div>
+      </div>
+      <button class="btn ghost" id="leaveBtn">离开房间</button>
+    </div>
+
+    <!-- SECTION: end -->
+    <div class="screen hidden" id="scr-end">
+      <div class="end-emoji" id="endEmoji"></div>
+      <div class="end-title" id="endTitle"></div>
+      <div class="end-sub" id="endSub"></div>
+      <div class="card settle" id="settle"></div>
+      <button class="btn" id="btn-again">再来一局</button>
+      <button class="btn ghost" id="btn-home">回大厅</button>
+    </div>
+  </div>
+
+  <div class="footer">BHBoard · 南外生存·联机 · made by chenyz</div>
+
+<script src="/keycheck.js"></script>
+<script>
+  // ============================================================
+  // SECTION: config
+  // ============================================================
+  const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
+  const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
+  const ROOM_PREFIX = 'bh_nfls2:';
+  const CREATE_LIMIT_KEY = 'bh_nfls2_creates';
+  const DAILY_CREATE_LIMIT = 10;
+  const ROOM_TTL = 86400;
+  const ROOM_MAX_WAIT = 3600 * 1000;
+  const ROOM_MAX_IDLE = 30 * 60 * 1000;
+  const PRESENCE_PREFIX = 'bh_member:';
+  const PRESENCE_TTL = 90;
+  const MEMBERS_KEY = 'bh_members';
+  const POLL_MS = 900;
+
+  const QUESTION_CHANCE = 0.45;
+
+  // ============================================================
+  // SECTION: data —— 角色 / 课表 / 日历（与单人版一致）
+  // ============================================================
+  const CHARACTERS = [
+    { id:'chen', name:'陈仰正', gender:'男', looks:7, body:5, intelligence:7, happyCap:15,
+      traits:[
+        { name:'哲学家', desc:'快乐上限 15，但所有快乐惩罚 ×2' },
+        { name:'不要造谣', desc:'同桌是徐悠然时，课间发呆额外 +1 快乐' },
+        { name:'千恋万花', desc:'半夜玩千恋万花时，快乐直接恢复满' }
+      ],
+      mateEffect:'作为同桌：快乐上限 +5' },
+    { id:'wang', name:'王浩宇', gender:'男', looks:7, body:6, intelligence:8, happyCap:10,
+      traits:[
+        { name:'风纪委员', desc:'早自习聊天永远不会被抓' },
+        { name:'青梅竹马', desc:'同桌为范书元时，每节课必定 +1 快乐，但下课无法蹴瓶子' }
+      ],
+      mateEffect:'作为同桌：每天早晨 20% 概率快乐回满' },
+    { id:'hou', name:'侯景瑞', gender:'男', looks:3, body:9, intelligence:2, happyCap:10, hungerCap:15,
+      traits:[
+        { name:'大胃袋', desc:'饥饿上限为 15（其他人 10）' },
+        { name:'我不是给', desc:'同桌为异性时，快乐上限 +5，饥饿上限 -10' }
+      ],
+      mateEffect:'作为同桌：每节课 -1 快乐，+1 饥饿' },
+    { id:'xu', name:'徐悠然', gender:'女', looks:10, body:6, intelligence:9, happyCap:10,
+      traits:[ { name:'故意的', desc:'同桌是陈仰正时，双方快乐上限再 +5' } ],
+      mateEffect:'作为同桌：被表白概率 ×2' },
+    { id:'jia', name:'贾子辰', gender:'男', looks:7, body:8, intelligence:10, happyCap:10,
+      traits:[ { name:'好饿', desc:'每节课额外 -1 饥饿，但每天智力永久 +1' } ],
+      mateEffect:'作为同桌：智力 +10，颜值 -5，体力 -5' },
+    { id:'zhu', name:'朱凌初', gender:'女', looks:4, body:4, intelligence:4, happyCap:10,
+      traits:[
+        { name:'美术生', desc:'课间可以画画，10% 概率直接回满快乐' },
+        { name:'万人迷', desc:'被表白概率 ×4' },
+        { name:'厌学', desc:'每节课 -1 快乐' }
+      ],
+      mateEffect:'作为同桌：颜值 +3' },
+    { id:'chang', name:'常喆', gender:'男', looks:3, body:5, intelligence:8, happyCap:10,
+      traits:[ { name:'长喆', desc:'晚上"起飞"后，第二天早晨没有不能吃早饭的 debuff' } ],
+      mateEffect:'作为同桌：周末每天各项属性永久 +1' },
+    { id:'fan', name:'范书元', gender:'男', looks:2, body:3, intelligence:2, happyCap:10,
+      traits:[
+        { name:'是人类？', desc:'永远不会被表白' },
+        { name:'不要动电脑', desc:'课间可以玩电脑，75% 被抓（没被抓 +3 快乐，被抓 -3 快乐）' }
+      ],
+      mateEffect:'作为同桌：每项属性 -2' }
+  ];
+
+  const SCHEDULE = [
+    ['语文','物理','化学','体育','数学','政治','历史','英语','班会'],
+    ['语文','数学','物理','英语','英语','音乐','语辅','体育','化辅'],
+    ['历史','语文','政治','数学','化学','数学1','物理','英语1','英语1'],
+    ['物理','数学','语文','语文','语文','英语','英语','历史','数辅'],
+    ['英语','英语','语文','数学','体育','物辅','美术','化学','政治']
+  ];
+
+  const DAY_INFO = [
+    { date:'9月1日',  week:'星期二', sched:1 },
+    { date:'9月2日',  week:'星期三', sched:2 },
+    { date:'9月3日',  week:'星期四', sched:3 },
+    { date:'9月4日',  week:'星期五', sched:4 },
+    { date:'9月5日',  week:'星期六', sched:-1 },
+    { date:'9月6日',  week:'星期日', sched:-1 },
+    { date:'9月7日',  week:'星期一', sched:0 },
+    { date:'9月8日',  week:'星期二', sched:1 },
+    { date:'9月9日',  week:'星期三', sched:2 },
+    { date:'9月10日', week:'星期四', sched:3 }
+  ];
+
+  // ============================================================
+  // SECTION: utils
+  // ============================================================
+  const $ = id => document.getElementById(id);
+  function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+  function chance(p){ return Math.random() < p; }
+  function clamp(v,lo,hi){ return Math.max(lo, Math.min(hi, v)); }
+  function fmt(v){ return (Math.round(v*10)/10).toString(); }
+  function getChar(id){ return CHARACTERS.find(c=>c.id===id); }
+  function genCode(){
+    const cs='ABCDEFGHJKMNPQRSTUVWXYZ23456789'; let s='';
+    for(let i=0;i<4;i++) s+=cs[Math.floor(Math.random()*cs.length)];
+    return s;
+  }
+  function getSavedUser(){
+    try { const s=localStorage.getItem('bh_user'); const u=s?JSON.parse(s):null; return u&&u.username?u.username:''; }
+    catch(e){ return ''; }
+  }
+  function showScreen(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
+    $(id).classList.remove('hidden');
+    window.scrollTo(0,0);
+  }
+
+  // ============================================================
+  // SECTION: upstash
+  // ============================================================
+  async function upGet(key){
+    const res = await fetch(`${UPSTASH_URL}/get/${key}`, { headers:{ 'Authorization':'Bearer '+UPSTASH_TOKEN } });
+    const data = await res.json();
+    return data.result;
+  }
+  async function upSet(key, value, ttl){
+    const res = await fetch(
+      `${UPSTASH_URL}/set/${key}/${encodeURIComponent(value)}/ex/${ttl||ROOM_TTL}`,
+      { method:'POST', headers:{ 'Authorization':'Bearer '+UPSTASH_TOKEN } }
+    );
+    if (!res.ok) throw new Error('网络写入失败');
+    return await res.json();
+  }
+  async function upDel(key){
+    const res = await fetch(`${UPSTASH_URL}/del/${key}`, { method:'POST', headers:{ 'Authorization':'Bearer '+UPSTASH_TOKEN } });
+    return await res.json();
+  }
+  async function getRoom(code){
+    const raw = await upGet(ROOM_PREFIX + code);
+    if (!raw) return null;
+    let obj = null;
+    try { obj = JSON.parse(raw); } catch(e){ return null; }
+    if (!obj || typeof obj !== 'object') return null;
+    const now = Date.now();
+    const bornAt = obj.createdAt || obj.updatedAt || 0;
+    const waitTooLong = obj.status==='waiting' && bornAt>0 && (now-bornAt)>ROOM_MAX_WAIT;
+    const idleTooLong = obj.updatedAt>0 && (now-obj.updatedAt)>ROOM_MAX_IDLE;
+    if (waitTooLong || idleTooLong){
+      try { await upDel(ROOM_PREFIX + code); } catch(e){}
+      return null;
+    }
+    return obj;
+  }
+  async function putRoom(code, st){ return await upSet(ROOM_PREFIX+code, JSON.stringify(st)); }
+
+  // 在线心跳
+  async function beatPresence(name){
+    if (!name) return;
+    try {
+      await fetch(`${UPSTASH_URL}/set/${PRESENCE_PREFIX}${encodeURIComponent(name)}/${Date.now()}/ex/${PRESENCE_TTL}`,
+        { method:'POST', headers:{ 'Authorization':'Bearer '+UPSTASH_TOKEN } });
+    } catch(e){}
+    try {
+      const raw = await upGet(MEMBERS_KEY);
+      let members = {};
+      if (raw){ try { members = JSON.parse(raw); } catch(e){} if(!members||typeof members!=='object'||Array.isArray(members)) members={}; }
+      if (!members[name]){
+        members[name] = Date.now();
+        await upSet(MEMBERS_KEY, JSON.stringify(members));
+      }
+    } catch(e){}
+  }
+
+  // 每日建房额度
+  function todayKey(){
+    const d=new Date(), pad=n=>String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  }
+  async function readCreates(){
+    const raw = await upGet(CREATE_LIMIT_KEY);
+    if (!raw) return {};
+    try { const o=JSON.parse(raw); return (o&&typeof o==='object'&&!Array.isArray(o))?o:{}; } catch(e){ return {}; }
+  }
+  async function recordCreate(name){
+    const all = await readCreates();
+    const mine = all[name] || {};
+    mine[todayKey()] = (mine[todayKey()]||0)+1;
+    all[name] = mine;
+    await upSet(CREATE_LIMIT_KEY, JSON.stringify(all));
+    return mine[todayKey()];
+  }
+
+  // ============================================================
+  // SECTION: session state
+  // ============================================================
+  let roomCode = null;
+  let mySeat = 0;
+  let myName = '';
+  let lastSeq = -1;
+  let pollTimer = null;
+  let mode = 'idle';
+  let lastSt = null;
+
+  function saveLocal(code, seat){ localStorage.setItem('bh_nfls2_room', JSON.stringify({code,seat})); }
+  function getLocal(){ try{ const s=localStorage.getItem('bh_nfls2_room'); return s?JSON.parse(s):null; }catch(e){ return null; } }
+  function clearLocal(){ localStorage.removeItem('bh_nfls2_room'); }
+
+  // ============================================================
+  // SECTION: room state
+  // ============================================================
+  function newRoomState(name){
+    return {
+      status:'waiting', code:'', seq:0, createdAt:Date.now(), updatedAt:Date.now(),
+      names:[name, ''],
+      picks:[null, null],
+      players:null,
+      day:1, step:0,
+      submitted:[null, null],
+      stepResult:null,
+      reviveFor:null,
+      log:[],
+      result:null
+    };
+  }
+
+  function makePlayer(name, charId, mateId){
+    const c = getChar(charId), m = getChar(mateId);
+    const p = {
+      name, charId, mateId,
+      looks:c.looks, body:c.body, intelligence:c.intelligence,
+      happyCap:c.happyCap, hungerCap:c.hungerCap||10,
+      happy:0, hunger:0,
+      down:false, revivedOnce:false, noBreakfast:false,
+      stats:{ correct:0, goals:0, deaths:0, revives:0 }
+    };
+    // 同桌被动（对方的角色作用于我）
+    if (m.id==='chen') p.happyCap += 5;
+    if (m.id==='jia'){ p.intelligence=clamp(p.intelligence+10,1,20); p.looks=clamp(p.looks-5,1,10); p.body=clamp(p.body-5,1,10); }
+    if (m.id==='zhu') p.looks = clamp(p.looks+3,1,10);
+    if (m.id==='fan'){ p.looks=clamp(p.looks-2,1,10); p.body=clamp(p.body-2,1,10); p.intelligence=clamp(p.intelligence-2,1,20); }
+    if (charId==='xu' && mateId==='chen') p.happyCap += 5;
+    if (charId==='chen' && mateId==='xu') p.happyCap += 5;
+    if (charId==='hou' && m.gender !== c.gender){ p.happyCap += 5; p.hungerCap = Math.max(1, p.hungerCap-10); }
+    p.happy = p.happyCap;
+    p.hunger = p.hungerCap;
+    return p;
+  }
+
+  function pushLog(st, text, cls){
+    st.log = st.log || [];
+    st.log.push({ text, cls: cls||'' });
+    if (st.log.length > 80) st.log = st.log.slice(-80);
+  }
+
+  // ============================================================
+  // SECTION: steps（日程，双方共享）
+  // ============================================================
+  function buildSteps(day){
+    const sched = DAY_INFO[day-1].sched;
+    if (sched === -1){
+      return [
+        { kind:'auto', id:'weekendMorning', title:'🛌 周末早晨' },
+        { kind:'choice', id:'weekendLeisure', title:'🎉 周末时光' },
+        { kind:'choice', id:'evening', title:'🌙 晚上' }
+      ];
+    }
+    const steps = [
+      { kind:'auto', id:'morning', title:'🌅 早晨' },
+      { kind:'choice', id:'morningStudy', title:'📖 早自习' }
+    ];
+    const subj = SCHEDULE[sched];
+    for (let i=0;i<9;i++){
+      steps.push({ kind:'auto', id:'class', cls:i, title:`📚 第${i+1}节 ${subj[i]}` });
+      if (i===4) steps.push({ kind:'choice', id:'lunch', title:'🍱 午餐' });
+      else if (i===6) steps.push({ kind:'choice', id:'bigBreak', title:'🏃 大课间' });
+      else steps.push({ kind:'choice', id:'break', cls:i, title:'☕ 课间' });
+    }
+    steps.push({ kind:'choice', id:'evening', title:'🌙 晚上' });
+    return steps;
+  }
+  function curStep(st){ return buildSteps(st.day)[st.step] || null; }
+
+  // 该玩家在当前步骤可选项
+  function getOptions(st, seat){
+    const step = curStep(st);
+    if (!step || step.kind !== 'choice') return [];
+    const p = st.players[seat], mate = getChar(p.mateId);
+    const id = step.id;
+    if (id === 'morningStudy'){
+      const opts = [{ k:'zone', t:'😶 发呆（饥饿 -2）' }];
+      opts.push({ k:'chat', t: p.charId==='wang' ? '💬 聊天（风纪委员：必定 快乐 +1）' : '💬 聊天（50% 快乐 +1，50% 快乐 -2）' });
+      return opts;
+    }
+    if (id === 'break' || id === 'bigBreak'){
+      const opts = [];
+      if (id === 'bigBreak'){
+        opts.push({ k:'out', t:'🏃 出去玩（快乐 +3，饥饿 -3）' });
+        opts.push({ k:'stay', t:'🪑 呆在教室（快乐 +1）' });
+        return opts;
+      }
+      const chenXu = (p.charId==='chen' && p.mateId==='xu');
+      opts.push({ k:'idle', t: chenXu ? '😶 发呆（不要造谣：快乐 +1）' : '😶 发呆（无任何变化）' });
+      const noKick = (p.charId==='wang' && p.mateId==='fan');
+      if (!noKick){
+        const pct = Math.round(clamp(p.body*0.1,0,1)*100);
+        opts.push({ k:'kick', t:`🍾 蹴瓶子（饥饿 -2；${pct}% 进球，快乐 +2）` });
+      }
+      if (p.charId==='zhu') opts.push({ k:'draw', t:'🎨 画画（10% 快乐回满，否则快乐 +1）' });
+      if (p.charId==='fan') opts.push({ k:'pc', t:'💻 玩电脑（75% 被抓 快乐 -3，25% 没被抓 快乐 +3）' });
+      return opts;
+    }
+    if (id === 'lunch'){
+      return [
+        { k:'eat', t:'🍚 好好吃饭（恢复 50% 饥饿）' },
+        { k:'ball', t:'⚽ 出去打球（快乐 +3，不恢复饥饿）' }
+      ];
+    }
+    if (id === 'evening'){
+      const opts = [{ k:'sleep', t:'😴 好好睡觉（快乐 +上限的 20%）' }];
+      opts.push({ k:'galgame', t: p.charId==='chen' ? '🌸 半夜玩《千恋万花》（哲学家：快乐直接回满）' : '🌸 半夜玩《千恋万花》（50% 快乐 +5，50% 快乐 -5）' });
+      opts.push({ k:'fly', t:'🚀 起飞（快乐 +5，但明早吃不上早饭）' });
+      return opts;
+    }
+    if (id === 'weekendLeisure'){
+      return [
+        { k:'out', t:'出门玩（快乐 +3，饥饿 -2）' },
+        { k:'hw', t:'在家写作业（快乐 +1，智力 +1）' },
+        { k:'game', t:'打游戏（快乐 +2，30% 被发现 -3）' }
+      ];
+    }
+    return [];
+  }
+
+  // ============================================================
+  // SECTION: resolve（结算，仅房主执行）
+  // ============================================================
+  function confessionMult(p){
+    let m = 1;
+    if (p.charId==='zhu') m *= 4;
+    if (p.charId==='fan') m *= 0;
+    if (p.mateId==='xu') m *= 2;
+    return m;
+  }
+  function hpDelta(p, d){
+    // 陈仰正哲学家：快乐惩罚 ×2
+    if (d < 0 && p.charId==='chen') d *= 2;
+    p.happy = clamp(p.happy + d, 0, p.happyCap);
+    return d;
+  }
+  function hungerDelta(p, d){
+    p.hunger = clamp(p.hunger + d, 0, p.hungerCap);
+    return d;
+  }
+  function signTxt(label, d){
+    if (d === 0) return null;
+    return { t:`· ${label} ${d>0?'+':''}${fmt(d)}`, c: d>0?'good':'bad' };
+  }
+
+  // 结算一个玩家在某步骤的结果，返回 lines
+  function resolvePlayer(st, seat, step, choice){
+    const p = st.players[seat];
+    const mate = getChar(p.mateId);
+    const lines = [];
+    const add = (label, d) => { const l = signTxt(label, d); if (l) lines.push(l); };
+
+    if (p.down){
+      lines.push({ t:'· 你倒下了，这一步没有行动', c:'sys' });
+      return lines;
+    }
+
+    // ---- auto 步骤 ----
+    if (step.id === 'morning'){
+      const restore = p.happyCap * 0.2;
+      p.happy = clamp(p.happy + restore, 0, p.happyCap);
+      add('快乐', Math.round(restore*10)/10);
+      // 王浩宇同桌：早晨 20% 快乐回满
+      if (p.mateId==='wang' && chance(0.2)){
+        p.happy = p.happyCap;
+        lines.push({ t:'· 同桌王浩宇给你带了早饭，快乐直接回满！', c:'good' });
+      }
+      if (p.noBreakfast && p.charId!=='chang'){
+        lines.push({ t:'· 昨晚起飞起不来，没吃上早饭，饥饿没有恢复', c:'bad' });
+      } else {
+        p.hunger = Math.round(p.hungerCap*0.8);
+        lines.push({ t:'· 吃了早饭，饥饿恢复到 80%', c:'good' });
+      }
+      p.noBreakfast = false;
+      // 贾子辰本人：每天智力永久 +1
+      if (p.charId==='jia'){
+        p.intelligence = clamp(p.intelligence+1,1,20);
+        lines.push({ t:'· 好饿：越吃越聪明，智力永久 +1', c:'good' });
+      }
+      return lines;
+    }
+
+    if (step.id === 'weekendMorning'){
+      const restore = p.happyCap * 0.3;
+      p.happy = clamp(p.happy + restore, 0, p.happyCap);
+      add('快乐', Math.round(restore*10)/10);
+      if (p.noBreakfast && p.charId!=='chang'){
+        lines.push({ t:'· 昨晚起飞，早饭也没吃上，饥饿没恢复', c:'bad' });
+      } else {
+        p.hunger = p.hungerCap;
+        lines.push({ t:'· 周末睡到自然醒，还吃了顿丰盛早饭', c:'good' });
+      }
+      p.noBreakfast = false;
+      // 常喆同桌：周末每天各项属性 +1
+      if (p.mateId==='chang'){
+        p.looks=clamp(p.looks+1,1,10); p.body=clamp(p.body+1,1,10); p.intelligence=clamp(p.intelligence+1,1,20);
+        lines.push({ t:'· 同桌常喆：周末一起学习，颜值/体力/智力 各永久 +1', c:'good' });
+      }
+      if (p.charId==='jia'){
+        p.intelligence = clamp(p.intelligence+1,1,20);
+        lines.push({ t:'· 好饿：智力永久 +1', c:'good' });
+      }
+      return lines;
+    }
+
+    if (step.id === 'class'){
+      const subj = SCHEDULE[DAY_INFO[st.day-1].sched][step.cls];
+      lines.push({ t:`第 ${step.cls+1} 节：${subj}`, c:'gold' });
+      const hd = hungerDelta(p, -1);
+      if (hd === 0){ const d = hpDelta(p,-1); add('饿得头晕，快乐', d); }
+      else add('上课消耗，饥饿', hd);
+
+      if (p.charId==='jia'){
+        const h2 = hungerDelta(p,-1);
+        if (h2 !== 0) add('好饿：额外饥饿', h2);
+      }
+      if (p.charId==='zhu'){ add('厌学：不想上课，快乐', hpDelta(p,-1)); }
+
+      // 提问
+      if (chance(QUESTION_CHANCE)){
+        if (chance(clamp(p.intelligence/20,0,1))){
+          p.stats.correct++;
+          lines.push({ t:'· 老师提问，你答上来了！', c:'good' });
+        } else {
+          add('老师提问没答上来，快乐', hpDelta(p,-2));
+        }
+      } else {
+        lines.push({ t:'· 老师没有提问，平安度过', c:'sys' });
+      }
+
+      // 同桌每节课被动
+      if (p.mateId==='hou'){
+        add('同桌侯景瑞：负能量，快乐', hpDelta(p,-1));
+        add('同桌侯景瑞：分你零食，饥饿', hungerDelta(p,1));
+      }
+      if (p.mateId==='jia') add('同桌贾子辰：太吵闹，快乐', hpDelta(p,-0.5));
+      if (p.charId==='wang' && p.mateId==='fan') add('青梅竹马：范书元陪你上课，快乐', hpDelta(p,1));
+      return lines;
+    }
+
+    // ---- choice 步骤 ----
+    // 课间随机事件（表白 / 侮辱）优先于玩家选择
+    if (step.id === 'break'){
+      const confP = clamp(p.looks*0.005*confessionMult(p), 0, 1);
+      if (confP > 0 && chance(confP)){
+        p.happy = p.happyCap;
+        lines.push({ t:'💘 有人当众向你表白！快乐直接回满！', c:'good' });
+        return lines;
+      }
+      const insP = clamp(0.01*(10-p.looks), 0, 1);
+      if (insP > 0 && chance(insP)){
+        add('被人当众侮辱，快乐', hpDelta(p,-5));
+        return lines;
+      }
+    }
+
+    if (step.id === 'morningStudy'){
+      if (choice === 'zone'){ add('发呆肚子饿，饥饿', hungerDelta(p,-2)); }
+      else if (choice === 'chat'){
+        if (chance(0.5) || p.charId==='wang') add('聊得很开心，快乐', hpDelta(p,1));
+        else add('聊天被记违纪，快乐', hpDelta(p,-2));
+      }
+      return lines;
+    }
+
+    if (step.id === 'break'){
+      if (choice === 'idle'){
+        if (p.charId==='chen' && p.mateId==='xu') add('不要造谣：和徐悠然闲聊，快乐', hpDelta(p,1));
+        else lines.push({ t:'· 你发了会儿呆，什么都没发生', c:'sys' });
+      } else if (choice === 'kick'){
+        if (p.hunger < 2) lines.push({ t:'· 你太饿了，踢不动瓶子', c:'sys' });
+        else {
+          add('蹴瓶子，饥饿', hungerDelta(p,-2));
+          if (chance(clamp(p.body*0.1,0,1))){
+            p.stats.goals++;
+            add('一脚蹴进垃圾桶！快乐', hpDelta(p,2));
+          } else lines.push({ t:'· 瓶子飞了出去，没进', c:'sys' });
+        }
+      } else if (choice === 'draw'){
+        if (chance(0.1)){ p.happy = p.happyCap; lines.push({ t:'· 画画灵感爆发，快乐直接回满！', c:'good' }); }
+        else add('安静画了会儿画，快乐', hpDelta(p,1));
+      } else if (choice === 'pc'){
+        if (chance(0.75)) add('玩电脑被老师抓到，快乐', hpDelta(p,-3));
+        else add('偷偷玩电脑没被发现，快乐', hpDelta(p,3));
+      }
+      return lines;
+    }
+
+    if (step.id === 'lunch'){
+      if (choice === 'eat'){ add('好好吃了顿饭，饥饿', hungerDelta(p, Math.round(p.hungerCap*0.5))); }
+      else if (choice === 'ball'){ add('冲出去打了场球，快乐', hpDelta(p,3)); }
+      return lines;
+    }
+
+    if (step.id === 'bigBreak'){
+      if (choice === 'out'){
+        add('冲出去疯玩，快乐', hpDelta(p,3));
+        add('跑累了，饥饿', hungerDelta(p,-3));
+      } else if (choice === 'stay'){
+        add('在教室休息，快乐', hpDelta(p,1));
+      }
+      return lines;
+    }
+
+    if (step.id === 'evening'){
+      if (choice === 'sleep'){ add('睡了个好觉，快乐', hpDelta(p, p.happyCap*0.2)); }
+      else if (choice === 'galgame'){
+        if (p.charId==='chen'){ p.happy = p.happyCap; lines.push({ t:'· 千恋万花！快乐直接恢复满！', c:'good' }); }
+        else if (chance(0.5)) add('偷偷玩千恋万花很爽，快乐', hpDelta(p,5));
+        else add('玩千恋万花被家长发现，快乐', hpDelta(p,-5));
+      } else if (choice === 'fly'){
+        add('直接起飞爽到凌晨，快乐', hpDelta(p,5));
+        if (p.charId==='chang') lines.push({ t:'· 你是常喆，明早照样能吃早饭', c:'sys' });
+        else { p.noBreakfast = true; lines.push({ t:'· 明早将吃不上早饭！', c:'bad' }); }
+      }
+      return lines;
+    }
+
+    if (step.id === 'weekendLeisure'){
+      if (choice === 'out'){
+        add('出去疯玩，快乐', hpDelta(p,3));
+        add('玩累了，饥饿', hungerDelta(p,-2));
+      } else if (choice === 'hw'){
+        add('认真写作业，快乐', hpDelta(p,1));
+        p.intelligence = clamp(p.intelligence+1,1,20);
+        lines.push({ t:'· 智力 +1', c:'good' });
+      } else if (choice === 'game'){
+        add('打了一天游戏，快乐', hpDelta(p,2));
+        if (chance(0.3)) add('被家长逮到，快乐', hpDelta(p,-3));
+      }
+      return lines;
+    }
+
+    return lines;
+  }
+
+  // 房主：双方都提交后结算当前步骤
+  function resolveStep(st){
+    const step = curStep(st);
+    if (!step) return;
+    const results = [];
+    for (let s=0;s<2;s++){
+      const choice = st.submitted[s];
+      const lines = resolvePlayer(st, s, step, (choice && choice.k) ? choice.k : null);
+      results.push(lines);
+    }
+    st.stepResult = { day:st.day, step:st.step, title:step.title, lines:results };
+    st.submitted = [null, null];
+
+    // 写日志
+    const dayInfo = DAY_INFO[st.day-1];
+    pushLog(st, `—— ${dayInfo.date} ${step.title} ——`, 'gold');
+    for (let s=0;s<2;s++){
+      if (results[s].length===0) continue;
+      pushLog(st, `${st.players[s].name}：`, 'who');
+      results[s].forEach(l => pushLog(st, l.t, l.c));
+    }
+
+    // 死亡 / 救活判定
+    for (let s=0;s<2;s++){
+      const p = st.players[s];
+      if (!p.down && p.happy <= 0){
+        p.down = true;
+        p.stats.deaths++;
+        if (p.revivedOnce){
+          st.result = { type:'over', reason:`${p.name} 第二次倒下了，没人能再救他。`, deadSeat:s };
+          st.status = 'ended';
+          pushLog(st, `💀 ${p.name} 第二次倒下，游戏结束。`, 'bad');
+          return;
+        }
+        st.reviveFor = s;
+        pushLog(st, `💔 ${p.name} 快乐归零倒下了！同桌可以救他（代价：自己所有属性变成 5）`, 'bad');
+      }
+    }
+    if (st.players[0].down && st.players[1].down){
+      st.result = { type:'over', reason:'你们两个一起倒下了。', deadSeat:-1 };
+      st.status = 'ended';
+      return;
+    }
+
+    // 推进
+    st.step++;
+    const steps = buildSteps(st.day);
+    if (st.step >= steps.length){
+      st.day++;
+      st.step = 0;
+      if (st.day > 10){
+        st.status = 'ended';
+        st.result = { type:'win', reason:'你们一起活到了教师节！' };
+        pushLog(st, '🎓 9月10日，你们一起撑到了教师节！', 'gold');
+        return;
+      }
+      pushLog(st, `☀️ 第 ${st.day} 天开始（${DAY_INFO[st.day-1].date} ${DAY_INFO[st.day-1].week}）`, 'gold');
+    }
+  }
+
+  // 房主：结算救活步骤
+  function resolveRevive(st){
+    const victim = st.reviveFor;
+    const saver = 1 - victim;
+    const doSave = st.submitted[saver] && st.submitted[saver].k === 'revive';
+    if (doSave){
+      const sv = st.players[saver], vc = st.players[victim];
+      sv.looks = 5; sv.body = 5; sv.intelligence = 5;
+      vc.down = false;
+      vc.revivedOnce = true;
+      vc.happy = Math.max(1, Math.round(vc.happyCap*0.5));
+      sv.stats.revives++;
+      pushLog(st, `💗 ${sv.name} 把自己的颜值/体力/智力全部降到 5，救活了 ${vc.name}！`, 'gold');
+      // 按座位分配文案，避免倒下的是 0 号位时两人看到的说明互换
+      const linesBySeat = [[], []];
+      linesBySeat[saver] = [{ t:`· 你牺牲了所有属性（颜值/体力/智力 全部变成 5），救活了 ${vc.name}`, c:'good' }];
+      linesBySeat[victim] = [
+        { t:`· ${sv.name} 救了你！你的快乐恢复到 ${fmt(vc.happy)}`, c:'good' },
+        { t:'· 你已经没有第二次机会了，再倒下就结束', c:'bad' }
+      ];
+      st.stepResult = { day:st.day, step:st.step, title:'💗 救活同桌', lines:linesBySeat };
+    } else {
+      st.players[victim].down = true;
+      st.result = { type:'over', reason:`${st.players[victim].name} 倒下了，同桌没有救他。`, deadSeat:victim };
+      st.status = 'ended';
+      pushLog(st, `💀 ${st.players[saver].name} 没有救 ${st.players[victim].name}，游戏结束。`, 'bad');
+      st.stepResult = null;
+    }
+    st.reviveFor = null;
+    st.submitted = [null, null];
+  }
+
+  // ============================================================
+  // SECTION: actions（提交，双方都要提交才推进）
+  // ============================================================
+  async function submit(kind, payload){
+    try {
+      const st = await getRoom(roomCode);
+      if (!st){ alert('房间已被清除或丢失，请回大厅重新开一局'); backToLobby(); return; }
+      if (st.status === 'ended'){ lastSeq=-1; render(st); return; }
+
+      // 救活阶段
+      if (st.reviveFor !== null){
+        if (kind === 'reviveChoice'){
+          st.submitted[mySeat] = { k: payload };
+        } else {
+          st.submitted[mySeat] = { k:'ack' };
+        }
+      } else {
+        const step = curStep(st);
+        if (!step) return;
+        if (step.kind === 'auto'){
+          st.submitted[mySeat] = { k:'ack' };
+        } else {
+          const opts = getOptions(st, mySeat);
+          if (!opts.some(o=>o.k===payload)) return;
+          st.submitted[mySeat] = { k: payload };
+        }
+      }
+
+      st.seq++;
+      st.updatedAt = Date.now();
+      // 房主负责结算（避免两端同时结算造成重复效果）
+      if (mySeat === 0 && st.submitted[0] && st.submitted[1]){
+        if (st.reviveFor !== null) resolveRevive(st);
+        else resolveStep(st);
+      }
+      await putRoom(roomCode, st);
+      lastSeq = st.seq;
+      render(st);
+    } catch(err){
+      console.error(err);
+      alert('操作失败：'+err.message);
+    }
+  }
+
+  // ============================================================
+  // SECTION: room lifecycle
+  // ============================================================
+  function lobbyError(msg){
+    $('lobbyErr').textContent = msg;
+    if (msg) setTimeout(()=>{ if ($('lobbyErr').textContent===msg) $('lobbyErr').textContent=''; }, 5000);
+  }
+
+  async function createRoom(){
+    const name = getSavedUser();
+    const btn = $('createBtn');
+    btn.disabled = true;
+    try {
+      const creates = await readCreates();
+      const used = (creates[name]||{})[todayKey()] || 0;
+      if (used >= DAILY_CREATE_LIMIT){
+        lobbyError(`今天已经建了 ${DAILY_CREATE_LIMIT} 个房间，明天再来吧`);
+        return;
+      }
+      let code, existing;
+      do { code = genCode(); existing = await getRoom(code); } while (existing);
+
+      const st = newRoomState(name);
+      st.code = code;
+      await putRoom(code, st);
+      await recordCreate(name);
+
+      roomCode = code; mySeat = 0; myName = name; mode = 'waiting';
+      saveLocal(code, 0);
+      $('waitCode').textContent = code;
+      $('roomTag').textContent = '房间 ' + code;
+      showScreen('scr-waiting');
+      startPoll();
+    } catch(err){
+      console.error(err);
+      lobbyError('创建失败：'+err.message);
+    } finally { btn.disabled = false; }
+  }
+
+  async function joinRoom(){
+    const name = getSavedUser();
+    const code = ($('joinCodeInput').value.trim()).toUpperCase();
+    if (code.length !== 4){ lobbyError('房间号是 4 位'); return; }
+    const saved = getLocal();
+    if (saved && saved.code === code){
+      roomCode = code; mySeat = saved.seat; myName = name; mode = 'playing';
+      const st = await getRoom(code);
+      if (st){ lastSeq = st.seq; enterByStatus(st); return; }
+      clearLocal();
+    }
+    const btn = $('joinBtn');
+    btn.disabled = true;
+    try {
+      const st = await getRoom(code);
+      if (!st){ lobbyError('找不到这个房间，检查一下房间号'); return; }
+      if (st.status !== 'waiting'){ lobbyError('这个房间已经开局了'); return; }
+      if (st.names[0] === name){ lobbyError('这是你自己创建的房间，等同桌加入就行'); return; }
+
+      st.names[1] = name;
+      st.status = 'picking';
+      st.seq++;
+      st.updatedAt = Date.now();
+      await putRoom(code, st);
+
+      roomCode = code; mySeat = 1; myName = name; mode = 'playing';
+      lastSeq = st.seq;
+      saveLocal(code, 1);
+      $('roomTag').textContent = '房间 ' + code;
+      enterByStatus(st);
+    } catch(err){
+      console.error(err);
+      lobbyError('加入失败：'+err.message);
+    } finally { btn.disabled = false; }
+  }
+
+  async function selectChar(charId){
+    try {
+      const st = await getRoom(roomCode);
+      if (!st || st.status !== 'picking') return;
+      // 对方已选的角色不能再选
+      const other = st.picks[1-mySeat];
+      if (other === charId){ alert('同桌已经选了这个角色，换一个吧'); return; }
+      st.picks[mySeat] = charId;
+      st.seq++;
+      st.updatedAt = Date.now();
+      // 双方都选完 → 开局（房主负责初始化，避免竞争）
+      if (st.picks[0] && st.picks[1] && mySeat === 0){
+        st.players = [ makePlayer(st.names[0], st.picks[0], st.picks[1]), makePlayer(st.names[1], st.picks[1], st.picks[0]) ];
+        st.status = 'playing';
+        st.day = 1; st.step = 0;
+        st.submitted = [null, null];
+        st.reviveFor = null;
+        st.log = [];
+        pushLog(st, `🎓 开学了！${st.players[0].name}（${getChar(st.picks[0]).name}） 与 ${st.players[1].name}（${getChar(st.picks[1]).name}） 成为同桌`, 'gold');
+        pushLog(st, `☀️ 第 1 天（${DAY_INFO[0].date} ${DAY_INFO[0].week}）`, 'gold');
+      }
+      await putRoom(roomCode, st);
+      lastSeq = st.seq;
+      render(st);
+    } catch(err){
+      console.error(err);
+      alert('选择失败：'+err.message);
+    }
+  }
+
+  function enterByStatus(st){
+    lastSt = st;
+    if (st.status === 'waiting' && mySeat === 0){
+      $('waitCode').textContent = st.code;
+      showScreen('scr-waiting');
+    } else if (st.status === 'picking'){
+      showScreen('scr-pick');
+      renderPick(st);
+    } else if (st.status === 'playing'){
+      showScreen('scr-game');
+      render(st);
+    } else if (st.status === 'ended'){
+      showScreen('scr-game');
+      render(st);
+    }
+    startPoll();
+  }
+
+  // ============================================================
+  // SECTION: polling
+  // ============================================================
+  function startPoll(){
+    stopPoll();
+    pollTimer = setInterval(pollOnce, POLL_MS);
+  }
+  function stopPoll(){ if (pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
+
+  async function pollOnce(){
+    if (!roomCode) return;
+    try {
+      const st = await getRoom(roomCode);
+      if (!st){
+        stopPoll();
+        if (mode !== 'idle') alert('房间已被清除或丢失（等待超1小时或闲置超30分钟会自动清理），请回大厅重新开一局');
+        backToLobby();
+        return;
+      }
+      // 房主兜底：双方都已提交但还没结算（例如提交瞬间房主掉线）
+      if (mySeat === 0 && st.status === 'playing' && st.submitted[0] && st.submitted[1]){
+        if (st.reviveFor !== null) resolveRevive(st); else resolveStep(st);
+        st.seq++; st.updatedAt = Date.now();
+        await putRoom(roomCode, st);
+        lastSeq = st.seq;
+        render(st);
+        return;
+      }
+      if (st.seq !== lastSeq){
+        lastSeq = st.seq;
+        // 选角阶段 -> 对局阶段的切换
+        if (st.status === 'playing' && $('scr-game').classList.contains('hidden')) showScreen('scr-game');
+        if (st.status === 'picking' && $('scr-pick').classList.contains('hidden')) showScreen('scr-pick');
+        if (st.status === 'picking') renderPick(st);
+        else render(st);
+      } else if (st.status === 'picking'){
+        renderPick(st);   // 刷新对方选角状态
+      } else {
+        renderSyncTip(st);
+      }
+    } catch(e){ console.warn('轮询失败:', e); }
+  }
+
+  function backToLobby(){
+    stopPoll();
+    clearLocal();
+    roomCode = null; mode = 'idle'; lastSt = null; lastSeq = -1;
+    $('roomTag').textContent = '';
+    showScreen('scr-lobby');
+  }
+
+  // ============================================================
+  // SECTION: render
+  // ============================================================
+  function renderPick(st){
+    const grid = $('charGrid');
+    grid.innerHTML = '';
+    const otherPick = st.picks[1-mySeat];
+    const myPick = st.picks[mySeat];
+    CHARACTERS.forEach(c=>{
+      const card = document.createElement('div');
+      card.className = 'char-card' + (myPick===c.id?' picked':'') + (otherPick===c.id?' taken':'');
+      card.innerHTML = `
+        <div class="cname">${c.name} <span class="cg">${c.gender}</span></div>
+        <div class="cstats">颜值 ${c.looks} · 体力 ${c.body} · 智力 ${c.intelligence} · 快乐上限 ${c.happyCap}</div>
+        ${c.traits.map(t=>`<div class="ctrait"><b>${t.name}</b>：${t.desc}</div>`).join('')}
+        <div class="cmate">作为同桌：${c.mateEffect.replace('作为同桌：','')}</div>
+      `;
+      if (otherPick !== c.id) card.onclick = ()=>selectChar(c.id);
+      grid.appendChild(card);
+    });
+    const p0 = st.picks[0] ? getChar(st.picks[0]).name : '还没选';
+    const p1 = st.picks[1] ? getChar(st.picks[1]).name : '还没选';
+    $('pickStatus').innerHTML = `${st.names[0]}：<b style="color:#4fc3f7">${p0}</b>　·　${st.names[1]}：<b style="color:#4fc3f7">${p1}</b>` +
+      (myPick ? '<br><span style="color:#51cf66;">你已选好，等同桌选完就开学</span>' : '<br>点一个角色确认（对方选过的不能再选）');
+  }
+
+  function renderPlayerCard(p, isMe){
+    const c = getChar(p.charId), mate = getChar(p.mateId);
+    const div = document.createElement('div');
+    div.className = 'p-card' + (isMe?' me':'') + (p.down?' down':'');
+    div.innerHTML = `
+      <div class="p-name">${p.name}<span class="p-tag ${isMe?'':'opp'}">${isMe?'你':'同桌'}</span>${p.down?'<span class="p-tag opp" style="background:#ff6b6b;color:#2a0d0d;">倒下</span>':''}</div>
+      <div class="p-role">${c.name}（${c.gender}）</div>
+      <div class="bl"><span>😊 快乐</span><span>${fmt(p.happy)} / ${p.happyCap}</span></div>
+      <div class="bar hp"><i style="width:${(p.happy/p.happyCap*100)}%"></i></div>
+      <div class="bl"><span>🍚 饥饿</span><span>${fmt(p.hunger)} / ${p.hungerCap}</span></div>
+      <div class="bar hg"><i style="width:${(p.hunger/p.hungerCap*100)}%"></i></div>
+      <div class="attrs">
+        <div class="attr"><div class="av">${fmt(p.looks)}</div><div class="al">颜值</div></div>
+        <div class="attr"><div class="av">${fmt(p.body)}</div><div class="al">体力</div></div>
+        <div class="attr"><div class="av">${fmt(p.intelligence)}</div><div class="al">智力</div></div>
+      </div>
+      <div class="mate-eff">同桌 ${mate.name} 的效果：${mate.mateEffect.replace('作为同桌：','')}</div>
+      ${p.revivedOnce ? '<div class="revived-tag">⚠️ 已被救过一次，再倒下就结束</div>' : ''}
+    `;
+    return div;
+  }
+
+  function render(st){
+    lastSt = st;
+    $('roomTag').textContent = '房间 ' + st.code;
+    if (!st.players) return;
+
+    // 双方面板：我永远在左
+    const duo = $('duoBox');
+    duo.innerHTML = '';
+    duo.appendChild(renderPlayerCard(st.players[mySeat], true));
+    duo.appendChild(renderPlayerCard(st.players[1-mySeat], false));
+
+    // 日志
+    const lp = $('logPanel');
+    lp.innerHTML = '';
+    (st.log||[]).slice(-24).forEach(l=>{
+      const d = document.createElement('div');
+      d.className = 'lg ' + l.cls;
+      d.textContent = l.text;
+      lp.appendChild(d);
+    });
+    lp.scrollTop = lp.scrollHeight;
+
+    if (st.status === 'ended'){ renderEnd(st); return; }
+
+    const dayInfo = DAY_INFO[st.day-1];
+    $('evDay').textContent = `${dayInfo.date} ${dayInfo.week} · Day ${st.day}`;
+
+    // 救活阶段
+    if (st.reviveFor !== null){ renderRevive(st); return; }
+
+    const step = curStep(st);
+    if (!step){ return; }
+    $('evTitle').textContent = step.title;
+
+    const lines = $('evLines');
+    lines.innerHTML = '';
+    // 显示上一步的结算结果（我自己的那一份）
+    if (st.stepResult && st.stepResult.lines && st.stepResult.lines[mySeat]){
+      const head = document.createElement('div');
+      head.className = 'sys';
+      head.textContent = `上一步「${st.stepResult.title}」的结果：`;
+      lines.appendChild(head);
+      st.stepResult.lines[mySeat].forEach(l=>{
+        const d = document.createElement('div');
+        d.className = l.c;
+        d.textContent = l.t;
+        lines.appendChild(d);
+      });
+    }
+    if (step.kind === 'auto'){
+      const d = document.createElement('div');
+      d.className = 'sys';
+      d.textContent = '这一步自动结算，两人都点「继续」后一起推进。';
+      lines.appendChild(d);
+    }
+
+    renderChoices(st, step);
+    renderSyncTip(st);
+  }
+
+  function renderRevive(st){
+    const victim = st.reviveFor;
+    const iAmVictim = (victim === mySeat);
+    $('evTitle').textContent = '💗 救活同桌';
+    const lines = $('evLines');
+    lines.innerHTML = '';
+    const mk = (t,c)=>{ const d=document.createElement('div'); d.className=c||'sys'; d.textContent=t; lines.appendChild(d); };
+
+    const choices = $('evChoices');
+    choices.innerHTML = '';
+
+    if (iAmVictim){
+      mk('你的快乐归零，倒下了。', 'bad');
+      mk('同桌可以选择救你 —— 代价是他的颜值、体力、智力全部变成 5。', 'sys');
+      mk('这是你唯一一次被救的机会，再倒下就结束了。', 'bad');
+      const b = document.createElement('button');
+      b.className = 'btn';
+      b.textContent = st.submitted[mySeat] ? '✓ 已确认，等同桌决定' : '我知道了，等他决定';
+      b.disabled = !!st.submitted[mySeat];
+      b.onclick = ()=>submit('ack');
+      choices.appendChild(b);
+    } else {
+      mk(`${st.players[victim].name} 倒下了，只有你能救他。`, 'bad');
+      mk('救他的代价：你的颜值、体力、智力全部变成 5。', 'gold');
+      mk(`你现在的属性：颜值 ${fmt(st.players[mySeat].looks)} · 体力 ${fmt(st.players[mySeat].body)} · 智力 ${fmt(st.players[mySeat].intelligence)}`, 'sys');
+      mk('每人只能被救一次。不救，这局就结束。', 'bad');
+
+      const b1 = document.createElement('button');
+      b1.className = 'btn gold';
+      b1.textContent = '💗 救活他（我的所有属性变成 5）';
+      b1.disabled = !!st.submitted[mySeat];
+      b1.onclick = ()=>submit('reviveChoice','revive');
+      const b2 = document.createElement('button');
+      b2.className = 'btn ghost';
+      b2.textContent = '不救（这局结束）';
+      b2.disabled = !!st.submitted[mySeat];
+      b2.onclick = ()=>{ if (confirm('确定不救同桌吗？这局会直接结束。')) submit('reviveChoice','no'); };
+      choices.appendChild(b1);
+      choices.appendChild(b2);
+    }
+    renderSyncTip(st);
+  }
+
+  function renderChoices(st, step){
+    const choices = $('evChoices');
+    choices.innerHTML = '';
+    const me = st.players[mySeat];
+
+    if (me.down){
+      const b = document.createElement('button');
+      b.className = 'btn';
+      b.textContent = st.submitted[mySeat] ? '✓ 已确认，等同桌' : '继续（你已倒下）';
+      b.disabled = !!st.submitted[mySeat];
+      b.onclick = ()=>submit('auto');
+      choices.appendChild(b);
+      return;
+    }
+
+    if (step.kind === 'auto'){
+      const b = document.createElement('button');
+      b.className = 'btn';
+      b.textContent = st.submitted[mySeat] ? '✓ 已确认，等同桌' : '继续 →';
+      b.disabled = !!st.submitted[mySeat];
+      b.onclick = ()=>submit('auto');
+      choices.appendChild(b);
+      return;
+    }
+
+    const opts = getOptions(st, mySeat);
+    const mine = st.submitted[mySeat];
+    opts.forEach(o=>{
+      const b = document.createElement('button');
+      b.className = 'btn ghost';
+      b.textContent = o.t;
+      b.disabled = !!mine;
+      if (mine && mine.k === o.k){ b.className = 'btn'; b.textContent = '✓ ' + o.t; }
+      b.onclick = ()=>submit('choice', o.k);
+      choices.appendChild(b);
+    });
+  }
+
+  function renderSyncTip(st){
+    const tip = $('syncTip');
+    if (st.status === 'ended'){ tip.textContent = ''; return; }
+    const mine = st.submitted[mySeat], other = st.submitted[1-mySeat];
+    if (mine && other) tip.textContent = '双方都已提交，正在结算…';
+    else if (mine) { tip.className = 'sync-tip wait'; tip.textContent = `已提交，等待 ${st.players[1-mySeat].name} 选择…`; }
+    else if (other) { tip.className = 'sync-tip'; tip.textContent = `${st.players[1-mySeat].name} 已经提交了，就差你了`; }
+    else { tip.className = 'sync-tip wait'; tip.textContent = '两人都提交后才会结算（快的要等慢的）'; }
+  }
+
+  function renderEnd(st){
+    const r = st.result || {};
+    const win = r.type === 'win';
+    $('endEmoji').textContent = win ? '🎓' : '💔';
+    $('endTitle').textContent = win ? '你们一起撑到了教师节！' : '这局结束了';
+    $('endSub').textContent = r.reason || '';
+    const rows = [];
+    for (let s=0;s<2;s++){
+      const p = st.players[s];
+      const c = getChar(p.charId);
+      rows.push([`${p.name}${s===mySeat?'（你）':'（同桌）'}`, `${c.name} · 存活到第 ${Math.min(st.day,10)} 天`]);
+      rows.push(['　最终快乐', `${fmt(p.happy)} / ${p.happyCap}` + (p.down?' · 倒下':'')]);
+      rows.push(['　颜值/体力/智力', `${fmt(p.looks)} / ${fmt(p.body)} / ${fmt(p.intelligence)}`]);
+      rows.push(['　答对/进球/被救', `${p.stats.correct} 次 / ${p.stats.goals} 次 / ${p.stats.revivedOnce?1:0} 次`]);
+    }
+    $('settle').innerHTML = rows.map(([k,v])=>`<div class="srow"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
+    showScreen('scr-end');
+  }
+
+  // ============================================================
+  // SECTION: rules
+  // ============================================================
+  function buildRules(){
+    const askPct = Math.round(QUESTION_CHANCE*100);
+    $('rules-box').innerHTML = `
+      <h4>👥 联机玩法</h4>
+      一人创建房间，把 4 位房间号发给对方。<br>
+      两人各选一个角色（不能重复），<b>互为同桌</b>，同桌效果会作用到对方身上。<br>
+      <b>每一步都要两人都提交才结算</b>，快的人要等慢的人。<br>
+      共 <b>10 天</b>（9月1日 - 9月10日），一起活到教师节就赢。
+
+      <h4>💗 救活同桌</h4>
+      任何一方快乐归零就倒下。<br>
+      同桌可以救他，代价是<b>自己的颜值、体力、智力全部变成 5</b>。<br>
+      <b>每人只能被救一次</b>，第二次倒下直接结束。<br>
+      不救也是结束。
+
+      <h4>🗓️ 每天流程</h4>
+      上学日：早晨 → 早自习 → 9 节课（<b>每节课后都有课间</b>，第5节后午餐、第7节后大课间）→ 晚上。<br>
+      周末（9/5、9/6）：睡到自然醒 + 自由活动。
+
+      <h4>🌅 早晨</h4>
+      快乐 +上限的 <b>20%</b>，早饭恢复到 <b>80% 饥饿</b>。<br>
+      前一晚"起飞"则次晨吃不上早饭（常喆免疫）。<br>
+      同桌王浩宇：<b>20%</b> 概率快乐直接回满。
+
+      <h4>📖 早自习</h4>
+      · 发呆：<span class="rb">饥饿 -2</span><br>
+      · 聊天：<b>50%</b> <span class="rg">快乐 +1</span>，<b>50%</b> <span class="rb">快乐 -2</span>（王浩宇必定 +1）
+
+      <h4>📚 上课（每节）</h4>
+      · 固定 <span class="rb">饥饿 -1</span>（饥饿为 0 时改为 <span class="rb">快乐 -1</span>）<br>
+      · <b>${askPct}%</b> 被提问：答出概率 = <b>智力/20</b>；答出<b>无奖励</b>，答不出 <span class="rb">快乐 -2</span><br>
+      · 贾子辰：额外 <span class="rb">饥饿 -1</span>；本人<b>每天智力永久 +1</b><br>
+      · 朱凌初"厌学"：每节课 <span class="rb">快乐 -1</span><br>
+      · 同桌侯景瑞：每节课 <span class="rb">快乐 -1</span>、<span class="rg">饥饿 +1</span><br>
+      · 同桌贾子辰：每节课 <span class="rb">快乐 -0.5</span><br>
+      · 王浩宇本人 + 同桌范书元：每节课 <span class="rg">快乐 +1</span>
+
+      <h4>☕ 课间（每节课后）</h4>
+      · 被表白：概率 = <b>颜值 × 0.005</b> × 倍率 → <span class="rg">快乐回满</span><br>
+      · 被侮辱：概率 = <b>0.01 × (10 - 颜值)</b> → <span class="rb">快乐 -5</span><br>
+      · 发呆：无变化（陈仰正同桌徐悠然 → <span class="rg">快乐 +1</span>）<br>
+      · 蹴瓶子：<span class="rb">饥饿 -2</span>；<b>体力×10%</b> 进球 → <span class="rg">快乐 +2</span><br>
+      · 朱凌初画画：<b>10%</b> <span class="rg">快乐回满</span>，否则 <span class="rg">快乐 +1</span><br>
+      · 范书元玩电脑：<b>75%</b> 被抓 <span class="rb">快乐 -3</span>，<b>25%</b> <span class="rg">快乐 +3</span><br>
+      · 王浩宇本人 + 同桌范书元：<b>无法蹴瓶子</b>
+
+      <h4>🍱 午餐 / 🏃 大课间</h4>
+      午餐：好好吃饭 <span class="rg">恢复 50% 饥饿</span>；出去打球 <span class="rg">快乐 +3</span><br>
+      大课间：出去玩 <span class="rg">快乐 +3</span> <span class="rb">饥饿 -3</span>；呆在教室 <span class="rg">快乐 +1</span>
+
+      <h4>🌙 晚上</h4>
+      · 好好睡觉：<span class="rg">快乐 +上限的 20%</span><br>
+      · 千恋万花：陈仰正直接回满；其他人 <b>50%</b> <span class="rg">+5</span>，<b>50%</b> <span class="rb">-5</span><br>
+      · 起飞：<span class="rg">快乐 +5</span>，但明早吃不上早饭（常喆免疫）
+
+      <h4>🎭 同桌效果速查</h4>
+      陈仰正：快乐上限 +5 ｜ 王浩宇：早晨 20% 快乐回满 ｜ 侯景瑞：每节课 -1 快乐、+1 饥饿<br>
+      徐悠然：被表白概率 ×2 ｜ 贾子辰：智力 +10、颜值 -5、体力 -5 ｜ 朱凌初：颜值 +3<br>
+      常喆：周末每天各项属性永久 +1 ｜ 范书元：每项属性 -2<br>
+      陈仰正 ⇄ 徐悠然 互为同桌时：双方快乐上限再 +5<br>
+      侯景瑞本人：同桌为异性时 快乐上限 +5、饥饿上限 -10
+    `;
+  }
+
+  // ============================================================
+  // SECTION: events / init
+  // ============================================================
+  $('btn-start').addEventListener('click', ()=>{
+    if (!window.KeyGate.requireLogin()) return;
+    $('nameTag').textContent = getSavedUser();
+    $('joinCodeInput').value = '';
+    showScreen('scr-lobby');
+  });
+  $('btn-rules').addEventListener('click', ()=>{
+    const box = $('rules-box');
+    if (box.classList.contains('hidden')){ buildRules(); box.classList.remove('hidden'); $('btn-rules').textContent='📖 收起规则'; }
+    else { box.classList.add('hidden'); $('btn-rules').textContent='📖 查看完整规则与概率'; }
+  });
+  $('createBtn').addEventListener('click', createRoom);
+  $('joinBtn').addEventListener('click', joinRoom);
+  $('joinCodeInput').addEventListener('keydown', e=>{ if (e.key==='Enter') joinRoom(); });
+  $('joinCodeInput').addEventListener('input', ()=>{ $('joinCodeInput').value = $('joinCodeInput').value.toUpperCase(); });
+  $('cancelWaitBtn').addEventListener('click', backToLobby);
+  $('leaveBtn').addEventListener('click', ()=>{ if (confirm('确定离开房间吗？')) backToLobby(); });
+  $('btn-again').addEventListener('click', ()=>{ backToLobby(); });
+  $('btn-home').addEventListener('click', ()=>{ backToLobby(); });
+
+  (function init(){
+    if (!window.KeyGate.requireLogin()) return;
+    const name = getSavedUser();
+    beatPresence(name);
+    setInterval(()=>beatPresence(name), 30000);
+    showScreen('scr-title');
+
+    // 有未打完的局，直接恢复
+    const saved = getLocal();
+    if (saved){
+      (async ()=>{
+        try {
+          const st = await getRoom(saved.code);
+          if (!st) { clearLocal(); return; }
+          roomCode = saved.code; mySeat = saved.seat; myName = name; mode = 'playing';
+          lastSeq = st.seq;
+          $('roomTag').textContent = '房间 ' + st.code;
+          enterByStatus(st);
+        } catch(e){ console.warn('恢复失败:', e); }
+      })();
+    }
+  })();
+</script>
+</body>
+</html>
