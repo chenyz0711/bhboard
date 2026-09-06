@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BHBoard · 项目流程图</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:#0f1626; color:#e6e9f0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
+    line-height:1.6; padding-bottom:60px;
+  }
+  .wrap { max-width:1080px; margin:0 auto; padding:0 20px; }
+
+  header { padding:38px 0 22px; border-bottom:1px solid #223049; margin-bottom:26px; }
+  h1 { font-size:27px; letter-spacing:.5px; }
+  h1 .sub { display:block; font-size:13px; font-weight:400; color:#8892b0; margin-top:7px; letter-spacing:0; }
+
+  nav { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:30px; }
+  nav a {
+    font-size:12.5px; color:#a8b3cf; text-decoration:none; padding:5px 11px;
+    border:1px solid #2a3a55; border-radius:20px; transition:.15s;
+  }
+  nav a:hover { color:#fff; border-color:#4a7dff; background:#1a2740; }
+
+  section { margin-bottom:46px; }
+  h2 {
+    font-size:19px; margin-bottom:6px; padding-left:11px;
+    border-left:4px solid #4a7dff;
+  }
+  .note { font-size:13px; color:#8892b0; margin-bottom:18px; padding-left:15px; }
+
+  /* 流程节点 */
+  .flow { display:flex; flex-direction:column; align-items:center; gap:0; }
+  .node {
+    border-radius:10px; padding:10px 18px; font-size:13.5px; text-align:center;
+    border:1.5px solid; max-width:560px; width:100%;
+  }
+  .node b { font-size:14px; }
+  .node .d { display:block; font-size:12px; opacity:.82; margin-top:3px; line-height:1.5; }
+
+  .n-start { background:#12301f; border-color:#2f9e5f; color:#9ff0c0; }
+  .n-end   { background:#33141a; border-color:#c0495c; color:#ffb3bd; }
+  .n-step  { background:#15233c; border-color:#3d6fc4; color:#c6dcff; }
+  .n-dec   { background:#33290f; border-color:#c99a2e; color:#ffe4a3; }
+  .n-data  { background:#241a38; border-color:#8a5fd0; color:#dcc8ff; }
+  .n-sync  { background:#0f2f33; border-color:#2fa3ad; color:#a9f0f6; }
+
+  .arr { font-size:17px; line-height:1; padding:5px 0; color:#54658a; }
+  .arr.small { padding:3px 0; font-size:14px; }
+
+  /* 横向分支 */
+  .branches { display:flex; gap:12px; width:100%; flex-wrap:wrap; justify-content:center; }
+  .branch { flex:1; min-width:210px; display:flex; flex-direction:column; align-items:center; }
+  .blabel {
+    font-size:11.5px; color:#ffd479; background:#2a2310; border:1px solid #6b5520;
+    padding:2px 9px; border-radius:11px; margin:5px 0;
+  }
+
+  /* 表格 */
+  table { width:100%; border-collapse:collapse; font-size:13px; margin-top:6px; }
+  th, td { padding:9px 11px; text-align:left; border-bottom:1px solid #223049; vertical-align:top; }
+  th { color:#8fa4cc; font-weight:600; font-size:12px; background:#141f35; }
+  td code { color:#a9f0f6; font-family:"SFMono-Regular",Consolas,monospace; font-size:12px; }
+  tr:hover td { background:#141d31; }
+
+  .legend { display:flex; flex-wrap:wrap; gap:9px; margin-bottom:22px; }
+  .lg { display:flex; align-items:center; gap:6px; font-size:11.5px; color:#8892b0; }
+  .dot { width:11px; height:11px; border-radius:3px; border:1.5px solid; }
+
+  .card {
+    background:#131d31; border:1px solid #223049; border-radius:12px;
+    padding:18px 20px; margin-bottom:14px;
+  }
+  .card h3 { font-size:15px; margin-bottom:9px; color:#c6dcff; }
+  .card ul { padding-left:19px; font-size:13px; color:#b6c0d8; }
+  .card li { margin-bottom:5px; }
+  .card li b { color:#ffe4a3; font-weight:600; }
+
+  .tag { display:inline-block; font-size:11px; padding:1px 7px; border-radius:9px;
+         background:#1d2b45; color:#9fb4dd; border:1px solid #2f4166; margin-right:5px; }
+  footer { text-align:center; color:#5d6a86; font-size:12px; margin-top:40px;
+           padding-top:20px; border-top:1px solid #1d2942; }
+  @media (max-width:640px){
+    .node{ font-size:12.5px; padding:9px 13px; }
+    .branches{ flex-direction:column; }
+    h1{ font-size:22px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>BHBoard 项目流程图
+    <span class="sub">纯静态站点 · Cloudflare Pages 托管 · Upstash Redis 存储 · 无后端服务</span>
+  </h1>
+</header>
+
+<nav>
+  <a href="#arch">全站架构</a>
+  <a href="#gate">登录门禁</a>
+  <a href="#solo">南外生存·单人</a>
+  <a href="#co">南外生存·联机</a>
+  <a href="#gun">兄弟轮盘赌</a>
+  <a href="#misc">其他模块</a>
+  <a href="#data">数据层</a>
+</nav>
+
+<div class="legend">
+  <span class="lg"><span class="dot" style="background:#12301f;border-color:#2f9e5f;"></span>起点/终点</span>
+  <span class="lg"><span class="dot" style="background:#15233c;border-color:#3d6fc4;"></span>处理步骤</span>
+  <span class="lg"><span class="dot" style="background:#33290f;border-color:#c99a2e;"></span>判断分支</span>
+  <span class="lg"><span class="dot" style="background:#0f2f33;border-color:#2fa3ad;"></span>双人同步</span>
+  <span class="lg"><span class="dot" style="background:#241a38;border-color:#8a5fd0;"></span>数据读写</span>
+</div>
+
+<!-- ============ 全站架构 ============ -->
+<section id="arch">
+  <h2>全站架构</h2>
+  <p class="note">主页是唯一的登录入口，登录后各模块直接读取本地登录态，不再重复验证。</p>
+
+  <div class="flow">
+    <div class="node n-start"><b>用户访问 bhboard.pages.dev</b></div>
+    <div class="arr">↓</div>
+    <div class="node n-dec"><b>主页：输入名字 + 密钥</b><span class="d">keycheck.js 统一校验（详见下节）</span></div>
+    <div class="arr">↓</div>
+    <div class="node n-data"><b>写入本地登录态</b><span class="d">localStorage: bh_user = { username }</span></div>
+    <div class="arr">↓</div>
+    <div class="node n-step"><b>主页菜单（6 个入口）</b></div>
+    <div class="arr">↓</div>
+    <div class="branches">
+      <div class="branch"><div class="node n-step"><b>💬 兄弟论坛</b><span class="d">/bhb/</span></div></div>
+      <div class="branch"><div class="node n-step"><b>🔫 兄弟轮盘赌</b><span class="d">/play/</span></div></div>
+      <div class="branch"><div class="node n-step"><b>🎮 兄弟广场</b><span class="d">/square/</span></div></div>
+    </div>
+    <div class="arr small">↓</div>
+    <div class="branches">
+      <div class="branch"><div class="node n-step"><b>🎓 南外生存·单人</b><span class="d">/nfls/</span></div></div>
+      <div class="branch"><div class="node n-step"><b>👥 南外生存·联机</b><span class="d">/nfls2/</span></div></div>
+      <div class="branch"><div class="node n-step"><b>📸 兄弟照片</b><span class="d">/photos/</span></div></div>
+    </div>
+    <div class="arr">↓</div>
+    <div class="node n-data"><b>🛠️ 兄弟管理 /manage/</b><span class="d">人人可看名单与对局；输入管理密码解锁操作</span></div>
+    <div class="arr">↓</div>
+    <div class="node n-end"><b>共享数据层：Upstash Redis</b><span class="d">所有页面直连同一个数据库，键名见最后一节</span></div>
+  </div>
+</section>
+
+<!-- ============ 登录门禁 ============ -->
+<section id="gate">
+  <h2>登录门禁（keycheck.js）</h2>
+  <p class="note">全站唯一的身份校验逻辑。子页面启动时先检查本地登录态，没有就直接跳回主页。</p>
+
+  <div class="flow">
+    <div class="node n-start"><b>页面加载</b></div>
+    <div class="arr">↓</div>
+    <div class="node n-dec"><b>本机 localStorage 有 bh_user 吗？</b></div>
+    <div class="arr">↓</div>
+    <div class="branches">
+      <div class="branch">
+        <span class="blabel">有 → 已登录</span>
+        <div class="node n-start"><b>直接放行</b><span class="d">不再要求密钥</span></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">无 → 子页面</span>
+        <div class="node n-end"><b>强制跳转主页</b><span class="d">location.replace('https://bhboard.pages.dev/')</span></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">无 → 主页</span>
+        <div class="node n-dec"><b>要求输入名字 + 密钥</b></div>
+      </div>
+    </div>
+    <div class="arr">↓</div>
+    <div class="node n-dec"><b>密钥是通用密钥吗？</b><span class="d">adminchenyz / missyang</span></div>
+    <div class="arr">↓</div>
+    <div class="branches">
+      <div class="branch">
+        <span class="blabel">是</span>
+        <div class="node n-start"><b>放行（可登任何账号）</b></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">否 → 查 bh_keys</span>
+        <div class="node n-data"><b>读取密钥登记表</b></div>
+      </div>
+    </div>
+    <div class="arr">↓</div>
+    <div class="node n-dec"><b>该密钥的状态？</b></div>
+    <div class="arr">↓</div>
+    <div class="branches">
+      <div class="branch">
+        <span class="blabel">未使用</span>
+        <div class="node n-data"><b>绑定到该名字</b><span class="d">写入 bh_keys</span></div>
+        <div class="arr small">↓</div>
+        <div class="node n-start"><b>放行</b></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">已绑定 = 自己</span>
+        <div class="node n-start"><b>放行</b></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">已绑定 = 别人</span>
+        <div class="node n-end"><b>拒绝</b><span class="d">"这个密钥已经是别的兄弟的了"</span></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">不存在</span>
+        <div class="node n-end"><b>拒绝</b><span class="d">"密钥无效，请找管理员要一个"</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 单人版 ============ -->
+<section id="solo">
+  <h2>南外生存指南（单人）</h2>
+  <p class="note">10 天校园生存模拟，撑到 9 月 10 日教师节即胜利，快乐归零即崩溃。</p>
+
+  <div class="flow">
+    <div class="node n-start"><b>标题界面</b><span class="d">附完整规则书（概率与数值全部列出）</span></div>
+    <div class="arr">↓</div>
+    <div class="node n-step"><b>选择角色（8 选 1）</b><span class="d">陈仰正 / 王浩宇 / 侯景瑞 / 徐悠然 / 贾子辰 / 朱凌初 / 常喆 / 范书元</span></div>
+    <div class="arr">↓</div>
+    <div class="node n-dec"><b>该角色可以自选同桌吗？</b></div>
+    <div class="arr">↓</div>
+    <div class="branches">
+      <div class="branch">
+        <span class="blabel">可以（陈仰正 / 徐悠然 / 王浩宇）</span>
+        <div class="node n-step"><b>手动选同桌</b><span class="d">只显示同桌效果，不显示对方属性</span></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">不可以</span>
+        <div class="node n-step"><b>随机分配同桌</b></div>
+      </div>
+    </div>
+    <div class="arr">↓</div>
+    <div class="node n-dec"><b>同桌确认界面</b><span class="d">"你的同桌是 XXX，效果是 XXX"</span></div>
+    <div class="arr">↓</div>
+    <div class="branches">
+      <div class="branch">
+        <span class="blabel">换一个</span>
+        <div class="node n-step"><b>重选 / 重随机</b></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">就这样开始</span>
+        <div class="node n-step"><b>应用同桌加成，开局</b></div>
+      </div>
+    </div>
+    <div class="arr">↓</div>
+    <div class="node n-step"><b>进入 10 天日程循环</b><span class="d">9月1日 ~ 9月10日（含 9/5、9/6 两个周末）</span></div>
+    <div class="arr">↓</div>
+    <div class="node n-dec"><b>今天是周末吗？</b></div>
+    <div class="arr">↓</div>
+    <div class="branches">
+      <div class="branch">
+        <span class="blabel">上学日</span>
+        <div class="node n-step"><b>21 个步骤</b><span class="d">早晨 → 早自习 → 9×(上课 + 课间/午餐/大课间) → 晚上</span></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">周末</span>
+        <div class="node n-step"><b>3 个步骤</b><span class="d">周末早晨 → 周末时光 → 晚上</span></div>
+      </div>
+    </div>
+    <div class="arr">↓</div>
+    <div class="node n-dec"><b>每一步后检查：快乐 ≤ 0 ？</b></div>
+    <div class="arr">↓</div>
+    <div class="branches">
+      <div class="branch">
+        <span class="blabel">是</span>
+        <div class="node n-end"><b>你崩溃了</b><span class="d">游戏结束，出结算</span></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">否，且已过第 10 天</span>
+        <div class="node n-start"><b>撑到教师节了！</b><span class="d">胜利，出结算</span></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">否，继续</span>
+        <div class="node n-step"><b>推进到下一步 / 下一天</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px;">
+    <h3>结算面板内容</h3>
+    <ul>
+      <li>存活天数、最终快乐值、颜值 / 体力 / 智力</li>
+      <li>答对提问次数、蹴瓶子进球次数、崩溃次数、与同桌互动次数</li>
+      <li>称号判定 + <b>隐藏成就</b>（选择王浩宇或被王浩宇选为同桌 → "死气沉沉"）</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ 联机版 ============ -->
+<section id="co">
+  <h2>南外生存·联机（重点）</h2>
+  <p class="note">双人合作生存。A、B 各选一个角色互为同桌，每一步都要双方提交才结算，快的等慢的。</p>
+
+  <div class="flow">
+    <div class="node n-start"><b>大厅</b><span class="d">建房 / 输入房间号加入</span></div>
+    <div class="arr">↓</div>
+    <div class="branches">
+      <div class="branch">
+        <span class="blabel">A：创建房间</span>
+        <div class="node n-data"><b>生成 4 位房间号</b><span class="d">写入 bh_room:XXXX，A 坐 0 号位（房主）</span></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">B：输入房间号加入</span>
+        <div class="node n-data"><b>校验房间状态</b><span class="d">waiting 才能加入，B 坐 1 号位</span></div>
+      </div>
+    </div>
+    <div class="arr">↓</div>
+    <div class="node n-sync"><b>双方各自选角色（互斥）</b><span class="d">对方已选的角色变灰不可选 → 自动互为同桌</span></div>
+    <div class="arr">↓</div>
+    <div class="node n-data"><b>同桌效果互相作用</b><span class="d">如 A 选陈仰正 + B 选徐悠然 → 双方各触发"故意的"加成</span></div>
+    <div class="arr">↓</div>
+    <div class="node n-step"><b>开学：进入 10 天日程（同单人版结构）</b></div>
+    <div class="arr">↓</div>
+
+    <div class="node n-sync" style="border-width:2.5px;">
+      <b>🔁 每一步的同步循环（核心机制）</b>
+      <span class="d">A、B 各自提交选择 → 写入房间 → 双方都提交后才结算</span>
+    </div>
+    <div class="arr">↓</div>
+    <div class="branches">
+      <div class="branch">
+        <span class="blabel">A 已提交，B 未提交</span>
+        <div class="node n-sync"><b>A 的按钮锁定</b><span class="d">显示"已提交，等待 B 选择…"</span></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">双方都已提交</span>
+        <div class="node n-data"><b>房主（0 号位）统一结算</b><span class="d">避免并发写入冲突</span></div>
+      </div>
+    </div>
+    <div class="arr">↓</div>
+    <div class="node n-step"><b>结算结果写回房间</b><span class="d">双方各自轮询读取（间隔 0.9 秒），看到同一份结果</span></div>
+    <div class="arr">↓</div>
+    <div class="node n-dec"><b>自动步骤（上课/早晨）也要双方点"继续"确认</b><span class="d">保证两人节奏一致，不会有人被甩在后面</span></div>
+    <div class="arr">↓</div>
+
+    <div class="node n-dec" style="border-width:2.5px;"><b>结算后判定：有人快乐 ≤ 0 ？</b></div>
+    <div class="arr">↓</div>
+    <div class="branches">
+      <div class="branch">
+        <span class="blabel">否</span>
+        <div class="node n-step"><b>推进下一步</b><span class="d">回到上面的同步循环</span></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">两人都倒下</span>
+        <div class="node n-end"><b>游戏结束</b><span class="d">"你们两个一起倒下了"</span></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">一人倒下</span>
+        <div class="node n-dec"><b>进入救活阶段</b><span class="d">详见下方</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:22px;">
+    <h3>💗 救活同桌机制</h3>
+    <ul>
+      <li>一方快乐归零 → 标记为"倒下"，同桌收到救活选择</li>
+      <li><b>选择救活</b>：救人方的颜值 / 体力 / 智力 <b>全部变成 5</b>；被救方快乐恢复到上限的 50%，重新站起来</li>
+      <li><b>选择不救</b>：直接游戏结束</li>
+      <li><b>每人只能被救一次</b>：被救过的人标记 revivedOnce，第二次倒下 → 直接 game over，无法再救</li>
+      <li>救活阶段同样需要双方提交确认才结算，文案按实际座位分配（倒下的是房主也不会错位）</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>房间生命周期</h3>
+    <ul>
+      <li>每人每天最多创建 <b>10 个房间</b>（独立额度，不与轮盘赌共用）</li>
+      <li>房间存储 <b>TTL 1 天</b>，等待中超过 <b>1 小时</b>无人加入 → 自动清除</li>
+      <li>任何房间闲置超过 <b>30 分钟</b> → 自动清除（懒清理：有人读取时顺带检查）</li>
+      <li>意外关闭页面 → 重新打开会自动恢复到原进度（本地存了房间号与座位）</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ 轮盘赌 ============ -->
+<section id="gun">
+  <h2>兄弟轮盘赌</h2>
+  <p class="note">双人在线回合制，三局两胜。也支持人机模式。</p>
+
+  <div class="flow">
+    <div class="node n-start"><b>大厅</b><span class="d">建房 / 输房间号加入 / 从对局列表加入 / 人机模式</span></div>
+    <div class="arr">↓</div>
+    <div class="node n-dec"><b>房间人满了吗？</b></div>
+    <div class="arr">↓</div>
+    <div class="branches">
+      <div class="branch">
+        <span class="blabel">未满</span>
+        <div class="node n-step"><b>加入对战</b></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">已满 / 已结束</span>
+        <div class="node n-step"><b>进入观战模式</b><span class="d">只能看，所有操作按钮禁用</span></div>
+      </div>
+    </div>
+    <div class="arr">↓</div>
+    <div class="node n-data"><b>装弹：5 发，其中 1~4 发实弹随机排列</b><span class="d">双方各 4 点生命，各发 2 个道具</span></div>
+    <div class="arr">↓</div>
+    <div class="node n-dec"><b>轮到你：先用道具，再开枪</b><span class="d">一回合可用多个道具</span></div>
+    <div class="arr">↓</div>
+    <div class="branches">
+      <div class="branch">
+        <span class="blabel">🔍 放大镜</span>
+        <div class="node n-step"><b>偷看当前弹</b><span class="d">结果只显示在自己屏幕</span></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">🚬 香烟</span>
+        <div class="node n-step"><b>回复 1 点生命</b><span class="d">满血时拒绝使用</span></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">🔗 手铐</span>
+        <div class="node n-step"><b>对手跳过下回合</b></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">🍺 啤酒</span>
+        <div class="node n-step"><b>退掉当前弹</b><span class="d">显示退掉的是实弹还是空包</span></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">🔪 手锯</span>
+        <div class="node n-step"><b>本回合伤害 +1</b><span class="d">开枪后失效</span></div>
+      </div>
+    </div>
+    <div class="arr">↓</div>
+    <div class="node n-dec"><b>开枪：打谁？</b></div>
+    <div class="arr">↓</div>
+    <div class="branches">
+      <div class="branch">
+        <span class="blabel">打对方</span>
+        <div class="node n-step"><b>轮到对方行动</b></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">打自己 · 空包</span>
+        <div class="node n-start"><b>自己继续行动</b><span class="d">白赚一枪</span></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">打自己 · 实弹</span>
+        <div class="node n-step"><b>自己扣血，轮到对方</b></div>
+      </div>
+    </div>
+    <div class="arr">↓</div>
+    <div class="node n-dec"><b>子弹打光？</b><span class="blabel" style="margin:0 6px;">是 → 自动换弹 + 各发 2 道具</span></div>
+    <div class="arr">↓</div>
+    <div class="node n-dec"><b>有人生命归零？</b></div>
+    <div class="arr">↓</div>
+    <div class="branches">
+      <div class="branch">
+        <span class="blabel">是，且未达 2 胜</span>
+        <div class="node n-step"><b>本局结束，开下一局</b></div>
+      </div>
+      <div class="branch">
+        <span class="blabel">是，且已 2 胜</span>
+        <div class="node n-start"><b>比赛结束，出胜负</b><span class="d">可"再来一场"</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 其他模块 ============ -->
+<section id="misc">
+  <h2>其他模块</h2>
+
+  <div class="card">
+    <h3>💬 兄弟论坛 /bhb/</h3>
+    <ul>
+      <li>聊天式滚动：留言区固定高度（约 5 条），标题和输入框不滚动</li>
+      <li>消息时间正序，<b>越往下越新，最新的贴着输入框</b>，发完自动滚到底</li>
+      <li>发言存入 <code>bh_messages</code>，双存储备份防丢</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>🎮 兄弟广场 /square/</h3>
+    <ul>
+      <li>名字池 9 人随机进出：RRRory、我是WHY、chenyz、丙寅、CZ、李知行07、Felixxx、徐悠然、朱凌初</li>
+      <li>访客在广场待 <b>30~60 秒</b>后离开，离开后 6~10 秒有新访客进来，场上最多 5 个访客</li>
+      <li>操作：走动（方向键/WASD）、说话（头顶气泡）、出拳（空格/J）、<b>求婚（K）</b></li>
+      <li>求婚命中 → <b>50% 概率同意</b> → 立刻在两人中间生一个小孩，名字为"XXX与XXX的小孩"</li>
+      <li>小孩出生 <b>10 秒后长大成人</b>，可打架、可被求婚、会说话；<b>永不退出广场</b></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>📸 兄弟照片 /photos/</h3>
+    <ul>
+      <li>上传流程：选图 → 校验（必须是图片、≤1MB）→ <b>前端压缩到 500KB 以内</b>（最长边 900px）→ 存库</li>
+      <li>每人每天最多 <b>10 张</b>；照片墙总量上限 40 张，超出自动删最旧的</li>
+      <li>缩略图（200px）单独存储 → 照片墙秒开，点大图才加载原图</li>
+      <li>管理员解锁后可删除任意照片</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>🛠️ 兄弟管理 /manage/</h3>
+    <ul>
+      <li><b>人人可看</b>：成员列表（绿点在线 / 灰点离线）、全部对局列表（状态、比分、观战入口），每 3 秒刷新</li>
+      <li><b>输入管理密码解锁</b>后多出：注销账号、清空论坛留言、删除对局、生成 / 删除注册密钥</li>
+      <li>在线判定：各页面每 30 秒上报心跳，<b>90 秒</b>内无心跳视为离线；谁来过都登记进持久成员表</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ 数据层 ============ -->
+<section id="data">
+  <h2>数据层（Upstash Redis 键名）</h2>
+  <p class="note">全站直连同一个数据库，无后端服务。所有页面共用下面这些键。</p>
+
+  <table>
+    <tr><th style="width:200px;">键名</th><th style="width:130px;">用途</th><th>说明</th></tr>
+    <tr><td><code>bh_messages</code></td><td>论坛留言</td><td>全部留言数组，双存储备份防丢</td></tr>
+    <tr><td><code>bh_pending</code></td><td>待处理消息</td><td>论坛发言的备份队列</td></tr>
+    <tr><td><code>bh_keys</code></td><td>密钥登记表</td><td>密钥 → { owner, usedAt }，记录绑定给谁、何时首次使用</td></tr>
+    <tr><td><code>bh_members</code></td><td>持久成员表</td><td>谁来过就登记，管理页列名单用（离线也保留）</td></tr>
+    <tr><td><code>bh_member:名字</code></td><td>在线心跳</td><td>值为时间戳，TTL 90 秒，过期即视为离线</td></tr>
+    <tr><td><code>bh_room:房号</code></td><td>轮盘赌房间</td><td>TTL 7 天，闲置 30 分钟懒清理</td></tr>
+    <tr><td><code>bh_nfls2:房号</code></td><td>联机生存房间</td><td>TTL 1 天，闲置 30 分钟懒清理（与轮盘赌分开）</td></tr>
+    <tr><td><code>bh_registry</code></td><td>对局总列表</td><td>开局页与管理页共用的房间索引</td></tr>
+    <tr><td><code>bh_room_creates</code></td><td>轮盘赌建房计数</td><td>按"名字 + 日期"记录，每人每天限建 10 个</td></tr>
+    <tr><td><code>bh_nfls2_creates</code></td><td>联机生存建房计数</td><td>独立的每日 10 个额度，不与轮盘赌共用</td></tr>
+    <tr><td><code>bh_photos</code></td><td>照片索引</td><td>含缩略图，照片墙直接读这一个键</td></tr>
+    <tr><td><code>bh_photo:ID</code></td><td>单张照片</td><td>完整数据，点大图时才加载</td></tr>
+  </table>
+
+  <div class="card" style="margin-top:18px;">
+    <h3>技术要点</h3>
+    <ul>
+      <li><b>纯静态部署</b>：Cloudflare Pages，无服务端函数（api/ 与 vercel.json 是早期 Vercel 遗留，实际未使用）</li>
+      <li><b>写入格式</b>：必须用路径式 <code>/set/键/值/ex/秒数</code>，JSON 请求体会被原样存成字符串（曾导致房间状态读取失败的 bug）</li>
+      <li><b>单条容量上限</b>：实测 800KB 可写、1.2MB 报错，因此照片压缩目标定 500KB</li>
+      <li><b>原子计数</b>：数据库支持 INCRBY，用于并发安全的计数场景</li>
+      <li><b>联机同步</b>：无 WebSocket，靠双方各自轮询（0.9 秒）+ 房主单点结算避免写冲突</li>
+      <li><b>离线版</b>：南外生存另有一份单机副本，移除了 keycheck、心跳、登录跳转，双击即可玩</li>
+    </ul>
+  </div>
+</section>
+
+<footer>BHBoard 项目流程图 · 内容与代码实现保持一致 · made by chenyz</footer>
+
+</div>
+</body>
+</html>
