@@ -54,6 +54,20 @@
   .mate-card .cstats { font-size:11px; color:#4fc3f7; margin-bottom:6px; }
   .mate-card .ceff { font-size:11px; color:#51cf66; line-height:1.4; }
 
+  /* 同桌确认 */
+  .confirm-box { background:#223047; border:2px solid #4fc3f7; border-radius:16px; padding:18px; margin-bottom:18px; }
+  .confirm-box .cb-name { font-size:22px; font-weight:800; color:#fff; text-align:center; margin-bottom:6px; }
+  .confirm-box .cb-gender { text-align:center; font-size:12px; color:#8892b0; margin-bottom:12px; }
+  .confirm-box .cb-stats { text-align:center; font-size:13px; color:#4fc3f7; margin-bottom:12px; }
+  .confirm-box .cb-eff { background:#16233a; border-left:3px solid #51cf66; border-radius:8px; padding:10px 12px; font-size:13px; color:#c8d3e8; line-height:1.6; margin-bottom:8px; }
+  .confirm-box .cb-eff b { color:#51cf66; }
+  .confirm-box .cb-trait { background:#241d10; border-left:3px solid #ffd166; border-radius:8px; padding:10px 12px; font-size:13px; color:#c8d3e8; line-height:1.6; margin-bottom:8px; }
+  .confirm-box .cb-trait b { color:#ffd166; }
+
+  /* 同桌效果条 */
+  .mate-eff { background:#16233a; border-radius:10px; padding:8px 12px; margin-top:10px; font-size:12px; color:#51cf66; line-height:1.5; }
+  .mate-eff b { color:#c8d3e8; font-weight:700; }
+
   /* 状态面板 */
   .panel { background:#223047; border-radius:16px; padding:14px 16px; margin-bottom:12px; }
   .dayline { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:6px; }
@@ -95,7 +109,17 @@
   .settle .srow:last-child { border-bottom:none; }
   .settle .srow .k { color:#8892b0; }
   .settle .srow .v { color:#fff; font-weight:700; }
+  .ach-title { margin:14px 0 6px; font-size:13px; font-weight:800; color:#ffd166; border-top:1px solid #2e3d57; padding-top:12px; }
+  .ach { background:#2c2410; border:1px solid #ffd166; border-radius:10px; padding:10px 12px; margin-bottom:8px; }
+  .ach b { color:#ffd166; font-size:14px; display:block; margin-bottom:2px; }
+  .ach span { color:#c8d3e8; font-size:12px; line-height:1.5; }
   .title-badge { text-align:center; background:linear-gradient(135deg,#ffd166,#ff9f43); color:#3d2c00; font-weight:800; font-size:20px; padding:14px; border-radius:14px; margin-bottom:16px; }
+  .rules-box { background:#16233a; border-radius:14px; padding:16px 18px; margin-top:14px; font-size:13px; color:#c8d3e8; line-height:1.95; text-align:left; max-height:50vh; overflow-y:auto; }
+  .rules-box h4 { color:#4fc3f7; font-size:14px; margin:14px 0 4px; }
+  .rules-box h4:first-child { margin-top:0; }
+  .rules-box b { color:#ffd166; }
+  .rules-box .rg { color:#51cf66; }
+  .rules-box .rb { color:#ff6b6b; }
   .footer { padding:16px; color:#3a4a63; font-size:12px; text-align:center; }
   @media (max-width:480px){
     .char-grid { grid-template-columns:1fr; }
@@ -120,6 +144,8 @@
         饿了难受，不快乐会崩溃。<b>撑到教师节就是胜利。</b>
       </div>
       <button class="btn block" id="btn-start">开始生存</button>
+      <button class="btn ghost block" id="btn-rules" style="margin-top:10px;">📖 查看完整规则与概率</button>
+      <div class="rules-box hidden" id="rules-box"></div>
       <div class="subtitle" style="margin-top:18px;">快乐归零 = 游戏结束 · 共 10 天</div>
     </div>
 
@@ -135,6 +161,15 @@
       <h1 class="game-title" style="font-size:24px;">选择你的同桌</h1>
       <div class="subtitle" id="mate-tip">同桌会深刻影响你的生存</div>
       <div class="mate-grid" id="mate-grid"></div>
+    </div>
+
+    <!-- 同桌确认 -->
+    <div class="screen hidden" id="scr-confirm">
+      <h1 class="game-title" style="font-size:24px;">确认同桌</h1>
+      <div class="subtitle">看清楚再开始，开学就定下来了</div>
+      <div class="confirm-box" id="confirm-box"></div>
+      <button class="btn block" id="btn-confirm-start">就这样，开始生存</button>
+      <button class="btn ghost block" id="btn-confirm-back" style="margin-top:10px;">← 换一个</button>
     </div>
 
     <!-- 游戏主界面 -->
@@ -154,9 +189,10 @@
         </div>
         <div class="attr-row">
           <div class="attr"><div class="av" id="av-looks"></div><div class="al">颜值</div></div>
-          <div class="attr"><div class="av" id="av-body"></div><div class="al">身体</div></div>
+          <div class="attr"><div class="av" id="av-body"></div><div class="al">体力</div></div>
           <div class="attr"><div class="av" id="av-int"></div><div class="al">智力</div></div>
         </div>
+        <div class="mate-eff" id="g-mate-eff"></div>
       </div>
 
       <div class="panel event">
@@ -219,26 +255,52 @@
   // SECTION: data —— 角色 / 同桌 / 课表 / 日历
   // ============================================================
   const CHARACTERS = [
-    { id:'chen', name:'陈仰正', gender:'男', looks:7, body:5, intelligence:7, happyCap:20,
+    { id:'chen', name:'陈仰正', gender:'男', looks:7, body:5, intelligence:7, happyCap:15,
       traits:[
-        { name:'哲学家', desc:'快乐上限为 20（其他人上限 10）' },
+        { name:'哲学家', desc:'快乐上限为 15，但所有快乐惩罚 ×2' },
         { name:'机缘巧合', desc:'开局可以选择同桌' },
         { name:'不要造谣', desc:'同桌是徐悠然时，下课呆在教室额外 +1 快乐' },
         { name:'千恋万花', desc:'半夜玩千恋万花时，快乐直接恢复满' }
       ],
       mateEffect:'作为同桌：你的快乐上限 +5', canChooseMate:true },
     { id:'wang', name:'王浩宇', gender:'男', looks:7, body:6, intelligence:8, happyCap:10,
-      traits:[ { name:'风纪委员', desc:'永远不会被记违纪' } ],
-      mateEffect:'作为同桌：每节课恢复 0.5 快乐', canChooseMate:false },
-    { id:'hou', name:'侯景瑞', gender:'男', looks:3, body:9, intelligence:2, happyCap:10, hungerCap:25,
-      traits:[ { name:'大胃袋', desc:'饥饿上限为 25（其他人 20）' } ],
-      mateEffect:'作为同桌：智力 +3，但每节课 -0.5 快乐', canChooseMate:false },
+      traits:[
+        { name:'风纪委员', desc:'永远不会被记违纪' },
+        { name:'我官大', desc:'开局可以选择同桌' },
+        { name:'青梅竹马', desc:'同桌为范书元时，每节课必定 +1 快乐，但下课无法蹴瓶子' }
+      ],
+      mateEffect:'作为同桌：每天早晨 20% 概率快乐回满', canChooseMate:true },
+    { id:'hou', name:'侯景瑞', gender:'男', looks:3, body:9, intelligence:2, happyCap:10, hungerCap:15,
+      traits:[
+        { name:'大胃袋', desc:'饥饿上限为 15（其他人 10）' },
+        { name:'我不是给', desc:'同桌为异性时，快乐上限 +5，饥饿上限 -10' }
+      ],
+      mateEffect:'作为同桌：每节课 -1 快乐，+1 饥饿', canChooseMate:false },
     { id:'xu', name:'徐悠然', gender:'女', looks:10, body:6, intelligence:9, happyCap:10,
       traits:[
         { name:'副班长', desc:'开局可以选择同桌' },
         { name:'故意的', desc:'同桌是陈仰正时，双方快乐上限再 +5' }
       ],
-      mateEffect:'作为同桌：智力 +2', canChooseMate:true }
+      mateEffect:'作为同桌：被表白概率 ×2', canChooseMate:true },
+    { id:'jia', name:'贾子辰', gender:'男', looks:7, body:8, intelligence:10, happyCap:10,
+      traits:[ { name:'好饿', desc:'每节课额外 -1 饥饿，但每天智力永久 +1' } ],
+      mateEffect:'作为同桌：智力 +10，颜值 -5，体力 -5', canChooseMate:false },
+    { id:'zhu', name:'朱凌初', gender:'女', looks:4, body:4, intelligence:4, happyCap:10,
+      traits:[
+        { name:'美术生', desc:'下课可以选择画画，10% 概率直接回满快乐' },
+        { name:'万人迷', desc:'被表白概率 ×4' },
+        { name:'厌学', desc:'每节课 -1 快乐' }
+      ],
+      mateEffect:'作为同桌：颜值 +3', canChooseMate:false },
+    { id:'chang', name:'常喆', gender:'男', looks:3, body:5, intelligence:8, happyCap:10,
+      traits:[ { name:'长喆', desc:'晚上"起飞"后，第二天早晨没有不能吃早饭的 debuff' } ],
+      mateEffect:'作为同桌：周末每天各项属性永久 +1', canChooseMate:false },
+    { id:'fan', name:'范书元', gender:'男', looks:2, body:3, intelligence:2, happyCap:10,
+      traits:[
+        { name:'是人类？', desc:'永远不会被表白' },
+        { name:'不要动电脑', desc:'下课可以选择玩电脑，75% 被抓（没被抓 +3 快乐，被抓 -3 快乐）' }
+      ],
+      mateEffect:'作为同桌：每项属性 -2', canChooseMate:false }
   ];
 
   // 课表（来自 初三课表.xlsx），周一~周五，每天 9 节
@@ -296,33 +358,54 @@
       char:c, mate:m,
       day:1, stepIndex:0, daySteps:[],
       looks:c.looks, body:c.body, intelligence:c.intelligence,
-      happyCap:c.happyCap, hungerCap:c.hungerCap||20,
+      happyCap:c.happyCap, hungerCap:c.hungerCap||10,
       happy:0, hunger:0,
       stats:{ correct:0, goals:0, crashes:0, mateInteractions:0, survived:0 },
+      achievements:[],
+      noBreakfastDebuff:false,   // 昨晚起飞，今早不能吃早饭
       log:[], alive:true
     };
     applyMatePassives();
+    checkHiddenAchievements();
     G.happy = G.happyCap;          // 初始满快乐
-    G.hunger = Math.round(G.hungerCap*0.8);
+    G.hunger = G.hungerCap;        // 开局早饭吃饱
     buildDay();
     showScreen('scr-game');
     renderHeader(); renderStats();
     runStep();
   }
 
+  // 隐藏成就
+  function checkHiddenAchievements(){
+    // 选择王浩宇，或被王浩宇选为同桌 -> 死气沉沉
+    if (G.charId==='wang' || G.mateId==='wang'){
+      G.achievements.push({ name:'死气沉沉', desc:'你与王浩宇成为了同桌（或你就是王浩宇）。教室里一片死气。' });
+    }
+  }
+
   // 同桌对主角的被动加成（开局生效）
   function applyMatePassives(){
     const m = G.mate;
     if (m.id==='chen') G.happyCap += 5;                       // 陈仰正同桌：快乐上限+5
-    if (m.id==='hou')  G.intelligence = clamp(G.intelligence+3,1,10); // 侯景瑞同桌：智力+3
-    if (m.id==='xu')   G.intelligence = clamp(G.intelligence+2,1,10); // 徐悠然同桌：智力+2
+    // 侯景瑞同桌：每节课 -1 快乐、+1 饥饿（在 mateClassPassive 中处理）
+    // 徐悠然同桌：被表白概率 ×2（在 confessionMult 中处理）
+    if (m.id==='jia'){ G.intelligence = clamp(G.intelligence+10,1,20); G.looks = clamp(G.looks-5,1,10); G.body = clamp(G.body-5,1,10); } // 贾子辰同桌：智力+10，颜值-5，体力-5
+    if (m.id==='zhu'){ G.looks = clamp(G.looks+3,1,10); }      // 朱凌初同桌：颜值+3
+    if (m.id==='fan'){ G.looks = clamp(G.looks-2,1,10); G.body = clamp(G.body-2,1,10); G.intelligence = clamp(G.intelligence-2,1,20); } // 范书元同桌：每项-2
     // 徐悠然"故意的"：同桌是陈仰正，双方快乐上限再+5
     if (G.charId==='xu' && m.id==='chen') G.happyCap += 5;
     if (G.charId==='chen' && m.id==='xu') G.happyCap += 5;    // 陈仰正视角也+5
+    // 侯景瑞"我不是给"：同桌为异性时，快乐上限+5，饥饿上限-10
+    if (G.charId==='hou' && m.gender !== G.char.gender){
+      G.happyCap += 5;
+      G.hungerCap = Math.max(1, G.hungerCap - 10);
+    }
   }
 
   function changeHappy(d){
     if (!G.alive) return;
+    // 陈仰正"哲学家"：所有快乐惩罚 ×2
+    if (d < 0 && G.charId==='chen') d *= 2;
     G.happy = clamp(G.happy + d, 0, G.happyCap);
     if (G.happy <= 0) { G.stats.crashes++; G.alive = false; }
     renderStats();
@@ -347,16 +430,19 @@
         { f: stepEvening }
       ];
     } else {
+      // 每节课独立成一步，课后都接一个课间；第5节后午餐、第7节后大课间
       G.daySteps = [
         { f: stepMorning },
         { f: stepMorningStudy },
-        { f: ()=>stepClasses([0,1]) },
-        { f: stepBreak },
-        { f: ()=>stepClasses([2,3,4]) },
-        { f: stepLunch },
-        { f: ()=>stepClasses([5,6]) },
-        { f: stepBigBreak },
-        { f: ()=>stepClasses([7,8]) },
+        { f: ()=>stepClass(0) }, { f: stepBreak },
+        { f: ()=>stepClass(1) }, { f: stepBreak },
+        { f: ()=>stepClass(2) }, { f: stepBreak },
+        { f: ()=>stepClass(3) }, { f: stepBreak },
+        { f: ()=>stepClass(4) }, { f: stepLunch },
+        { f: ()=>stepClass(5) }, { f: stepBreak },
+        { f: ()=>stepClass(6) }, { f: stepBigBreak },
+        { f: ()=>stepClass(7) }, { f: stepBreak },
+        { f: ()=>stepClass(8) }, { f: stepBreak },
         { f: stepEvening }
       ];
     }
@@ -376,6 +462,20 @@
     G.stats.survived = G.day;
     G.day++;
     if (G.day > 10) { victory(); return; }
+    // 贾子辰本人"好饿"：每天智力永久 +1
+    if (G.charId==='jia'){
+      G.intelligence = clamp(G.intelligence+1,1,20);
+      renderStats();
+      log(`新的一天：贾子辰越吃越聪明，智力永久 +1（现 ${fmt(G.intelligence)}）`, 'good');
+    }
+    // 常喆同桌：周末每天各项属性永久 +1
+    if (G.mateId==='chang' && isWeekend()){
+      G.looks = clamp(G.looks+1,1,10);
+      G.body = clamp(G.body+1,1,10);
+      G.intelligence = clamp(G.intelligence+1,1,20);
+      renderStats();
+      log(`周末：和常喆同桌一起学习，各项属性永久 +1（颜值/体力/智力）`, 'good');
+    }
     buildDay();
     renderHeader();
     runStep();
@@ -388,6 +488,8 @@
     const info = DAY_INFO[G.day-1];
     $('g-day').textContent = `${info.date} ${info.week} · Day ${G.day}`;
     $('g-mate').textContent = `同桌：${G.mate.name}`;
+    // 游戏内持续显示同桌效果
+    $('g-mate-eff').innerHTML = `<b>同桌 ${G.mate.name} 的效果：</b>${G.mate.mateEffect.replace('作为同桌：','')}`;
   }
   function renderStats(){
     $('lb-happy').textContent = `${fmt(G.happy)} / ${G.happyCap}`;
@@ -444,91 +546,164 @@
   function stepMorning(){
     const restore = G.happyCap*0.2;
     G.happy = clamp(G.happy + restore, 0, G.happyCap);
-    G.hunger = Math.round(G.hungerCap*0.8);
+    const mLines = [];
+    mLines.push({ t:`· 睡了一觉，快乐 +${fmt(restore)}`, c:'good' });
+
+    // 王浩宇同桌：每天早晨 20% 概率快乐回满
+    if (G.mateId==='wang' && chance(0.2)){
+      G.happy = G.happyCap;
+      G.stats.mateInteractions++;
+      mLines.push({ t:'· 同桌王浩宇给你带了早饭，心情大好，快乐直接回满！', c:'gold' });
+    }
+
+    const noBreakfast = G.noBreakfastDebuff && G.charId!=='chang';
+    if (!noBreakfast){
+      G.hunger = Math.round(G.hungerCap*0.8);   // 早餐恢复到 80% 饥饿
+      mLines.push({ t:'· 吃了早饭，饥饿恢复到 80%', c:'good' });
+      log('早晨：'+mLines.map(l=>l.t).join('；').replace(/· /g,''), 'good');
+      showStep('🌅 早晨', [{ t:'新的一天开始了。', c:'sys' }, ...mLines],
+        [{ text:'去上学 →', onClick: advance }]);
+    } else {
+      mLines.push({ t:'· 昨晚"起飞"起不来，没吃上早饭，饥饿没有恢复！', c:'bad' });
+      log('早晨：'+mLines.map(l=>l.t).join('；').replace(/· /g,''), 'bad');
+      showStep('🌅 早晨', [{ t:'新的一天开始了，但你头疼欲裂……', c:'sys' }, ...mLines],
+        [{ text:'饿着肚子上学 →', onClick: advance }]);
+    }
     renderStats();
-    log(`早晨：快乐恢复 ${fmt(restore)}，饥饿恢复到 80%`, 'good');
-    showStep('🌅 早晨', [
-      { t:'新的一天开始了。', c:'sys' },
-      { t:`睡了个好觉，快乐 +${fmt(restore)}，肚子填到了八分饱。`, c:'good' }
-    ], [{ text:'去上学 →', onClick: advance }]);
+    G.noBreakfastDebuff = false;   // debuff 只作用一个早晨
   }
 
   function stepMorningStudy(){
+    // 王浩宇"风纪委员"：永远不会被记违纪，聊天必定是好的结果
+    const wangImmune = G.charId==='wang';
     showStep('📖 早自习', [
       { t:'早自习，老师还没来。你要……', c:'sys' }
     ], [
-      { text:'待在座位上（稳）', onClick: ()=>{
-          changeHappy(1); log('早自习：你乖乖坐在座位上，快乐 +1','good');
+      { text:'😶 发呆（饥饿 -2）', onClick: ()=>{
+          changeHunger(-2);
+          log('早自习：你发了会儿呆，肚子饿得咕咕叫，饥饿 -2','bad');
           advance();
       }},
-      { text:'下座位聊天（风险）', onClick: ()=>{
-          const wangImmune = G.charId==='wang';
+      { text: wangImmune
+          ? '💬 聊天（风纪委员：必定 快乐 +1）'
+          : '💬 聊天（50% 快乐 +1，50% 快乐 -2）', onClick: ()=>{
           if (chance(0.5) || wangImmune){
-            changeHappy(2); log('早自习：你和同学聊得很开心，快乐 +2','good');
+            changeHappy(1); log('早自习：你和同学聊得很开心，快乐 +1','good');
           } else {
-            changeHappy(-1); log('早自习：被老师抓到讲话，快乐 -1','bad');
+            changeHappy(-2); log('早自习：聊天被记违纪了，快乐 -2','bad');
           }
-          maybeForgotHomework();
           advance();
       }}
     ]);
   }
-  function maybeForgotHomework(){
-    if (chance(0.3)){
-      changeHappy(-2); log('坏消息：你发现作业忘带了，快乐 -2','bad');
-    }
-  }
 
-  // 上一组课，idx 为课表下标数组
-  function stepClasses(idxs){
+  // 上一节课（idx 为课表下标），显示课程名、提问结果与所有数值变动
+  function stepClass(i){
     const sched = todaySchedule();
+    const subj = sched[i];
     const lines = [];
-    idxs.forEach(i=>{
-      const subj = sched[i];
-      // 饥饿消耗
-      if (G.hunger > 0){ changeHunger(-1); }
-      else { changeHappy(-1); lines.push({ t:`${subj}：你饿得头晕，快乐 -1`, c:'bad' }); }
-      // 提问
-      if (chance(QUESTION_CHANCE)){
-        if (chance(G.intelligence*0.1)){
-          changeHappy(1); G.stats.correct++;
-          lines.push({ t:`${subj}：老师提问，你答对了！快乐 +1`, c:'good' });
-        } else {
-          changeHappy(-2);
-          lines.push({ t:`${subj}：老师提问，你答错了……快乐 -2`, c:'bad' });
-        }
+    lines.push({ t:`第 ${i+1} 节：${subj}`, c:'gold' });
+
+    // 饥饿消耗（每节课 -1）
+    if (G.hunger > 0){ changeHunger(-1); lines.push({ t:'· 上课消耗，饥饿 -1', c:'bad' }); }
+    else { changeHappy(-1); lines.push({ t:'· 你饿得头晕，快乐 -1', c:'bad' }); }
+
+    // 贾子辰"好饿"：每节课额外 -1 饥饿（每天智力 +1 在 nextDay 处理）
+    if (G.charId==='jia'){
+      if (G.hunger > 0){ changeHunger(-1); lines.push({ t:'· 好饿：额外饥饿 -1', c:'bad' }); }
+    }
+
+    // 朱凌初"厌学"：每节课 -1 快乐
+    if (G.charId==='zhu'){
+      changeHappy(-1); lines.push({ t:'· 厌学：你实在不想上课，快乐 -1', c:'bad' });
+    }
+
+    // 提问
+    if (chance(QUESTION_CHANCE)){
+      // 智力/20 概率答出，反之答不出（智力上限 20）
+      const correctProb = clamp(G.intelligence/20, 0, 1);
+      if (chance(correctProb)){
+        G.stats.correct++;
+        lines.push({ t:'· 老师提问，你答上来了！', c:'good' });
       } else {
-        lines.push({ t:`${subj}：平安上完了一节课。`, c:'sys' });
+        changeHappy(-2);
+        lines.push({ t:'· 老师提问，你没答上来……快乐 -2', c:'bad' });
       }
-      // 同桌每节课被动
-      mateClassPassive(lines);
-      if (!G.alive) return;
-    });
+    } else {
+      lines.push({ t:'· 老师没有提问，平安度过。', c:'sys' });
+    }
+
+    // 同桌每节课被动
+    mateClassPassive(lines);
+
     lines.forEach(l=>log(l.t, l.c));
-    showStep('📚 上课', lines.length?lines:[{t:'课平稳地进行着。',c:'sys'}],
-      [{ text:'下课 →', onClick: advance }]);
+    showStep(`📚 ${subj}`, lines, [{ text:'下课 →', onClick: advance }]);
   }
   function mateClassPassive(lines){
-    if (G.mate.id==='wang'){ changeHappy(0.5); G.stats.mateInteractions++; }
-    if (G.mate.id==='hou'){ changeHappy(-0.5); G.stats.mateInteractions++; }
+    // 侯景瑞同桌：每节课 -1 快乐，+1 饥饿
+    if (G.mate.id==='hou'){ changeHappy(-1); changeHunger(1); G.stats.mateInteractions++; lines.push({ t:'· 同桌侯景瑞：负能量辐射，快乐 -1，饥饿 +1', c:'bad' }); }
+    // 贾子辰同桌：太吵闹，每节课 -0.5 快乐
+    if (G.mate.id==='jia'){ changeHappy(-0.5); G.stats.mateInteractions++; lines.push({ t:'· 同桌贾子辰：太吵闹，快乐 -0.5', c:'bad' }); }
+    // 王浩宇"青梅竹马"：本人是王浩宇且同桌范书元，每节课必定 +1 快乐
+    if (G.charId==='wang' && G.mateId==='fan'){ changeHappy(1); G.stats.mateInteractions++; lines.push({ t:'· 青梅竹马：范书元陪你上课，快乐 +1', c:'good' }); }
   }
 
-  // 课间 / 午自习：呆在座位 或 蹴瓶子
+  // 表白倍率：朱凌初本人 ×4，范书元本人永不，徐悠然同桌 ×2
+  function confessionMult(){
+    let m = 1;
+    if (G.charId==='zhu') m *= 4;
+    if (G.charId==='fan') m *= 0;
+    if (G.mateId==='xu') m *= 2;
+    return m;
+  }
+  // 课间表白判定：颜值 × 0.005 × 倍率，成功则快乐回满
+  function tryConfession(stepName){
+    const p = clamp(G.looks*0.005*confessionMult(), 0, 1);
+    if (p<=0) return false;
+    if (!chance(p)) return false;
+    G.happy = G.happyCap;
+    renderStats();
+    log(`${stepName}：有人当众向你表白！快乐直接回满！`, 'gold');
+    showStep('💘 被表白了！', [
+      { t:'课间，一个同学红着脸走到你面前，当众表白了。', c:'sys' },
+      { t:'全班起哄，你的快乐值瞬间回满！', c:'gold' }
+    ], [{ text:'飘飘然，继续上课 →', onClick: advance }]);
+    return true;
+  }
+
+  // 课间侮辱判定：0.01 × (10 - 颜值) 概率被人侮辱，快乐 -5
+  function tryInsult(stepName){
+    const p = clamp(0.01*(10-G.looks), 0, 1);
+    if (p<=0) return false;
+    if (!chance(p)) return false;
+    changeHappy(-5);
+    log(`${stepName}：有人当众说了很难听的话侮辱你，快乐 -5`, 'bad');
+    showStep('😡 被人侮辱了', [
+      { t:'课间，有人当着大家的面羞辱了你。', c:'sys' },
+      { t:'快乐 -5。', c:'bad' }
+    ], [{ text:'忍住，继续 →', onClick: advance }]);
+    return true;
+  }
+
+  // 课间：发呆 / 蹴瓶子（朱凌初可画画，范书元可玩电脑）
   function breakChoice(stepName){
-    showStep(stepName, [
-      { t:'下课了，短暂休息。', c:'sys' }
-    ], [
-      { text:'呆在座位上（50% +1 快乐）', onClick: ()=>{
-          let gain = chance(0.5)?1:0;
-          // 陈仰正"不要造谣"：同桌徐悠然，下课呆教室额外+1
-          if (G.charId==='chen' && G.mate.id==='xu') { gain += 1; G.stats.mateInteractions++; }
+    const chenXu = (G.charId==='chen' && G.mate.id==='xu');
+    const btns = [
+      { text: chenXu ? '😶 发呆（不要造谣：和徐悠然同桌，快乐 +1）' : '😶 发呆（无任何变化）', onClick: ()=>{
+          let gain = 0;
+          if (chenXu) { gain += 1; G.stats.mateInteractions++; }
           changeHappy(gain);
-          log(gain>0?`课间：你坐在座位上放松，快乐 +${gain}`:'课间：你坐在座位上，没什么特别的', gain>0?'good':'sys');
+          log(gain>0?`课间：你坐在座位上和徐悠然闲聊，快乐 +${gain}`:'课间：你发了会儿呆，什么都没发生', gain>0?'good':'sys');
           advance();
-      }},
-      { text:'🍾 蹴瓶子（消耗 1 饥饿，身体判定进球）', onClick: ()=>{
-          if (G.hunger < 1){ log('你太饿了，踢不动瓶子','sys'); advance(); return; }
-          changeHunger(-1);
+      }}
+    ];
+    // 王浩宇"青梅竹马"：同桌范书元时，下课无法蹴瓶子
+    const noKick = (G.charId==='wang' && G.mateId==='fan');
+    if (!noKick){
+      const goalPct = Math.round(clamp(G.body*0.1,0,1)*100);
+      btns.push({ text:`🍾 蹴瓶子（饥饿 -2；${goalPct}% 进球，快乐 +2）`, onClick: ()=>{
+          if (G.hunger < 2){ log('你太饿了，踢不动瓶子','sys'); advance(); return; }
+          changeHunger(-2);
           if (chance(G.body*0.1)){
             changeHappy(2); G.stats.goals++;
             log('课间：你一脚把瓶子蹴进垃圾桶，进球！快乐 +2','good');
@@ -536,22 +711,64 @@
             log('课间：瓶子飞了出去，没进。','sys');
           }
           advance();
+      }});
+    }
+    if (G.charId==='zhu'){
+      btns.push({ text:'🎨 画画（10% 快乐回满，否则快乐 +1）', onClick: ()=>{
+          if (chance(0.1)){
+            G.happy = G.happyCap; renderStats();
+            log('课间：你画得入神，灵感爆发，快乐直接回满！','good');
+          } else {
+            changeHappy(1); log('课间：你安静地画了会儿画，快乐 +1','good');
+          }
+          advance();
+      }});
+    }
+    if (G.charId==='fan'){
+      btns.push({ text:'💻 玩电脑（75% 被抓 快乐 -3，25% 没被抓 快乐 +3）', onClick: ()=>{
+          if (chance(0.75)){ changeHappy(-3); log('课间：你玩电脑被老师抓个正着，快乐 -3','bad'); }
+          else { changeHappy(3); log('课间：你偷偷玩电脑没被发现，快乐 +3','good'); }
+          advance();
+      }});
+    }
+    showStep(stepName, [{ t:'下课了，短暂休息。', c:'sys' }], btns);
+  }
+  function stepBreak(){
+    if (tryConfession('课间')) return;
+    if (tryInsult('课间')) return;
+    breakChoice('☕ 课间');
+  }
+  function stepLunch(){
+    showStep('🍱 午餐时间', [
+      { t:'中午到了，肚子有点饿。你要……', c:'sys' }
+    ], [
+      { text:'🍚 好好吃饭（恢复 50% 饥饿）', onClick: ()=>{
+          changeHunger(Math.round(G.hungerCap*0.5));
+          log('午餐：你好好吃了一顿饭，饥饿 +50%','good');
+          advance();
+      }},
+      { text:'⚽ 出去打球（快乐 +3，不恢复饥饿）', onClick: ()=>{
+          changeHappy(3);
+          log('午餐：你冲出去打了场球，快乐 +3','good');
+          advance();
       }}
     ]);
   }
-  function stepBreak(){ breakChoice('☕ 课间'); }
-  function stepLunch(){ breakChoice('🍱 午自习'); }
 
-  // 大课间（第7节后）：快乐加倍
+  // 大课间（第7节后）
   function stepBigBreak(){
+    if (tryConfession('大课间')) return;
+    if (tryInsult('大课间')) return;
     showStep('🏃 大课间', [
-      { t:'大课间！这段时间的快乐加倍！', c:'gold' }
+      { t:'大课间到了，放松一下。', c:'gold' }
     ], [
-      { text:'出去活动（快乐 +4）', onClick: ()=>{
-          changeHappy(4); log('大课间：你冲出去疯玩，快乐 +4（加倍！）','gold'); advance();
+      { text:'🏃 出去玩（快乐 +3，饥饿 -3）', onClick: ()=>{
+          changeHappy(3); log('大课间：你冲出去疯玩，快乐 +3','good');
+          changeHunger(-3); log('大课间：跑累了，饥饿 -3','bad');
+          advance();
       }},
-      { text:'教室休息（快乐 +2）', onClick: ()=>{
-          changeHappy(2); log('大课间：你在教室趴着休息，快乐 +2（加倍！）','gold'); advance();
+      { text:'🪑 呆在教室（快乐 +1）', onClick: ()=>{
+          changeHappy(1); log('大课间：你在教室休息，快乐 +1','good'); advance();
       }}
     ]);
   }
@@ -565,19 +782,22 @@
           const g = G.happyCap*0.2;
           changeHappy(g); log(`晚上：你睡了个好觉，快乐 +${fmt(g)}`,'good'); advance();
       }},
-      { text:'🌸 半夜玩《千恋万花》（风险）', onClick: ()=>{
+      { text: G.charId==='chen' ? '🌸 半夜玩《千恋万花》（哲学家：快乐直接回满）' : '🌸 半夜玩《千恋万花》（50% 快乐 +5，50% 快乐 -5）', onClick: ()=>{
           if (G.charId==='chen'){
             G.happy = G.happyCap; renderStats();
-            log('晚上：千恋万花！你的快乐直接恢复满！','gold');
-          } else if (chance(G.looks*0.1)){
-            const g = G.happyCap*0.8;
-            G.happy = clamp(G.happy+g,0,G.happyCap); renderStats();
-            log(`晚上：你偷偷玩到很晚，快乐 +${fmt(g)}`,'good');
+            log('晚上：千恋万花！你的快乐直接恢复满！','good');
+          } else if (chance(0.5)){
+            changeHappy(5); log('晚上：你偷偷玩《千恋万花》玩得很爽，快乐 +5','good');
           } else {
-            G.happy = Math.floor(G.happy*0.5); renderStats();
-            log('晚上：玩千恋万花被家长发现！快乐减半！','bad');
+            changeHappy(-5); log('晚上：玩千恋万花被家长发现！快乐 -5','bad');
           }
           advance();
+      }},
+      { text:'🚀 起飞（快乐 +5，但明早不能吃早饭）', onClick: ()=>{
+          changeHappy(5);
+          G.noBreakfastDebuff = true;   // 次晨不能吃早饭（常喆免疫）
+          const tip = G.charId==='chang' ? '（你是常喆，明早照样能吃早饭）' : '（明早将吃不上早饭！）';
+          log(`晚上：你直接起飞，爽到凌晨！快乐 +5 ${tip}`,'good'); advance();
       }}
     ]);
   }
@@ -588,13 +808,24 @@
   function stepWeekendMorning(){
     const restore = G.happyCap*0.3;
     G.happy = clamp(G.happy+restore,0,G.happyCap);
-    G.hunger = Math.round(G.hungerCap*0.8);
+    const noBreakfast = G.noBreakfastDebuff && G.charId!=='chang';
+    if (!noBreakfast) G.hunger = G.hungerCap;
     renderStats();
+    G.noBreakfastDebuff = false;
     log('周末：睡到自然醒，快乐 +'+fmt(restore), 'gold');
-    showStep('🛌 周末早晨', [
-      { t:'今天是周末，不用上课！', c:'gold' },
-      { t:`你睡到自然醒，快乐 +${fmt(restore)}。`, c:'good' }
-    ], [{ text:'开始周末 →', onClick: advance }]);
+    if (noBreakfast){
+      log('周末：昨晚起飞起不来，早饭也没吃上，饥饿没补','bad');
+      showStep('🛌 周末早晨', [
+        { t:'今天是周末，不用上课！', c:'gold' },
+        { t:`你睡到自然醒，快乐 +${fmt(restore)}。`, c:'good' },
+        { t:'但昨晚"起飞"让你起不来，连早饭都错过了，饥饿没恢复。', c:'bad' }
+      ], [{ text:'开始周末 →', onClick: advance }]);
+    } else {
+      showStep('🛌 周末早晨', [
+        { t:'今天是周末，不用上课！', c:'gold' },
+        { t:`你睡到自然醒，快乐 +${fmt(restore)}，还吃了顿丰盛的早饭。`, c:'good' }
+      ], [{ text:'开始周末 →', onClick: advance }]);
+    }
   }
   function stepWeekendLeisure(){
     showStep('🎉 周末时光', [
@@ -604,7 +835,7 @@
           changeHappy(3); changeHunger(-2); log('周末：你出去疯玩了一通，快乐 +3','good'); advance();
       }},
       { text:'在家写作业（快乐 +1，智力 +1）', onClick: ()=>{
-          changeHappy(1); G.intelligence = clamp(G.intelligence+1,1,10); renderStats();
+          changeHappy(1); G.intelligence = clamp(G.intelligence+1,1,20); renderStats();
           log('周末：你认真写了作业，智力 +1','good'); advance();
       }},
       { text:'打游戏（快乐 +2，30% 被发现 -3）', onClick: ()=>{
@@ -653,20 +884,22 @@
     const r = [
       ['存活天数', G.stats.survived + ' 天'],
       ['最终快乐', fmt(G.happy) + ' / ' + G.happyCap],
-      ['颜值 / 身体 / 智力', `${G.looks} / ${G.body} / ${G.intelligence}`],
+      ['颜值 / 体力 / 智力', `${G.looks} / ${G.body} / ${G.intelligence}`],
       ['上课答对次数', G.stats.correct + ' 次'],
       ['蹴瓶子进球', G.stats.goals + ' 次'],
       ['快乐见底次数', G.stats.crashes + ' 次'],
       ['与同桌互动', G.stats.mateInteractions + ' 次'],
       ['角色 / 同桌', `${G.char.name} / ${G.mate.name}`]
     ];
-    return r.map(([k,v])=>`<div class="srow"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
+    return r.map(([k,v])=>`<div class="srow"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('')
+      + (G.achievements.length ? '<div class="ach-title">🏆 隐藏成就</div>' + G.achievements.map(a=>`<div class="ach"><b>${a.name}</b><span>${a.desc}</span></div>`).join('') : '');
   }
 
   // ============================================================
   // SECTION: 角色 / 同桌 选择界面
   // ============================================================
   let pickedChar = null;
+  let pendingMate = null;   // 待确认的同桌 id
 
   function renderCharSelect(){
     const grid = $('char-grid');
@@ -676,7 +909,7 @@
       card.className = 'char-card';
       card.innerHTML = `
         <div class="cname">${c.name} <span style="font-size:12px;color:#8892b0;">${c.gender}</span></div>
-        <div class="cstats">颜值 ${c.looks} · 身体 ${c.body} · 智力 ${c.intelligence}</div>
+        <div class="cstats">颜值 ${c.looks} · 体力 ${c.body} · 智力 ${c.intelligence}</div>
         ${c.traits.map(t=>`<div class="ctrait"><b>${t.name}</b>：${t.desc}</div>`).join('')}
         <div class="cmate">${c.mateEffect}</div>
       `;
@@ -690,12 +923,15 @@
       renderMateSelect(true);
       showScreen('scr-mate');
     } else {
-      // 随机分配同桌
-      const others = CHARACTERS.filter(c=>c.id!==pickedChar.id);
-      const mate = pick(others);
-      $('mate-tip').textContent = '系统已为你随机分配同桌';
-      startGame(pickedChar.id, mate.id);
+      // 随机分配同桌，仍进入确认界面
+      randomMateAndConfirm();
     }
+  }
+
+  function randomMateAndConfirm(){
+    const others = CHARACTERS.filter(c=>c.id!==pickedChar.id);
+    pendingMate = pick(others).id;
+    showMateConfirm('系统为你随机分配了同桌');
   }
 
   function renderMateSelect(){
@@ -707,12 +943,97 @@
       card.className = 'mate-card';
       card.innerHTML = `
         <div class="cname">${c.name}</div>
-        <div class="cstats">颜${c.looks} 体${c.body} 智${c.intelligence}</div>
         <div class="ceff">${c.mateEffect.replace('作为同桌：','')}</div>
       `;
-      card.onclick = ()=>startGame(pickedChar.id, c.id);
+      card.onclick = ()=>{ pendingMate = c.id; showMateConfirm('你选择的同桌'); };
       grid.appendChild(card);
     });
+  }
+
+  // 同桌确认界面：只显示同桌是谁、同桌效果是什么（不显示本人属性与特点）
+  function showMateConfirm(reason){
+    const m = getChar(pendingMate);
+    const eff = m.mateEffect.replace('作为同桌：','');
+    $('confirm-box').innerHTML = `
+      <div class="cb-name">${m.name}</div>
+      <div class="cb-gender">${reason} · ${m.gender}</div>
+      <div class="cb-eff">同桌效果：<b>${eff}</b></div>
+    `;
+    showScreen('scr-confirm');
+  }
+
+  // ============================================================
+  // SECTION: 规则说明（开始界面）
+  // ============================================================
+  function buildRules(){
+    const askPct = Math.round(QUESTION_CHANCE*100);
+    $('rules-box').innerHTML = `
+      <h4>🗓️ 时间与胜负</h4>
+      共 <b>10 天</b>（9月1日 - 9月10日），活到教师节即胜利。<br>
+      上学日：早晨 → 早自习 → 9 节课（<b>每节课后都有课间</b>，第5节后是午餐、第7节后是大课间）→ 晚上。<br>
+      周末（9/5、9/6）：睡到自然醒 + 自由活动，不上课。<br>
+      <span class="rb">快乐归零 = 游戏结束。</span><br>
+      属性上限：颜值/体力 10，智力 20，饥饿 10（侯景瑞 15）。
+
+      <h4>🌅 早晨</h4>
+      快乐 +上限的 <b>20%</b>，早饭恢复到 <b>80% 饥饿</b>。<br>
+      若前一晚"起飞"：次晨吃不上早饭，饥饿不恢复（常喆免疫）。<br>
+      同桌王浩宇：<b>20%</b> 概率快乐直接回满。
+
+      <h4>📖 早自习</h4>
+      · 发呆：<span class="rb">饥饿 -2</span><br>
+      · 聊天：<b>50%</b> <span class="rg">快乐 +1</span>，<b>50%</b> <span class="rb">快乐 -2</span>（王浩宇"风纪委员"必定是 +1）<br>
+      <span class="rb">忘带作业事件已取消。</span>
+
+      <h4>📚 上课（每节）</h4>
+      · 固定 <span class="rb">饥饿 -1</span>（饥饿为 0 时改为 <span class="rb">快乐 -1</span>）<br>
+      · <b>${askPct}%</b> 被提问：答出概率 = <b>智力/20</b>；答出<b>无奖励</b>，答不出 <span class="rb">快乐 -2</span><br>
+      · 贾子辰"好饿"：额外 <span class="rb">饥饿 -1</span>；他本人<b>每天智力永久 +1</b><br>
+      · 朱凌初"厌学"：每节课 <span class="rb">快乐 -1</span><br>
+      · 同桌侯景瑞：每节课 <span class="rb">快乐 -1</span>、<span class="rg">饥饿 +1</span><br>
+      · 同桌贾子辰：每节课 <span class="rb">快乐 -0.5</span><br>
+      · 王浩宇本人 + 同桌范书元（青梅竹马）：每节课 <span class="rg">快乐 +1</span>
+
+      <h4>☕ 课间（每节课后）</h4>
+      · 被表白：概率 = <b>颜值 × 0.005</b> ×倍率 → <span class="rg">快乐直接回满</span><br>
+      · 被侮辱：概率 = <b>0.01 × (10 - 颜值)</b> → <span class="rb">快乐 -5</span><br>
+      · 发呆：无变化（陈仰正同桌徐悠然 → <span class="rg">快乐 +1</span>）<br>
+      · 蹴瓶子：<span class="rb">饥饿 -2</span>；<b>体力×10%</b> 概率进球 → <span class="rg">快乐 +2</span>（按钮显示你的真实进球%）<br>
+      · 朱凌初可画画：<b>10%</b> <span class="rg">快乐回满</span>，否则 <span class="rg">快乐 +1</span><br>
+      · 范书元可玩电脑：<b>75%</b> 被抓 <span class="rb">快乐 -3</span>，<b>25%</b> 没被抓 <span class="rg">快乐 +3</span><br>
+      · 王浩宇本人 + 同桌范书元：<b>无法蹴瓶子</b>
+
+      <h4>🍱 午餐（第5节后）</h4>
+      · 好好吃饭：<span class="rg">恢复 50% 饥饿</span><br>
+      · 出去打球：<span class="rg">快乐 +3</span>，不恢复饥饿
+
+      <h4>🏃 大课间（第7节后）</h4>
+      · 出去玩：<span class="rg">快乐 +3</span>，<span class="rb">饥饿 -3</span><br>
+      · 呆在教室：<span class="rg">快乐 +1</span><br>
+      （同样可能触发被表白 / 被侮辱）
+
+      <h4>🌙 晚上</h4>
+      · 好好睡觉：<span class="rg">快乐 +上限的 20%</span><br>
+      · 玩《千恋万花》：陈仰正直接回满；其他人 <b>50%</b> <span class="rg">快乐 +5</span>，<b>50%</b> <span class="rb">快乐 -5</span><br>
+      · 起飞：<span class="rg">快乐 +5</span>，但明早吃不上早饭（常喆免疫）
+
+      <h4>🎭 人物特点速查</h4>
+      · 陈仰正：快乐上限 15；<b>所有快乐惩罚 ×2</b>；可选同桌；同桌徐悠然时发呆 +1；千恋万花直接回满。作为同桌：快乐上限 +5<br>
+      · 王浩宇：不会被记违纪；可选同桌；同桌范书元时每节课 +1 快乐但不能蹴瓶子。作为同桌：早晨 20% 快乐回满<br>
+      · 侯景瑞：饥饿上限 15；同桌为异性时 快乐上限 +5、饥饿上限 -10。作为同桌：每节课 -1 快乐、+1 饥饿<br>
+      · 徐悠然：可选同桌；同桌陈仰正时双方快乐上限再 +5。作为同桌：被表白概率 ×2<br>
+      · 贾子辰：每节课额外 -1 饥饿，每天智力永久 +1。作为同桌：智力 +10、颜值 -5、体力 -5<br>
+      · 朱凌初：画画 10% 回满快乐；被表白概率 ×4；每节课 -1 快乐。作为同桌：颜值 +3<br>
+      · 常喆：起飞后次晨无早饭 debuff。作为同桌：周末每天各项属性永久 +1<br>
+      · 范书元：永不被表白；玩电脑 75% 被抓 ±3 快乐。作为同桌：每项属性 -2
+
+      <h4>🏆 隐藏成就</h4>
+      选择王浩宇，或与王浩宇同桌 → 解锁「死气沉沉」。
+
+      <h4>😵 失败</h4>
+      快乐归零即失败。<br><br>
+      <span class="rg">每个选项按钮上都标注了概率和数值，照着选就行。</span>
+    `;
   }
 
   // ============================================================
@@ -720,6 +1041,20 @@
   // ============================================================
   $('btn-start').addEventListener('click', ()=>{ renderCharSelect(); showScreen('scr-char'); });
   $('btn-again').addEventListener('click', ()=>{ renderCharSelect(); showScreen('scr-char'); });
+  $('btn-rules').addEventListener('click', ()=>{
+    const box = $('rules-box');
+    if (box.classList.contains('hidden')){ buildRules(); box.classList.remove('hidden'); $('btn-rules').textContent='📖 收起规则'; }
+    else { box.classList.add('hidden'); $('btn-rules').textContent='📖 查看完整规则与概率'; }
+  });
+
+  // 同桌确认：确认开局 / 换一个
+  $('btn-confirm-start').addEventListener('click', ()=>{
+    if (pendingMate) startGame(pickedChar.id, pendingMate);
+  });
+  $('btn-confirm-back').addEventListener('click', ()=>{
+    if (pickedChar.canChooseMate){ renderMateSelect(); showScreen('scr-mate'); }
+    else { randomMateAndConfirm(); }   // 随机分配的，重新随机一个
+  });
 
   (function init(){
     if (!window.KeyGate.requireLogin()) return;
