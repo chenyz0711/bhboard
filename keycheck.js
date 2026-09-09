@@ -101,7 +101,7 @@
   // 未登录强制跳转主页登录
   function requireLogin() {
     if (!getUser()) {
-      location.replace('https://bhboard.pages.dev/');
+      location.replace('https://j2k183.pages.dev/');
       return false;
     }
     return true;
