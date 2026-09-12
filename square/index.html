@@ -163,8 +163,9 @@
   // ============================================================
   // SECTION: state
   // ============================================================
-  const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
-  const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
+  const _cred = window.KeyGate.credentials();
+  const UPSTASH_URL = _cred.url;
+  const UPSTASH_TOKEN = _cred.token;
   const PRESENCE_PREFIX = 'bh_member:';   // 在线心跳（兄弟管理页用）
   const PRESENCE_TTL = 90;
   const MEMBERS_KEY = 'bh_members';
@@ -210,7 +211,8 @@
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
 
-  const NAME_POOL = ['RRRory', '我是WHY', 'chenyz', '丙寅', 'CZ', '李知行07', 'Felixxx', '徐悠然', '朱凌初'];
+  // NPC 名字池：全部为虚拟名，不含任何真实玩家名，避免真人进场时被误判撞名
+  const NAME_POOL = ['RRRory', '我是WHY', 'Felixxx', '路人甲', '路人乙', '打酱油的', '隔壁班的', '值日生', '课代表', '体育组的'];
   const NPC_COLORS = ['#5b8def', '#e67e22', '#9b59b6', '#16a085', '#d35400', '#2980b9', '#c0392b', '#27ae60', '#8e44ad'];
   const NPC_LINES = [
     '今天吃啥？', '兄弟来了！', '谁请客？', '走走走，打球去',
@@ -320,7 +322,7 @@
   }
 
   function enterPlaza(name) {
-    localStorage.setItem('bh_user', JSON.stringify({ username: name }));
+    // 不回写 bh_user：登录态属于全站，广场无权修改（曾因加"哥"污染过身份）
     startPresence(name);
     userTag.textContent = name;
     nameBox.classList.add('hidden');
@@ -358,9 +360,9 @@
       window.KeyGate.requireLogin();
       return;
     }
-    let name = user.username.slice(0, 12);
+    const name = user.username.slice(0, 12);
     nameInput.value = name;
-    if (NAME_POOL.includes(name)) name = name + '哥';
+    // 真人名字一律不改写。撞名由 NPC 避让（spawnVisitor 会排除在场名字）
     enterPlaza(name);
   }
 
