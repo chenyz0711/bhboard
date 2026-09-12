@@ -108,6 +108,12 @@
   .chip.eng b { color:#c8d3e8; font-size:14px; }
   .chip.buff { background:#2c2410; border:1px solid #ffd166; color:#ffd166; }
   .chip.hurt { background:#3a1f24; border:1px solid #ff6b6b; color:#ffb3b3; }
+  .chip.card { background:#33202c; border:1px solid #ff8fb1; color:#ffd6e3;
+               font-weight:700; animation:cardPulse 2s ease-in-out infinite; }
+  @keyframes cardPulse {
+    0%,100%{ box-shadow:0 0 0 rgba(255,143,177,0); }
+    50%    { box-shadow:0 0 14px rgba(255,143,177,.6); }
+  }
 
   /* 事件区 */
   .event .etitle { font-size:18px; font-weight:800; color:#4fc3f7; margin-bottom:8px; }
@@ -119,6 +125,8 @@
   .event .elines .big { font-size:17px; font-weight:800; color:#fff; }
   .event .elines .bigbad { font-size:17px; font-weight:800; color:#ff6b6b; }
   .event .elines .biggood { font-size:17px; font-weight:800; color:#51cf66; }
+  .event .elines .cardbig { font-size:18px; font-weight:800; color:#ff8fb1;
+                            text-shadow:0 0 10px rgba(255,143,177,.45); line-height:2; }
   .choices { display:flex; flex-direction:column; gap:10px; }
   .choices .btn { width:100%; max-width:none; }
 
@@ -256,7 +264,7 @@
     <!-- 徐锴锐：自选属性与特点 -->
     <div class="screen hidden" id="scr-custom">
       <h1 class="game-title" style="font-size:24px;">打造你的徐锴锐</h1>
-      <div class="subtitle">初始可用属性点 <b id="cu-pts-total">10</b> · 属性每 ±1 花 / 返 1 点 · 特点按定价扣点（负面特点返点）<br>可用点数必须 ≥ 0 才能开始</div>
+      <div class="subtitle">初始可用属性点 <b id="cu-pts-total">10</b> · 颜值 / 体力 / 智力 三项<b>初始均为 0</b>，自己加点（1 点属性 = 1 点）<br>特点按定价扣点（负面特点返点）· 可用点数必须 ≥ 0 才能开始</div>
 
       <div class="cu-box">
         <div class="cu-pts">可用属性点：<b id="cu-pts">10</b><span id="cu-pts-warn"></span></div>
@@ -324,6 +332,9 @@
         </div>
         <div class="extra-row hidden" id="hurt-row">
           <div class="chip hurt" id="av-hurt"></div>
+        </div>
+        <div class="extra-row hidden" id="card-row">
+          <div class="chip card" id="av-card"></div>
         </div>
         <div class="mate-eff" id="g-mate-eff"></div>
       </div>
@@ -497,13 +508,13 @@
         { name:'憧憧', desc:'认真听讲时智力提升 ×2' }
       ],
       mateEffect:'作为同桌：认真听讲加智力的概率 +10%', canChooseMate:false },
-    { id:'xukr', name:'徐锴锐', gender:'男', looks:5, body:5, intelligence:5, happyCap:10,
+    { id:'xukr', name:'徐锴锐', gender:'男', looks:0, body:0, intelligence:0, happyCap:10,
       customBuild:true,
       traits:[
         { name:'自选特点', desc:'开局自己挑特点，按定价花属性点（初始 10 点可用）' },
-        { name:'自选属性', desc:'颜值 / 体力 / 智力 从 5 起，自由加减，1 点属性 = 1 点' }
+        { name:'自选属性', desc:'颜值 / 体力 / 智力 从 0 起，自由加点，1 点属性 = 1 点' }
       ],
-      mateEffect:'作为同桌：拥有一次复活机会（复活时快乐 / 饥饿均为上限的一半）', canChooseMate:false }
+      mateEffect:'作为同桌：拥有一次复活机会（濒死时以满状态复活）', canChooseMate:false }
   ];
 
   // 特点定价（来自「增减量」表）：负数 = buff，要花点；正数 = debuff，返还点
@@ -518,7 +529,7 @@
   };
   // 徐锴锐自选时的初始可分配属性点
   const CUSTOM_POINTS = 10;
-  const CUSTOM_BASE_ATTR = 5;
+  const CUSTOM_BASE_ATTR = 0;
 
   // 英语分层：按「香草.xlsx」名单查表（A 班要跑班）。不在名单的角色随机分。
   const ENG_A = ['陈仰正','侯景瑞','贾子辰','朱凌初','常喆','胡凯宁','蒋润霖','李知行'];
@@ -712,9 +723,11 @@
 
     if (pickedDiff==='easy'){ G.looks++; G.body++; G.intelligence++; }
     if (pickedDiff==='hard'){ G.looks--; G.body--; G.intelligence--; }
-    G.looks = clamp(G.looks,1,LOOKS_CAP);
-    G.body = clamp(G.body,1,BODY_CAP);
-    G.intelligence = clamp(G.intelligence,1,INT_CAP);
+    // 徐锴锐自选可以把属性配到 0，下限放开到 0；其他角色仍保底 1
+    const attrMin = isCustom ? 0 : 1;
+    G.looks = clamp(G.looks,attrMin,LOOKS_CAP);
+    G.body = clamp(G.body,attrMin,BODY_CAP);
+    G.intelligence = clamp(G.intelligence,attrMin,INT_CAP);
     applyMatePassives();
     G.baseLooks = G.looks;   // 必须在同桌加成之后固定，否则贾子辰/朱凌初同桌的永久颜值会被每日波动重置
     checkOpeningAchievements();
@@ -824,16 +837,17 @@
     renderStats();
   }
 
-  // 发卡复活：有发卡时消耗一张，快乐 / 饥饿恢复到上限的一半，不结束游戏
+  // 发卡复活：有发卡时消耗一张，以满状态复活（快乐 / 饥饿回满），不结束游戏
   function tryRevive(lines){
     if (G.reviveCards <= 0) return false;
     G.reviveCards--;
     G.revivesUsed++;
     G.alive = true;
     G.endReason = '';
-    G.happy = Math.max(1, Math.floor(G.happyCap / 2));
-    G.hunger = Math.max(1, Math.floor(G.hungerCap / 2));
-    if (lines) lines.push({ t:`· 💌 发卡碎掉了：徐悠然的发卡救了你一命，快乐 / 饥饿恢复到上限的一半（剩余发卡 ${G.reviveCards}）`, c:'gold' });
+    G.happy = G.happyCap;
+    G.hunger = G.hungerCap;
+    const src = G.bowGiven ? '徐悠然的发卡' : '发卡';
+    if (lines) lines.push({ t:`· 💌 发卡碎掉了：${src}救了你一命，你以满状态复活（快乐 / 饥饿回满，剩余发卡 ${G.reviveCards}）`, c:'gold' });
     renderStats();
     return true;
   }
@@ -913,6 +927,11 @@
         { f: ()=>stepClass(6) }, { f: stepBigBreak },
         { f: stepEvening }
       ];
+      // 周四的历史课排在第 8 节，裁课会把它裁掉；蝴蝶结发卡是特殊事件，必须保留这节课
+      if (DAY_INFO[G.day-1].sched === 3){
+        G.daySteps.splice(G.daySteps.length-1, 0,
+          { f: ()=>stepClass(7) }, { f: stepBreak });
+      }
     } else {
       G.daySteps = [
         { f: stepMorning },
@@ -1005,6 +1024,13 @@
       $('av-hurt').textContent = '🤕 今天受伤了：不能蹴瓶子，体育课快乐增量减半';
     } else {
       $('hurt-row').classList.add('hidden');
+    }
+    // 发卡常驻提示：拿到徐悠然的发卡后一直显示，用掉后消失
+    if (G.bowGiven && G.reviveCards > 0){
+      $('card-row').classList.remove('hidden');
+      $('av-card').textContent = '💌 身上带着徐悠然送的发卡，你感到充满了决心。';
+    } else {
+      $('card-row').classList.add('hidden');
     }
   }
   function flash(id, good){
@@ -1592,9 +1618,9 @@
       G.bowGiven = true;
       G.reviveCards++;
       renderStats();
-      lines.push({ t:'· 💌 下课时徐悠然悄悄塞给你一个蝴蝶结发卡：「拿着，万一你撑不住了，它能救你一次。」', c:'gold' });
-      lines.push({ t:`· 获得发卡 ×1（现有 ${G.reviveCards}）：快乐归零或违纪满时会替你挡一次，复活后快乐 / 饥饿恢复到上限的一半`, c:'good' });
-      log('周四下午历史课后：徐悠然送了你一个蝴蝶结发卡（可复活一次）', 'gold');
+      lines.push({ t:'· 💌 课时徐悠然塞给你一个蝴蝶结发卡，香香的，有股女孩子身上的味道。', c:'cardbig' });
+      lines.push({ t:`· 获得发卡 ×1（现有 ${G.reviveCards}）：濒死时以满状态复活`, c:'cardbig' });
+      log('周四下午历史课后：徐悠然送了你一个蝴蝶结发卡（濒死时以满状态复活）', 'gold');
     }
 
     lines.forEach(l=>log(l.t, l.c));
@@ -1921,6 +1947,19 @@
   }
 
   function stepExercise(){
+    // 特殊事件（100%）：9月9日 做操，同学们不知为何突然开始鼓掌 → 快乐回满
+    if (G.day === 9){
+      G.happy = G.happyCap;
+      renderStats();
+      log('9月9日做操：同学们不知为何突然开始鼓掌，快乐回满', 'gold');
+      showStep('🤸 做操', [
+        { t:'· 第二节下课下楼做操，做到一半，同学们不知为何突然开始鼓掌。', c:'sys' },
+        { t:'· 掌声一片，你也跟着鼓了起来。', c:'sys' },
+        { t:'· 特殊事件（100%）：快乐回满', c:'biggood' },
+        { t:`· 快乐 ${fmt(G.happy)} / ${G.happyCap}`, c:'good' }
+      ], [{ text:'继续 →', onClick: advance }]);
+      return;
+    }
     if (checkDragged('🤸 做操')) return;
     const wangImmune = hasTrait('风纪委员');
     const l0 = [];
@@ -2289,9 +2328,9 @@
       const val = document.createElement('div'); val.className='cu-val'; val.textContent = cu[r.key];
       const plus = document.createElement('button'); plus.className='cu-btn'; plus.textContent='+';
       const cap = document.createElement('div'); cap.className='cu-cap'; cap.textContent = `上限 ${r.cap}`;
-      minus.onclick = ()=>{ if (cu[r.key] > 1){ cu[r.key]--; cuRenderAttrs(); cuRenderSum(); } };
+      minus.onclick = ()=>{ if (cu[r.key] > 0){ cu[r.key]--; cuRenderAttrs(); cuRenderSum(); } };
       plus.onclick  = ()=>{ if (cu[r.key] < r.cap && cuPointsLeft() > 0){ cu[r.key]++; cuRenderAttrs(); cuRenderSum(); } };
-      minus.disabled = cu[r.key] <= 1;
+      minus.disabled = cu[r.key] <= 0;
       plus.disabled  = cu[r.key] >= r.cap || cuPointsLeft() <= 0;
       box.appendChild(lb); box.appendChild(minus); box.appendChild(val); box.appendChild(plus); box.appendChild(cap);
     });
