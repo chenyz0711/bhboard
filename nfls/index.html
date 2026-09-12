@@ -168,9 +168,36 @@
   .mr-emoji { font-size:44px; text-align:center; }
   .mr-title { font-size:20px; font-weight:800; text-align:center; color:#fff; margin:8px 0; }
   .mr-detail { font-size:13px; color:#9fb0cc; text-align:center; line-height:1.8; }
+
+  /* ---- 徐锴锐：属性 / 特点自选 ---- */
+  .cu-box { background:#16233a; border-radius:14px; padding:16px 18px; margin-bottom:14px; text-align:left; }
+  .cu-pts { font-size:15px; color:#e8eefc; margin-bottom:14px; }
+  .cu-pts b { color:#ffd76a; font-size:20px; }
+  .cu-pts span { font-size:12px; color:#ff6b6b; margin-left:8px; }
+  .cu-attr { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .cu-attr .cu-label { width:44px; font-size:13px; color:#8892b0; }
+  .cu-attr .cu-val { width:34px; text-align:center; font-size:16px; font-weight:800; color:#4fc3f7; }
+  .cu-attr .cu-cap { font-size:11px; color:#5b6b85; }
+  .cu-btn { width:30px; height:30px; border-radius:8px; border:1px solid #3a4a63; background:#0f1828;
+    color:#e8eefc; font-size:16px; cursor:pointer; line-height:1; padding:0; }
+  .cu-btn:hover { border-color:#4fc3f7; }
+  .cu-btn:disabled { opacity:.35; cursor:not-allowed; }
+  .cu-sub { font-size:12.5px; color:#8892b0; margin:14px 0 8px; }
+  .cu-cost { color:#ff9f9f; } .cu-refund { color:#7ee2a8; }
+  .cu-trait-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:7px; }
+  .cu-trait { background:#0f1828; border:1px solid #2b3a52; border-radius:9px; padding:7px 9px;
+    cursor:pointer; font-size:12px; color:#c8d3e8; line-height:1.5; transition:.12s; }
+  .cu-trait:hover { border-color:#4fc3f7; }
+  .cu-trait.sel { border-color:#ffd76a; background:#1d2c47; box-shadow:0 0 0 1px #ffd76a inset; }
+  .cu-trait.locked { opacity:.45; cursor:not-allowed; }
+  .cu-trait b { color:#ffd166; }
+  .cu-trait .cu-p { float:right; font-weight:700; }
+  .cu-trait .cu-p.cost { color:#ff9f9f; } .cu-trait .cu-p.refund { color:#7ee2a8; }
+  .cu-sum { font-size:12.5px; color:#9fb0cc; margin-top:12px; line-height:1.8; }
   @media (max-width:480px){
     .char-grid { grid-template-columns:1fr; }
     .mate-grid { grid-template-columns:1fr; }
+    .cu-trait-grid { grid-template-columns:1fr; }
     h1.game-title { font-size:26px; }
   }
 </style>
@@ -224,6 +251,28 @@
       <h1 class="game-title" style="font-size:24px;">选择你的角色</h1>
       <div class="subtitle" id="char-tip">不同角色，完全不同的活法</div>
       <div class="char-grid" id="char-grid"></div>
+    </div>
+
+    <!-- 徐锴锐：自选属性与特点 -->
+    <div class="screen hidden" id="scr-custom">
+      <h1 class="game-title" style="font-size:24px;">打造你的徐锴锐</h1>
+      <div class="subtitle">初始可用属性点 <b id="cu-pts-total">10</b> · 属性每 ±1 花 / 返 1 点 · 特点按定价扣点（负面特点返点）<br>可用点数必须 ≥ 0 才能开始</div>
+
+      <div class="cu-box">
+        <div class="cu-pts">可用属性点：<b id="cu-pts">10</b><span id="cu-pts-warn"></span></div>
+
+        <div class="cu-attr" id="cu-looks"></div>
+        <div class="cu-attr" id="cu-body"></div>
+        <div class="cu-attr" id="cu-int"></div>
+
+        <div class="cu-sub">已选特点（点击切换；<span class="cu-cost">负数=花点</span>，<span class="cu-refund">正数=返点</span>）</div>
+        <div class="cu-trait-grid" id="cu-traits"></div>
+
+        <div class="cu-sum" id="cu-sum"></div>
+      </div>
+
+      <button class="btn block" id="btn-custom-ok">下一步：选同桌 →</button>
+      <button class="btn ghost block" id="btn-custom-back" style="margin-top:10px;">← 重新选角色</button>
     </div>
 
     <!-- 选同桌 -->
@@ -387,7 +436,7 @@
         { name:'我不是给', desc:'同桌为异性时，快乐上限 +5、饥饿上限 -10' }
       ],
       mateEffect:'作为同桌：每节课 -1 快乐，+1 饥饿', canChooseMate:false },
-    { id:'xu', name:'徐悠然', gender:'女', looks:10, body:6, intelligence:9, happyCap:10,
+    { id:'xu', name:'徐悠然', gender:'女', looks:9, body:6, intelligence:9, happyCap:10,
       traits:[
         { name:'副班长', desc:'开局可以选择同桌' },
         { name:'故意的', desc:'同桌是陈仰正时，双方快乐上限再 +5' }
@@ -428,8 +477,57 @@
         { name:'危险意识', desc:'上课聊天时快乐 -1（而不是 +2），但不会被记违纪' },
         { name:'电教委', desc:'中午可以"打作业"：30% 概率快乐 +3，否则没有变化' }
       ],
-      mateEffect:'作为同桌：无特殊效果', canChooseMate:false }
+      mateEffect:'作为同桌：上课聊天时额外 +1 快乐', canChooseMate:false },
+    { id:'jiang', name:'蒋润霖', gender:'男', looks:9, body:9, intelligence:6, happyCap:10,
+      traits:[
+        { name:'作孽双子', desc:'被记违纪时，违纪点数 ×2' },
+        { name:'级委', desc:'被记违纪的概率减半' },
+        { name:'强身健体', desc:'踢瓶子胜率 ×2（手动赛门将扑救率 70%→30%），获得的快乐 ×2' }
+      ],
+      mateEffect:'作为同桌：作孽——上课不能认真听讲，但聊天时快乐 ×2', canChooseMate:false },
+    { id:'lizx', name:'李知行', gender:'男', looks:5, body:5, intelligence:5, happyCap:10,
+      traits:[
+        { name:'肾虚', desc:'每天各项属性 -3' },
+        { name:'父亲', desc:'每踢一次瓶子，各项属性 +1' }
+      ],
+      mateEffect:'作为同桌：下课只能踢瓶子（其他课间选项被锁住）', canChooseMate:false },
+    { id:'lisc', name:'李思憧', gender:'男', looks:7, body:6, intelligence:8, happyCap:10,
+      traits:[
+        { name:'给给', desc:'同桌为同性时获得的快乐 ×2；同桌为异性时获得的快乐减半' },
+        { name:'憧憧', desc:'认真听讲时智力提升 ×2' }
+      ],
+      mateEffect:'作为同桌：认真听讲加智力的概率 +10%', canChooseMate:false },
+    { id:'xukr', name:'徐锴锐', gender:'男', looks:5, body:5, intelligence:5, happyCap:10,
+      customBuild:true,
+      traits:[
+        { name:'自选特点', desc:'开局自己挑特点，按定价花属性点（初始 10 点可用）' },
+        { name:'自选属性', desc:'颜值 / 体力 / 智力 从 5 起，自由加减，1 点属性 = 1 点' }
+      ],
+      mateEffect:'作为同桌：拥有一次复活机会（复活时快乐 / 饥饿均为上限的一半）', canChooseMate:false }
   ];
+
+  // 特点定价（来自「增减量」表）：负数 = buff，要花点；正数 = debuff，返还点
+  const TRAIT_POINTS = {
+    '哲学家':-2, '机缘巧合':-3, '不要造谣':-3, '千恋万花':-3,
+    '风纪委员':-4, '大胃袋':-2, '我不是给':5, '故意的':-2,
+    '好饿':6, '反骨':-4, '硬扛':-3, '美术生':-3,
+    '万人迷':-4, '厌学':6, '长喆':-2, '去皮':4,
+    '强壮':-2, '第2形态':-3, '不吃压力':-2, '小胃袋':5,
+    '危险意识':-2, '电教委':-1, '作孽双子':5, '级委':-4,
+    '强身健体':-4, '肾虚':8, '父亲':-7, '给给':-3, '憧憧':-3
+  };
+  // 徐锴锐自选时的初始可分配属性点
+  const CUSTOM_POINTS = 10;
+  const CUSTOM_BASE_ATTR = 5;
+
+  // 英语分层：按「香草.xlsx」名单查表（A 班要跑班）。不在名单的角色随机分。
+  const ENG_A = ['陈仰正','侯景瑞','贾子辰','朱凌初','常喆','胡凯宁','蒋润霖','李知行'];
+  const ENG_B = ['王浩宇','徐悠然','刘敬熙','万天一','李思憧'];
+  function engClassOf(charName){
+    if (ENG_A.indexOf(charName) !== -1) return 'A';
+    if (ENG_B.indexOf(charName) !== -1) return 'B';
+    return chance(0.5) ? 'A' : 'B';   // 徐锴锐等未列入名单者：随机
+  }
 
   // 课表（来自 初三课表.xlsx），周一~周五，每天 9 节
   const SCHEDULE = [
@@ -467,8 +565,15 @@
   const DIFFICULTIES = [
     { id:'normal', name:'😐 普通模式', desc:'正常规则，原汁原味。', tags:'' },
     { id:'easy',   name:'😊 简单模式', desc:'快乐上限 +5；早餐回满饥饿；颜值 / 体力 / 智力 各 +1。', tags:'想轻松撑到教师节就选这个' },
-    { id:'hard',   name:'😈 困难模式', desc:'快乐上限 ×0.75（上取整）；颜值 / 体力 / 智力 各 -1；午餐必定只回一半饥饿；被表白概率减半。', tags:'真正的南外生存' }
+    { id:'hard',   name:'😈 困难模式', desc:'快乐上限 ×0.75（上取整）；颜值 / 体力 / 智力 各 -1；午餐必定只回一半饥饿；被表白概率减半。', tags:'真正的南外生存' },
+    { id:'speed',  name:'⚡ 加速模式', desc:'上午课 4→2 节、下午课 5→2 节（全天 4 节）；所有数值增减量 ×2。', tags:'节奏快，一天过得飞快' }
   ];
+
+  // 加速模式：所有数值增减量 ×2（文案也走这里，保证显示与实际一致）
+  function NM(){ return pickedDiff==='speed' ? 2 : 1; }
+  function nm(v){ return dfmt(v * NM()); }
+  // 每天课节数：加速模式上午 2 节、下午 2 节
+  function classesPerHalf(){ return pickedDiff==='speed' ? { morning:2, afternoon:2 } : { morning:4, afternoon:5 }; }
 
   // 课表变体名归一化（语辅→语文、数学1→数学 …）
   function normSubject(s){
@@ -504,6 +609,14 @@
   function fmt(v){ return (Math.round(v*10)/10).toString(); }
   function dfmt(d){ return (d>0?'+':'') + fmt(d); }
   function pct(p){ return Math.round(clamp(p,0,1)*100) + '%'; }
+
+  // 是否拥有某特点：原生角色 = 自己的特点；徐锴锐 = 自选的特点
+  function hasTrait(name){ return !!(G && G.traits && G.traits.indexOf(name) !== -1); }
+  // 同桌是否拥有某特点
+  function mateHasTrait(name){
+    if (!G || !G.mate || !Array.isArray(G.mate.traits)) return false;
+    return G.mate.traits.some(t => t.name === name);
+  }
 
   // ---------- 概率显示锁：默认隐藏所有百分比，输入密码后才显示 ----------
   let probUnlocked = false;
@@ -551,8 +664,17 @@
   function todaySchedule(){ return SCHEDULE[DAY_INFO[G.day-1].sched] || []; }
 
   function startGame(charId, mateId){
-    const c = getChar(charId), m = getChar(mateId);
+    const m = getChar(mateId);
+    const base = getChar(charId);
+    // 徐锴锐：套用自选的属性与特点。用派生副本，避免污染共享的 CHARACTERS（角色卡会显示错值）
+    const isCustom = !!base.customBuild && !!customBuild;
+    const c = isCustom ? Object.assign({}, base, {
+      looks: customBuild.looks,
+      body: customBuild.body,
+      intelligence: customBuild.intelligence
+    }) : base;
     let happyCap = c.happyCap;
+    if (isCustom && customBuild.traits.indexOf('哲学家') !== -1) happyCap += 5;   // 哲学家：快乐上限 15
     if (pickedDiff==='easy') happyCap += 5;
     if (pickedDiff==='hard') happyCap = Math.ceil(happyCap*0.75);
 
@@ -561,10 +683,10 @@
       day:1, stepIndex:0, daySteps:[],
       looks:c.looks, body:c.body, intelligence:c.intelligence,
       baseLooks:c.looks, looksSwing:0,
-      happyCap, hungerCap:c.hungerCap||HUNGER_CAP,
+      happyCap, hungerCap:(isCustom && customBuild.traits.indexOf('大胃袋')!==-1 ? 15 : (c.hungerCap||HUNGER_CAP)),
       happy:0, hunger:0,
       homework:0, violation:0,
-      engClass: chance(0.5) ? 'A' : 'B',
+      engClass: engClassOf(c.name),   // 按「香草.xlsx」名单确定 A/B 班
       reduceBuffUntil:0,
       noBreakfastDebuff:false,
       skipNextBreak:false,
@@ -572,6 +694,8 @@
       noStudyNext:false,        // 课间聊天 → 下节课不能听课/卷批
       injuredToday:false,
       homeworkGiven:{},
+      // 当前拥有的特点名集合：原生角色 = 自己的特点；徐锴锐 = 自选特点
+      traits: isCustom ? customBuild.traits.slice() : c.traits.map(t=>t.name),
       stats:{ correct:0, goals:0, crashes:0, mateInteractions:0, survived:0,
               violations:0, praises:0, rolled:0, confessed:0, hwGiven:0, dragged:0,
               keptAfter:0, insulted:0, injured:0, takeoff:0, listen:0, chat:0,
@@ -580,6 +704,9 @@
               daydream:0, fitness:0, bread:0, hwPlay:0 },
       achievements:[],
       frozen:false, pendingWin:false,
+      reviveCards:0,          // 发卡（复活道具）数量
+      revivesUsed:0,          // 已用掉的复活次数
+      bowGiven:false,         // 蝴蝶结（发卡）事件是否已触发
       log:[], alive:true, endReason:''
     };
 
@@ -616,33 +743,63 @@
       G.body = clamp(G.body-5,1,BODY_CAP);
     }
     if (m.id==='zhu') G.looks = clamp(G.looks+3,1,LOOKS_CAP);
-    if (G.charId==='xu' && m.id==='chen') G.happyCap += 5;
-    if (G.charId==='chen' && m.id==='xu') G.happyCap += 5;
-    if (G.charId==='hou' && m.gender !== G.char.gender){
+    if (hasTrait('故意的') && m.id==='chen') G.happyCap += 5;
+    if (mateHasTrait('故意的') && G.charId==='chen') G.happyCap += 5;
+    if (hasTrait('我不是给') && m.gender !== G.char.gender){
       G.happyCap += 5;
       G.hungerCap = Math.max(1, G.hungerCap - 10);
     }
+    // 徐锴锐作同桌：开局就给一次复活机会
+    if (m.id==='xukr') G.reviveCards++;
   }
 
   // 快乐变化：万天一 15% 免疫 → 陈仰正惩罚 ×2 → 表白余韵减半 → 归零即死
-  function changeHappy(d, lines){
+  // 入口统一乘难度倍率（加速模式 ×2）；applyHappy 处理已乘好的值，供内部转嫁调用，避免重复相乘
+  function changeHappy(d, lines){ return applyHappy(d * NM(), lines); }
+
+  // 踢瓶子结算期间为 true，用于蒋润霖「强身健体」的快乐 ×2（只影响踢瓶子获得的快乐）
+  let kickHappyScope = false;
+
+  // 获得快乐时的倍率：李思憧「给给」全局生效；蒋润霖「强身健体」仅踢瓶子时生效
+  function happyGainMult(){
+    let k = 1;
+    if (hasTrait('给给') && G.mate) k *= (G.mate.gender === G.char.gender) ? 2 : 0.5;
+    if (kickHappyScope && hasTrait('强身健体')) k *= 2;
+    return k;
+  }
+  // 李思憧「给给」的说明文本
+  function giveGiveNote(){
+    if (G.charId!=='lisc' || !G.mate) return '';
+    return G.mate.gender === G.char.gender ? '（给给：同桌同性，快乐 ×2）' : '（给给：同桌异性，快乐减半）';
+  }
+
+  function applyHappy(d, lines){
     if (!G.alive) return 0;
-    if (d < 0 && G.charId==='wan' && chance(0.15)){
+    if (d < 0 && hasTrait('不吃压力') && chance(0.15)){
       if (lines) lines.push({ t:'· 不吃压力：你完全没把这事放心上，15% 免疫生效，快乐一点没掉', c:'gold' });
       return 0;
     }
-    if (d < 0 && G.charId==='chen') d *= 2;
+    if (d < 0 && hasTrait('哲学家')) d *= 2;
     if (d < 0 && G.day <= G.reduceBuffUntil) d = -Math.floor(Math.abs(d)/2);
+    if (d > 0){
+      const mult = happyGainMult();
+      if (mult !== 1) d = Math.round(d * mult * 10) / 10;
+    }
     const before = G.happy;
     G.happy = clamp(G.happy + d, 0, G.happyCap);
     const got = G.happy - before;
-    if (G.happy <= 0){ G.stats.crashes++; G.alive = false; G.endReason = 'happy'; }
+    if (G.happy <= 0){
+      G.stats.crashes++; G.alive = false; G.endReason = 'happy';
+      tryRevive(lines);
+    }
     renderStats();
     return got;
   }
 
   // 饥饿变化：体力³×0.05% 防住 → 万天一小胃袋 ×2 → 归零后转嫁快乐
-  function changeHunger(d, lines){
+  // 入口统一乘难度倍率；applyHunger 处理已乘好的值（转嫁给快乐时用 applyHappy，避免 ×4）
+  function changeHunger(d, lines){ return applyHunger(d * NM(), lines); }
+  function applyHunger(d, lines){
     if (!G.alive) return;
     if (d < 0){
       if (chance(hungerGuardChance())){
@@ -650,10 +807,11 @@
         if (lines) lines.push({ t:`· 你的体质顶住了（${pct(hungerGuardChance())}）：这次饥饿没有下降`, c:'gold' });
         return;
       }
-      if (G.charId==='wan') d *= 2;
+      if (hasTrait('小胃袋')) d *= 2;
       if (G.hunger <= 0){
-        if (lines) lines.push({ t:`· 饥饿已经见底，扣减转嫁成快乐 ${dfmt(d)}`, c:'bad' });
-        changeHappy(d, lines);
+        // d 已含难度倍率，标记 ns 以免显示层再次放大
+        if (lines) lines.push({ t:`· 饥饿已经见底，扣减转嫁成快乐 ${dfmt(d)}`, c:'bad', ns:true });
+        applyHappy(d, lines);
         return;
       }
     }
@@ -662,19 +820,43 @@
   }
 
   function changeHomework(d){
-    G.homework = Math.max(0, G.homework + d);
+    G.homework = Math.max(0, G.homework + Math.round(d * NM()));
     renderStats();
   }
 
+  // 发卡复活：有发卡时消耗一张，快乐 / 饥饿恢复到上限的一半，不结束游戏
+  function tryRevive(lines){
+    if (G.reviveCards <= 0) return false;
+    G.reviveCards--;
+    G.revivesUsed++;
+    G.alive = true;
+    G.endReason = '';
+    G.happy = Math.max(1, Math.floor(G.happyCap / 2));
+    G.hunger = Math.max(1, Math.floor(G.hungerCap / 2));
+    if (lines) lines.push({ t:`· 💌 发卡碎掉了：徐悠然的发卡救了你一命，快乐 / 饥饿恢复到上限的一半（剩余发卡 ${G.reviveCards}）`, c:'gold' });
+    renderStats();
+    return true;
+  }
+
   function addViolation(lines, reason){
-    if (G.charId==='wang'){
-      if (lines) lines.push({ t:`· 风纪委员：${reason}，但你是王浩宇，不会被记违纪`, c:'gold' });
+    if (hasTrait('风纪委员')){
+      if (lines) lines.push({ t:`· 风纪委员：${reason}，但你不会被记违纪`, c:'gold' });
       return false;
     }
-    G.violation += VIO_PER;
+    // 蒋润霖「级委」：被记违纪的概率减半
+    if (hasTrait('级委') && chance(0.5)){
+      if (lines) lines.push({ t:`· 级委：${reason}，但你自己就是纪委，这件事压下去了`, c:'gold' });
+      return false;
+    }
+    // 蒋润霖「作孽双子」：违纪点数 ×2
+    const per = hasTrait('作孽双子') ? VIO_PER*2 : VIO_PER;
+    G.violation += per;
     G.stats.violations++;
-    if (lines) lines.push({ t:`· 被记违纪（${reason}）：违纪点数 +${VIO_PER}（现 ${G.violation}/${VIO_LIMIT}）`, c:'bad' });
-    if (G.violation >= VIO_LIMIT){ G.alive = false; G.endReason = 'violation'; }
+    if (lines) lines.push({ t:`· 被记违纪（${reason}）：违纪点数 +${per}${per!==VIO_PER?'（作孽双子 ×2）':''}（现 ${G.violation}/${VIO_LIMIT}）`, c:'bad' });
+    if (G.violation >= VIO_LIMIT){
+      G.alive = false; G.endReason = 'violation';
+      if (tryRevive(lines)) G.violation = Math.max(0, VIO_LIMIT - VIO_PER);   // 复活后违纪回到未满线
+    }
     renderStats();
     return true;
   }
@@ -687,7 +869,7 @@
 
   // 受伤：快乐 -3，当天不能蹴瓶子，当天体育课加快乐减半
   function tryInjure(lines, source){
-    if (G.charId==='wan'){
+    if (hasTrait('第2形态')){
       if (lines) lines.push({ t:`· 第2形态：${source}，但你毫发无伤`, c:'gold' });
       return false;
     }
@@ -718,6 +900,17 @@
       G.daySteps = [
         { f: stepWeekendMorning },
         { f: stepWeekendLeisure },
+        { f: stepEvening }
+      ];
+    } else if (pickedDiff === 'speed'){
+      // 加速模式：上午 2 节 + 下午 2 节，仍保留做操 / 午餐 / 大课间
+      G.daySteps = [
+        { f: stepMorning },
+        { f: stepMorningStudy },
+        { f: ()=>stepClass(0) }, { f: stepBreak },
+        { f: ()=>stepClass(1) }, { f: stepExercise }, { f: stepSecondBreak },
+        { f: ()=>stepClass(4) }, { f: stepLunch },
+        { f: ()=>stepClass(6) }, { f: stepBigBreak },
         { f: stepEvening }
       ];
     } else {
@@ -752,11 +945,19 @@
     G.stats.survived = G.day;
     G.day++;
     if (G.day > 10){ G.pendingWin = true; freezeEnd(); return; }
-    if (G.charId==='jia'){
+    if (hasTrait('好饿')){
       G.intelligence = clamp(G.intelligence+1,1,INT_CAP);
       G.stats.intUp++;
       renderStats();
       log(`新的一天：贾子辰越吃越聪明，智力永久 +1（现 ${fmt(G.intelligence)}）`, 'good');
+    }
+    if (hasTrait('肾虚')){
+      G.looks = clamp(G.looks-3,1,LOOKS_CAP);
+      G.body = clamp(G.body-3,1,BODY_CAP);
+      G.intelligence = clamp(G.intelligence-3,1,INT_CAP);
+      G.baseLooks = G.looks;
+      renderStats();
+      log(`新的一天：肾虚发作，颜值 / 体力 / 智力 各 -3（现 ${fmt(G.looks)} / ${fmt(G.body)} / ${fmt(G.intelligence)}）`, 'bad');
     }
     if (G.mateId==='chang' && isWeekend()){
       G.looks = clamp(G.looks+1,1,LOOKS_CAP);
@@ -815,13 +1016,13 @@
 
   // buttons: [{text, sub, onClick, disabled, cls}]
   function paintStep(title, lines, buttons){
-    $('ev-title').textContent = maskText(title);
+    $('ev-title').textContent = maskText(scaleText(title));
     const el = $('ev-lines');
     el.innerHTML = '';
     lines.forEach(l=>{
       const d = document.createElement('div');
       if (l.c) d.className = l.c;
-      d.textContent = maskText(l.t);
+      d.textContent = maskText(l.ns ? l.t : scaleText(l.t));
       el.appendChild(d);
     });
     const cb = $('ev-choices');
@@ -830,13 +1031,13 @@
       const btn = document.createElement('button');
       btn.className = 'btn' + (b.cls ? ' '+b.cls : '');
       if (b.sub){
-        btn.appendChild(document.createTextNode(maskText(b.text)));
+        btn.appendChild(document.createTextNode(maskText(scaleText(b.text))));
         const s = document.createElement('span');
         s.className = 'choice-sub';
-        s.textContent = maskText(b.sub);
+        s.textContent = maskText(b.ns ? b.sub : scaleText(b.sub));
         btn.appendChild(s);
       } else {
-        btn.textContent = maskText(b.text);
+        btn.textContent = maskText(b.ns ? b.text : scaleText(b.text));
       }
       if (b.disabled){ btn.disabled = true; }
       else { btn.onclick = b.onClick; }
@@ -845,13 +1046,67 @@
     renderLog();
   }
 
-  function showStep(title, lines, buttons){
-    if (G && !G.alive && !G.frozen){ freezeEnd(); return; }
-    paintStep(title, lines, buttons);
+  // 显示层缩放：加速模式下把文案里的"快乐/饥饿/作业 ±N"按倍率放大，保证显示与实际一致。
+  // 只匹配带符号的增减量，不动"快乐上限 15""违纪点数 +2""快乐 ×2"等描述。
+  function scaleText(s){
+    if (NM() === 1 || typeof s !== 'string') return s;
+    const k = NM();
+    const num = v => {
+      const n = parseFloat(v) * k;
+      return Number.isInteger(n) ? String(n) : (Math.round(n*10)/10).toString();
+    };
+    return s.replace(/(快乐|饥饿|作业)\s*([+-])\s*(\d+(?:\.\d+)?)(?:\s*~\s*([+-]?\d+(?:\.\d+)?))?/g,
+      (m, w, sign, a, b) => {
+        const sa = sign + num(a);
+        if (b === undefined) return `${w} ${sa}`;
+        // 区间：后值的符号沿用原文写法
+        const bSign = /^[+-]/.test(b) ? b[0] : sign;
+        const bVal = /^[+-]/.test(b) ? b.slice(1) : b;
+        return `${w} ${sa}~${bSign}${num(bVal)}`;
+      });
   }
 
-  function log(text, cls){
-    G.log.push({ text, cls: cls||'' });
+  // ---------- 无选项步骤的自动推进 ----------
+  // 「继续 →」「下课 →」这类按钮没有实际选择，取消它，把内容并入下一屏显示
+  let pendingLines = [];   // 上一步遗留的内容，合并到下一个界面
+  let passDepth = 0;       // 连续自动推进深度（防死循环）
+
+  function isPassThrough(buttons){
+    if (!Array.isArray(buttons) || buttons.length !== 1) return false;
+    const b = buttons[0];
+    return !!(b && !b.disabled && b.onClick === advance);   // 只认"纯推进"按钮
+  }
+
+  // 结局 / 结算前把遗留内容刷进日志，避免内容丢失
+  function flushPending(){
+    if (!pendingLines.length || !G) return;
+    pendingLines.forEach(l => { if (l.t) log(l.t, l.c, l.ns); });
+    pendingLines = [];
+  }
+
+  function showStep(title, lines, buttons){
+    if (G && !G.alive && !G.frozen){ flushPending(); freezeEnd(); return; }
+    // 定格结局、有真实选项、或推进过深 → 正常显示（定格用 paintStep 直连，本就不受影响）
+    if (!isPassThrough(buttons) || (G && G.frozen) || passDepth > 24){
+      paintStep(title, pendingLines.concat(lines || []), buttons);
+      pendingLines = [];
+      passDepth = 0;
+      return;
+    }
+    // 纯推进步骤：标题与内容并入下一步，直接推进
+    if (title) pendingLines.push({ t: title, c: 'steptitle' });
+    (lines || []).forEach(l => pendingLines.push(l));
+    if (pendingLines.length > 40){          // 内容太多就不再累积，避免一屏塞不下
+      paintStep(title, pendingLines, buttons);
+      pendingLines = []; passDepth = 0;
+      return;
+    }
+    passDepth++;
+    advance();
+  }
+
+  function log(text, cls, ns){
+    G.log.push({ text, cls: cls||'', ns: !!ns });
     if (G.log.length>80) G.log.shift();
     renderLog();
   }
@@ -861,7 +1116,7 @@
     G.log.slice(-14).forEach(l=>{
       const d = document.createElement('div');
       d.className = 'lg ' + l.cls;
-      d.textContent = maskText(l.text);
+      d.textContent = maskText(l.ns ? l.text : scaleText(l.text));
       p.appendChild(d);
     });
     p.scrollTop = p.scrollHeight;
@@ -872,6 +1127,7 @@
   // ============================================================
   function freezeEnd(){
     if (G.frozen) return;
+    flushPending();      // 把自动推进过程中遗留的内容刷进日志，避免丢失
     G.frozen = true;
 
     if (G.pendingWin){
@@ -1009,10 +1265,10 @@
   // ============================================================
   function stepMorning(){
     const lines = [];
-    const restore = G.happyCap*0.2;
+    const restore = G.happyCap*0.2*NM();
     G.happy = clamp(G.happy + restore, 0, G.happyCap);
     renderStats();
-    lines.push({ t:`· 睡了一觉，快乐 ${dfmt(restore)}（上限的 20%）`, c:'good' });
+    lines.push({ t:`· 睡了一觉，快乐 ${dfmt(restore)}（上限的 20%）`, c:'good', ns:true });
 
     // 起床：仅该上午颜值随机 ±2
     const swing = randInt(-2,2);
@@ -1056,7 +1312,7 @@
   }
 
   function stepMorningStudy(){
-    const wangImmune = G.charId==='wang';
+    const wangImmune = hasTrait('风纪委员');
     showStep('📖 早自习', [
       { t:'早自习，老师还没来。你要……', c:'sys' }
     ], [
@@ -1083,28 +1339,41 @@
   function answerProb(subj, rule, rolled){
     let p = clamp(G.intelligence/INT_CAP, 0, 1);
     if (rule.askProbOverride !== undefined) p = rule.askProbOverride;
-    if (G.charId==='liu') p /= 2;
+    if (hasTrait('强壮')) p /= 2;
     if (rolled) p /= 2;
     return clamp(p,0,1);
   }
+
+  // 认真听课加智力的概率与增量
+  // 概率：同桌是李思憧 → +10%（同桌效果）；增量：本人是李思憧 → ×2（憧憧）
+  function listenIntChance(){
+    let p = (G.intelligence < 7) ? 0.10 : 0.05;
+    if (G.mate.id==='lisc') p += 0.10;
+    return clamp(p, 0, 1);
+  }
+  function listenIntGain(){ return hasTrait('憧憧') ? 2 : 1; }
 
   function stepClass(i){
     const raw = todaySchedule()[i];
     const subj = normSubject(raw);
     const rule = SUBJECT_RULES[subj] || {};
     const canRoll = !rule.noRoll;
-    const locked = G.noStudyNext;
-    const askP = clamp(askChance() * (G.charId==='liu' ? 2 : 1), 0, 1);
+    const noListen = G.mate.id==='jiang';        // 同桌蒋润霖「作孽」：上课不能认真听讲
+    const locked = G.noStudyNext || noListen;
+    const askP = clamp(askChance() * (hasTrait('强壮') ? 2 : 1), 0, 1);
 
     const head = [
-      { t:`被点名概率 ${pct(askP)}${G.charId==='liu'?'（强壮：翻倍）':''} · 答对概率 ${pct(answerProb(subj,rule,false))}`, c:'sys' }
+      { t:`被点名概率 ${pct(askP)}${hasTrait('强壮')?'（强壮：翻倍）':''} · 答对概率 ${pct(answerProb(subj,rule,false))}`, c:'sys' }
     ];
-    if (locked) head.push({ t:'⚠️ 上节课间你聊嗨了，这节课没法认真听课、也没法卷批。', c:'bad' });
+    if (G.noStudyNext) head.push({ t:'⚠️ 上节课间你聊嗨了，这节课没法认真听课、也没法卷批。', c:'bad' });
+    if (noListen) head.push({ t:'⚠️ 同桌蒋润霖在旁边不停逗你（作孽），这节课没法认真听讲。', c:'bad' });
     if (G.injuredToday && subj==='体育') head.push({ t:'🤕 你今天受伤了，体育课的快乐增量减半。', c:'bad' });
 
     const btns = [];
     btns.push({ text:'📖 认真听课', cls:'', disabled:locked,
-      sub: locked ? '被课间聊天锁住了' : `正常上课；${G.intelligence<7?'10%':'5%'} 智力永久 +1`,
+      sub: G.noStudyNext ? '被课间聊天锁住了'
+         : noListen ? '同桌蒋润霖作孽，听不进去'
+         : `正常上课；${pct(listenIntChance())} 智力永久 +${listenIntGain()}`,
       onClick: ()=>resolveClass(i, raw, subj, rule, 'listen') });
 
     if (canRoll){
@@ -1113,12 +1382,12 @@
         onClick: ()=>resolveClass(i, raw, subj, rule, 'roll') });
     } else {
       btns.push({ text:`✍️ 卷批作业`, cls:'ghost', disabled:true, sub:`${subj}课老师盯得紧，不让卷` });
-      if (G.charId==='jia') addRebel(btns, 'roll', i, raw, subj, rule);
+      if (hasTrait('反骨')) addRebel(btns, 'roll', i, raw, subj, rule);
     }
 
     btns.push({ text:'💬 上课聊天', cls:'',
-      sub: G.charId==='hu'   ? '危险意识：快乐 -1，但不会被记违纪；主科 50% 作业 +2'
-         : G.charId==='wang' ? '快乐 +2（风纪委员不会被记违纪）；主科 50% 作业 +2'
+      sub: hasTrait('危险意识') ? '危险意识：快乐 -1，但不会被记违纪；主科 50% 作业 +2'
+         : hasTrait('风纪委员') ? '快乐 +2（风纪委员不会被记违纪）；主科 50% 作业 +2'
                              : '快乐 +2，50% 违纪 +2 点；主科 50% 作业 +2',
       onClick: ()=>resolveClass(i, raw, subj, rule, 'chat') });
 
@@ -1175,7 +1444,7 @@
     if (rule.happyDelta) sh += rule.happyDelta;
     if (rule.happyRange) sh += randInt(rule.happyRange[0], rule.happyRange[1]);
     if (rule.genderHappy) sh += (G.char.gender==='男') ? randInt(2,8) : randInt(-2,1);
-    if (G.charId==='zhu' && subj==='美术') sh += 1;
+    if (hasTrait('美术生') && subj==='美术') sh += 1;
 
     // 体育课练体能
     if (rule.fitnessChance && chance(rule.fitnessChance)){
@@ -1223,41 +1492,47 @@
     // 上课聊天
     if (mode==='chat'){
       G.stats.chat++;
-      if (G.charId==='hu'){
+      if (hasTrait('危险意识')){
         changeHappy(-1, lines);
         lines.push({ t:'· 危险意识：你一边聊一边提心吊胆，快乐 -1', c:'bad' });
         lines.push({ t:'· 但你时刻注意着老师，没被记违纪', c:'good' });
       } else {
         changeHappy(2, lines);
         lines.push({ t:'· 你和同桌聊得火热，快乐 +2', c:'good' });
+        if (G.mate.id==='hu'){
+          changeHappy(1, lines); G.stats.mateInteractions++;
+          lines.push({ t:'· 同桌胡凯宁最会接话，快乐再 +1', c:'good' });
+        }
         if (chance(0.5)) addViolation(lines, '上课讲话');
       }
     }
 
     // 贾子辰好饿 / 朱凌初厌学
-    if (G.charId==='jia'){ changeHunger(-1, lines); lines.push({ t:'· 好饿：额外饥饿 -1', c:'bad' }); }
-    if (G.charId==='zhu'){ changeHappy(-1, lines); lines.push({ t:'· 厌学：你实在不想上课，快乐 -1', c:'bad' }); }
+    if (hasTrait('好饿')){ changeHunger(-1, lines); lines.push({ t:'· 好饿：额外饥饿 -1', c:'bad' }); }
+    if (hasTrait('厌学')){ changeHappy(-1, lines); lines.push({ t:'· 厌学：你实在不想上课，快乐 -1', c:'bad' }); }
 
-    // 认真听课 → 智力成长
+    // 认真听课 → 智力成长（同桌李思憧 → 概率 +10%；本人李思憧「憧憧」→ 增量 ×2）
     if (mode==='listen'){
       G.stats.listen++;
-      const p = (G.intelligence < 7) ? 0.10 : 0.05;
+      const p = listenIntChance();
       if (chance(p)){
-        G.intelligence = clamp(G.intelligence+1, 1, INT_CAP);
-        G.stats.intUp++;
+        const gain = listenIntGain();
+        const before = G.intelligence;
+        G.intelligence = clamp(G.intelligence + gain, 1, INT_CAP);
+        G.stats.intUp += (G.intelligence - before);
         renderStats();
-        lines.push({ t:`· 你听进去了，脑子转得更快：智力永久 +1（${pct(p)}，现 ${fmt(G.intelligence)}）`, c:'good' });
+        lines.push({ t:`· 你听进去了，脑子转得更快：智力永久 +${G.intelligence-before}${gain>1?'（憧憧：×2）':''}（${pct(p)}，现 ${fmt(G.intelligence)}）`, c:'good' });
       }
     }
 
     // 提问
-    const askP = clamp(askChance() * (G.charId==='liu' ? 2 : 1), 0, 1);
+    const askP = clamp(askChance() * (hasTrait('强壮') ? 2 : 1), 0, 1);
     if (chance(askP)){
       const cp = answerProb(subj, rule, mode==='roll');
       if (chance(cp)){
         G.stats.correct++;
         lines.push({ t:`· 老师提问，你答上来了！（答对率 ${pct(cp)}）`, c:'good' });
-        if (G.charId==='liu'){
+        if (hasTrait('强壮')){
           changeHappy(2, lines);
           lines.push({ t:'· 强壮：答对了让你很爽，快乐 +2', c:'good' });
         }
@@ -1312,6 +1587,16 @@
       lines.push({ t:`· ${subj}课刚结束，老师还盯着，下个课间不能蹴瓶子`, c:'sys' });
     }
 
+    // 蝴蝶结事件：第 3 天（9月3日 周四）下午历史课后，同桌徐悠然送发卡
+    if (G.day===3 && subj==='历史' && G.charId==='chen' && G.mateId==='xu' && !G.bowGiven){
+      G.bowGiven = true;
+      G.reviveCards++;
+      renderStats();
+      lines.push({ t:'· 💌 下课时徐悠然悄悄塞给你一个蝴蝶结发卡：「拿着，万一你撑不住了，它能救你一次。」', c:'gold' });
+      lines.push({ t:`· 获得发卡 ×1（现有 ${G.reviveCards}）：快乐归零或违纪满时会替你挡一次，复活后快乐 / 饥饿恢复到上限的一半`, c:'good' });
+      log('周四下午历史课后：徐悠然送了你一个蝴蝶结发卡（可复活一次）', 'gold');
+    }
+
     lines.forEach(l=>log(l.t, l.c));
     showStep(`📚 ${raw}`, lines, [{ text:'下课 →', onClick: advance }]);
   }
@@ -1326,7 +1611,7 @@
   // ---------- 课间公共判定 ----------
   function confessionMult(){
     let m = 1;
-    if (G.charId==='zhu') m *= 4;
+    if (hasTrait('万人迷')) m *= 4;
     if (G.mateId==='xu') m *= 2;
     if (pickedDiff==='hard') m *= 0.5;
     return m;
@@ -1338,9 +1623,9 @@
     G.reduceBuffUntil = Math.min(10, G.day + 2);
     G.stats.confessed++;
     renderStats();
-    log(`${stepName}：有人当众向你表白！快乐回满，三天内快乐减小量减半`, 'gold');
+    log(`${stepName}：${G.mate.name} 当众向你表白！快乐回满，三天内快乐减小量减半`, 'gold');
     showStep('💘 被表白了！', [
-      { t:'一个同学红着脸走到你面前，当众表白了。', c:'sys' },
+      { t:`你的同桌 ${G.mate.name} 红着脸站起来，当众向你表白了。`, c:'sys' },
       { t:`全班起哄，快乐直接回满（${fmt(G.happy)}/${G.happyCap}）！`, c:'gold' },
       { t:`表白余韵：即日起至 9月${G.reduceBuffUntil}日，所有快乐减小量减半（下取整）`, c:'good' }
     ], [{ text:'飘飘然，继续 →', onClick: advance }]);
@@ -1380,16 +1665,29 @@
     return '';
   }
   function doKick(lines){
-    const goalP = clamp(G.body*0.1,0,1);
+    // 蒋润霖「强身健体」：胜率 ×2
+    const goalP = clamp(G.body*0.1*(hasTrait('强身健体')?2:1), 0, 1);
     const cost = kickCost();
+    kickHappyScope = true;                 // 标记踢瓶子范围（蒋润霖快乐 ×2）
     changeHunger(-cost, lines);
     changeHappy(2, lines);
-    lines.push({ t:`· 你起脚蹴瓶子：饥饿 -${cost}${cost===1?'（同桌万天一：消耗减半）':''}，快乐 +2`, c:'good' });
+    lines.push({ t:`· 你起脚蹴瓶子：饥饿 -${cost}${cost===1?'（同桌万天一：消耗减半）':''}，快乐 +2${giveGiveNote()}`, c:'good' });
     if (chance(goalP)){
       changeHappy(2, lines); G.stats.goals++;
-      lines.push({ t:`· 瓶子应声入桶，进球！（${pct(goalP)}）快乐再 +2`, c:'gold' });
+      lines.push({ t:`· 瓶子应声入桶，进球！（${pct(goalP)}）快乐再 +2${giveGiveNote()}`, c:'gold' });
     } else {
       lines.push({ t:`· 可惜没进（进球率 ${pct(goalP)}）`, c:'sys' });
+    }
+    kickHappyScope = false;
+    // 李知行「父亲」：每踢一次瓶子，各项属性 +1
+    if (hasTrait('父亲')){
+      G.looks = clamp(G.looks+1,1,LOOKS_CAP);
+      G.body = clamp(G.body+1,1,BODY_CAP);
+      G.intelligence = clamp(G.intelligence+1,1,INT_CAP);
+      G.baseLooks = G.looks;
+      G.stats.intUp++; G.stats.bodyUp++;
+      renderStats();
+      lines.push({ t:`· 父亲：踢完这脚浑身是劲，颜值 / 体力 / 智力 各永久 +1`, c:'gold' });
     }
     tryInjure(lines, '蹴瓶子把脚踢伤了');
   }
@@ -1418,6 +1716,8 @@
       chars: CHARACTERS,
       meId: meId,
       seconds: seconds,
+      // 蒋润霖「强身健体」：对方门将扑救率 70% → 30%（射门更容易进）
+      opts: { gkSaveP: hasTrait('强身健体') ? 0.3 : undefined },
       onEnd: (r)=> endMatch(r, meId, stepName, onDone)
     });
     matchCtrl = ctrl;
@@ -1430,14 +1730,27 @@
     const win = r.win, draw = r.draw;
     const lines = [];
     const cost = kickCost();
+    kickHappyScope = true;                 // 蒋润霖「强身健体」：踢瓶子获得的快乐 ×2
     changeHunger(-cost, lines);
     changeHappy(2, lines);
     lines.push({ t:`· 走廊瓶子赛：你操控 ${r.me.name}，比分 ${r.scoreH} : ${r.scoreA}`, c:'gold' });
-    lines.push({ t:`· 踢了一场：饥饿 -${cost}${cost===1?'（同桌万天一减半）':''}，快乐 +2`, c:'good' });
+    lines.push({ t:`· 踢了一场：饥饿 -${cost}${cost===1?'（同桌万天一减半）':''}，快乐 +2${giveGiveNote()}`, c:'good' });
     if (r.scoreH > 0){ G.stats.goals += r.scoreH; lines.push({ t:`· 你队打进 ${r.scoreH} 球`, c:'good' }); }
-    if (win){ changeHappy(2, lines); lines.push({ t:'· 赢了！额外快乐 +2', c:'gold' }); }
-    else if (draw){ changeHappy(1, lines); lines.push({ t:'· 打平，额外快乐 +1', c:'good' }); }
+    if (win){ changeHappy(2, lines); lines.push({ t:`· 赢了！额外快乐 +2${giveGiveNote()}`, c:'gold' }); }
+    else if (draw){ changeHappy(1, lines); lines.push({ t:`· 打平，额外快乐 +1${giveGiveNote()}`, c:'good' }); }
     else lines.push({ t:'· 输了，没有额外快乐', c:'sys' });
+    if (hasTrait('强身健体')) lines.push({ t:'· 强身健体：这场球你踢得格外带劲，获得的快乐 ×2', c:'gold' });
+    kickHappyScope = false;
+    // 李知行「父亲」：每踢一次瓶子，各项属性 +1
+    if (hasTrait('父亲')){
+      G.looks = clamp(G.looks+1,1,LOOKS_CAP);
+      G.body = clamp(G.body+1,1,BODY_CAP);
+      G.intelligence = clamp(G.intelligence+1,1,INT_CAP);
+      G.baseLooks = G.looks;
+      G.stats.intUp++; G.stats.bodyUp++;
+      renderStats();
+      lines.push({ t:'· 父亲：踢完这一场浑身是劲，颜值 / 体力 / 智力 各永久 +1', c:'gold' });
+    }
     tryInjure(lines, '走廊瓶子赛里把脚踢伤了');
 
     $('mr-emoji').textContent = win ? '🏆' : (draw ? '🤝' : '😮‍💨');
@@ -1464,7 +1777,7 @@
     const cost = kickCost();
     const costTxt = `饥饿 -${cost}${cost===1?'（同桌万天一减半）':''}`;
     if (why){
-      if (G.charId==='jia' && G.noKickNextBreak){
+      if (hasTrait('反骨') && G.noKickNextBreak){
         const b = []; addRebel(b, 'kick'); return b[0];
       }
       return { text:'🍾 蹴瓶子·自动', cls:'ghost', disabled:true, sub:`${why} · ${costTxt}，快乐 +2，${pct(goalP)} 进球再 +2` };
@@ -1503,23 +1816,40 @@
 
   // ---------- 课间 ----------
   function breakChoice(stepName, allowKick, extra){
-    const chenXu = (G.charId==='chen' && G.mate.id==='xu');
+    const chenXu = (hasTrait('不要造谣') && G.mate.id==='xu');
     const btns = [];
 
-    btns.push({ text: chenXu ? '😶 发呆（不要造谣：同桌徐悠然，快乐 +1）' : '😶 发呆',
-      sub: chenXu ? '快乐 +1' : '无任何变化', onClick: ()=>{
-        G.stats.daydream++;
-        if (chenXu){
-          const lines = [];
-          changeHappy(1, lines); G.stats.mateInteractions++;
-          lines.unshift({ t:'· 你和徐悠然在座位上闲聊，快乐 +1', c:'good' });
-          lines.forEach(l=>log(l.t,l.c));
-          showStep(stepName, lines, [{ text:'继续 →', onClick: advance }]);
-        } else {
-          log(`${stepName}：你发了会儿呆，什么都没发生`,'sys');
-          advance();
-        }
-    }});
+    // 李知行同桌「下课只能踢瓶子」：能踢时锁定为只有踢瓶子；
+    // 不能踢时（女生 / 受伤 / 饥饿不足 / 被老师盯着）给提示但保留正常选项，避免死胡同
+    if (G.mate.id==='lizx'){
+      if (allowKick && kickBlock()===''){
+        showStep(stepName, [
+          { t:'同桌李知行一把拽住你的胳膊："走，踢瓶子去！"——这个课间你只能踢瓶子。', c:'gold' }
+        ], kickButtons(stepName, 30));
+        G.noKickNextBreak = false;
+        return;
+      }
+      btns.push({ text:'😔 李知行想拉你去踢瓶子', cls:'ghost', disabled:true,
+        sub: (kickBlock() || '这个课间不让踢瓶子') + '，你只能干别的' });
+    }
+
+    // 发呆：仅陈仰正或自选了「不要造谣」者可选（其余角色没有这个选项）
+    if (G.charId==='chen' || hasTrait('不要造谣')){
+      btns.push({ text: chenXu ? '😶 发呆（不要造谣：同桌徐悠然，快乐 +1）' : '😶 发呆',
+        sub: chenXu ? '快乐 +1' : '无任何变化', onClick: ()=>{
+          G.stats.daydream++;
+          if (chenXu){
+            const lines = [];
+            changeHappy(1, lines); G.stats.mateInteractions++;
+            lines.unshift({ t:'· 你和徐悠然在座位上闲聊，快乐 +1', c:'good' });
+            lines.forEach(l=>log(l.t,l.c));
+            showStep(stepName, lines, [{ text:'继续 →', onClick: advance }]);
+          } else {
+            log(`${stepName}：你发了会儿呆，什么都没发生`,'sys');
+            advance();
+          }
+      }});
+    }
 
     btns.push({ text:'🚶 游走（饥饿 -1）',
       sub:'40% 遇见同学 快乐+1 · 25% 蹭吃蹭喝 饥饿+2 · 2% 撞见表白 快乐+5（分开判定，可叠加）',
@@ -1552,7 +1882,7 @@
     if (allowKick) btns.push(...kickButtons(stepName, 30));
     if (extra) btns.push(...extra);
 
-    if (G.charId==='zhu'){
+    if (hasTrait('美术生')){
       btns.push({ text:'🎨 画画（10% 快乐回满，否则快乐 +1）', onClick: ()=>{
         if (chance(0.1)){
           G.happy = G.happyCap; renderStats();
@@ -1564,7 +1894,7 @@
       }});
     }
 
-    if (G.charId==='jia' && G.violation > 0 && G.happy > 3){
+    if (hasTrait('硬扛') && G.violation > 0 && G.happy > 3){
       btns.push({ text:`🩸 减快乐抵违纪（快乐 -3，违纪点数 -2）`, cls:'special',
         sub:`现 ${G.violation}/${VIO_LIMIT} · 贾子辰专属，硬扛下来`,
         onClick: ()=>{
@@ -1592,7 +1922,7 @@
 
   function stepExercise(){
     if (checkDragged('🤸 做操')) return;
-    const wangImmune = G.charId==='wang';
+    const wangImmune = hasTrait('风纪委员');
     const l0 = [];
     changeHunger(-1, l0);
     l0.push({ t:'· 广播体操，饥饿 -1', c:'bad' });
@@ -1631,7 +1961,7 @@
       lines.push({ t:'快乐 -1。', c:'bad' });
       log('第二节课间：你被老师留下了，快乐 -1','bad');
       const btns = [{ text:'回教室 →', onClick: advance }];
-      if (G.charId==='jia') addRebel(btns, 'bread');
+      if (hasTrait('反骨')) addRebel(btns, 'bread');
       showStep('☕ 第二节课间', lines, btns);
       return;
     }
@@ -1668,7 +1998,7 @@
           changeHappy(5); log('午餐：你冲出去打了场球，快乐 +5','good'); advance();
       }},
       { text:'🎮 打隔膜（game）',
-        sub: G.charId==='wang' ? '快乐 +3，饥饿 +20% 上限（风纪委员不会被记违纪）'
+        sub: hasTrait('风纪委员') ? '快乐 +3，饥饿 +20% 上限（风纪委员不会被记违纪）'
                                : '快乐 +3，饥饿 +20% 上限，15% 违纪 +2 点',
         onClick: ()=>{
           const lines = [];
@@ -1681,7 +2011,7 @@
           showStep('🍱 午餐时间', lines, [{ text:'继续 →', onClick: advance }]);
       }}
     ];
-    if (G.charId==='hu'){
+    if (hasTrait('电教委')){
       btns.push({ text:'📝 打作业（电教委）', cls:'special',
         sub: `${pct(HW_PLAY_CHANCE)} 快乐 +3，否则没有变化；不恢复饥饿、不会被记违纪`,
         onClick: ()=>{
@@ -1697,7 +2027,7 @@
           showStep('🍱 午餐时间', lines, [{ text:'继续 →', onClick: advance }]);
       }});
     }
-    if (half && G.charId==='jia') addRebel(btns, 'canteen');
+    if (half && hasTrait('反骨')) addRebel(btns, 'canteen');
 
     showStep('🍱 午餐时间', [
       { t: isWeek2() ? '第 2 周了，食堂阿姨手抖，午饭只回一半饥饿。' : '中午到了，肚子有点饿。你要……', c:'sys' }
@@ -1748,15 +2078,15 @@
     renderStats();
 
     const noTakeoff = (G.char.gender==='女') ? '女生不能起飞'
-                    : (G.charId==='liu') ? '去皮：你不能起飞' : '';
+                    : hasTrait('去皮') ? '去皮：你不能起飞' : '';
     const btns = [
       { text:`😴 好好睡觉（快乐 ${dfmt(G.happyCap*0.2)}）`, sub:'上限的 20%', onClick: ()=>{
           changeHappy(G.happyCap*0.2); log(`晚上：你睡了个好觉，快乐 ${dfmt(G.happyCap*0.2)}`,'good'); advance();
       }},
       { text:'🌸 半夜玩《千恋万花》',
-        sub: G.charId==='chen' ? '哲学家：快乐直接回满' : '50% 快乐 +5，50% 快乐 -5',
+        sub: hasTrait('千恋万花') ? '千恋万花：快乐直接回满' : '50% 快乐 +5，50% 快乐 -5',
         onClick: ()=>{
-          if (G.charId==='chen'){
+          if (hasTrait('千恋万花')){
             G.happy = G.happyCap; renderStats();
             log('晚上：千恋万花！你的快乐直接回满！','good');
           } else if (chance(0.5)){
@@ -1771,12 +2101,12 @@
       btns.push({ text:'🚀 起飞', cls:'ghost', disabled:true, sub:noTakeoff });
     } else {
       btns.push({ text:'🚀 起飞（快乐 +5）',
-        sub: G.charId==='chang' ? '长喆：明早照样能吃早饭' : '但明早吃不上早饭，饥饿不回复',
+        sub: hasTrait('长喆') ? '长喆：明早照样能吃早饭' : '但明早吃不上早饭，饥饿不回复',
         onClick: ()=>{
           changeHappy(5);
           G.noBreakfastDebuff = true;
           G.stats.takeoff++;
-          log(`晚上：你直接起飞，爽到凌晨！快乐 +5 ${G.charId==='chang'?'（常喆明早照样吃饭）':'（明早吃不上早饭）'}`,'good');
+          log(`晚上：你直接起飞，爽到凌晨！快乐 +5 ${hasTrait('长喆')?'（长喆明早照样吃饭）':'（明早吃不上早饭）'}`,'good');
           advance();
       }});
     }
@@ -1891,9 +2221,133 @@
   function onCharPicked(){
     mateRerolls = 0;
     pendingMate = null;   // 清掉上一局残留，否则首次随机会无谓排除那个人
+    if (pickedChar.customBuild){ renderCustomBuild(); showScreen('scr-custom'); return; }
     if (pickedChar.canChooseMate){ renderMateSelect(); showScreen('scr-mate'); }
     else { randomMateAndConfirm(); }
   }
+
+  // ============================================================
+  // SECTION: 徐锴锐 —— 自选属性与特点
+  // ============================================================
+  let cu = null;   // { looks, body, intelligence, traits:Set, points }
+
+  // 可选特点池：所有角色的特点（徐锴锐自己的两条占位说明不参与）
+  function customTraitPool(){
+    const out = [];
+    CHARACTERS.forEach(c=>{
+      if (c.customBuild) return;
+      c.traits.forEach(t=>{
+        if (TRAIT_POINTS[t.name] === undefined) return;   // 未定价的特点不放进池子
+        out.push({ name:t.name, desc:t.desc, from:c.name, pts:TRAIT_POINTS[t.name] });
+      });
+    });
+    return out;
+  }
+
+  // 特点带来的固有属性加成（选了就直接生效，不花点数）
+  function traitAttrBonus(name){
+    if (name==='哲学家') return { happyCap:5 };
+    if (name==='大胃袋') return { hungerCap:5 };
+    return null;
+  }
+
+  function cuTraitCost(){
+    let c = 0;
+    cu.traits.forEach(n=>{ const t = cu.pool.find(x=>x.name===n); if (t) c += t.pts; });
+    return c;   // 按增减量表：负数=花掉可用点（buff），正数=返还可用点（debuff）
+  }
+  function cuPointsLeft(){
+    // 可用点 = 初始 10 + 特点增减量之和 − 属性加点消耗（属性每 +1 花 1 点，每 -1 返 1 点）
+    return CUSTOM_POINTS + cuTraitCost()
+      - (cu.looks - CUSTOM_BASE_ATTR)
+      - (cu.body - CUSTOM_BASE_ATTR)
+      - (cu.intelligence - CUSTOM_BASE_ATTR);
+  }
+
+  function renderCustomBuild(){
+    if (!cu){
+      cu = { looks:CUSTOM_BASE_ATTR, body:CUSTOM_BASE_ATTR, intelligence:CUSTOM_BASE_ATTR,
+             traits:new Set(), pool:customTraitPool() };
+    }
+    $('cu-pts-total').textContent = CUSTOM_POINTS;
+    cuRenderAttrs();
+    cuRenderTraits();
+    cuRenderSum();
+  }
+
+  function cuRenderAttrs(){
+    const rows = [
+      { el:'cu-looks', key:'looks', label:'颜值', cap:LOOKS_CAP },
+      { el:'cu-body',  key:'body',  label:'体力', cap:BODY_CAP },
+      { el:'cu-int',   key:'intelligence', label:'智力', cap:INT_CAP }
+    ];
+    rows.forEach(r=>{
+      const box = $(r.el);
+      box.innerHTML = '';
+      const lb = document.createElement('div'); lb.className='cu-label'; lb.textContent = r.label;
+      const minus = document.createElement('button'); minus.className='cu-btn'; minus.textContent='−';
+      const val = document.createElement('div'); val.className='cu-val'; val.textContent = cu[r.key];
+      const plus = document.createElement('button'); plus.className='cu-btn'; plus.textContent='+';
+      const cap = document.createElement('div'); cap.className='cu-cap'; cap.textContent = `上限 ${r.cap}`;
+      minus.onclick = ()=>{ if (cu[r.key] > 1){ cu[r.key]--; cuRenderAttrs(); cuRenderSum(); } };
+      plus.onclick  = ()=>{ if (cu[r.key] < r.cap && cuPointsLeft() > 0){ cu[r.key]++; cuRenderAttrs(); cuRenderSum(); } };
+      minus.disabled = cu[r.key] <= 1;
+      plus.disabled  = cu[r.key] >= r.cap || cuPointsLeft() <= 0;
+      box.appendChild(lb); box.appendChild(minus); box.appendChild(val); box.appendChild(plus); box.appendChild(cap);
+    });
+    $('cu-pts').textContent = cuPointsLeft();
+    $('cu-pts-warn').textContent = cuPointsLeft() < 0 ? '（点数为负，不能开始）' : '';
+  }
+
+  function cuRenderTraits(){
+    const grid = $('cu-traits');
+    grid.innerHTML = '';
+    cu.pool.forEach(t=>{
+      const cell = document.createElement('div');
+      const on = cu.traits.has(t.name);
+      const leftIfOn = cuPointsLeft();
+      // 选中该特点后可用点的变化 = +t.pts（buff 为负→减少，debuff 为正→增加）
+      // 未选中且选了会变负 → 置灰
+      const wouldOver = !on && (leftIfOn + t.pts) < 0;
+      cell.className = 'cu-trait' + (on?' sel':'') + (wouldOver?' locked':'');
+      const head = document.createElement('div');
+      head.innerHTML = `<b>${maskText(t.name)}</b> <span style="color:#5b6b85;font-size:11px;">· ${t.from}</span>`;
+      const p = document.createElement('span');
+      p.className = 'cu-p ' + (t.pts < 0 ? 'cost' : 'refund');
+      p.textContent = t.pts < 0 ? t.pts : '+' + t.pts;
+      head.appendChild(p);
+      const desc = document.createElement('div');
+      desc.textContent = maskText(t.desc);
+      cell.appendChild(head); cell.appendChild(desc);
+      if (!wouldOver){
+        cell.onclick = ()=>{
+          if (on) cu.traits.delete(t.name);
+          else if (cuPointsLeft() + t.pts >= 0) cu.traits.add(t.name);
+          cuRenderAttrs(); cuRenderTraits(); cuRenderSum();
+        };
+      }
+      grid.appendChild(cell);
+    });
+  }
+
+  function cuRenderSum(){
+    const bonus = { happyCap:0, hungerCap:0 };
+    cu.traits.forEach(n=>{ const b = traitAttrBonus(n); if (b){ bonus.happyCap += b.happyCap||0; bonus.hungerCap += b.hungerCap||0; } });
+    const extra = [];
+    if (bonus.happyCap) extra.push(`快乐上限 +${bonus.happyCap}`);
+    if (bonus.hungerCap) extra.push(`饥饿上限 +${bonus.hungerCap}`);
+    $('cu-sum').innerHTML =
+      `最终：颜值 <b>${cu.looks}</b> · 体力 <b>${cu.body}</b> · 智力 <b>${cu.intelligence}</b>` +
+      (extra.length ? ` · ${extra.join(' · ')}` : '') + `<br>` +
+      `已选特点 ${cu.traits.size} 个${cu.traits.size?'：'+[...cu.traits].map(maskText).join('、'):''}`;
+    const ok = cuPointsLeft() >= 0;
+    const btn = $('btn-custom-ok');
+    btn.disabled = !ok;
+    btn.textContent = ok ? '下一步：选同桌 →' : '点数不足，无法开始';
+  }
+
+  // 徐锴锐的自定义构建结果（startGame 读取）
+  let customBuild = null;
   function mateRerollsLeft(){ return Math.max(0, MATE_REROLL_LIMIT - mateRerolls); }
   function randomMateAndConfirm(){
     // 重新随机时避开当前同桌，避免"换了个一样的"
