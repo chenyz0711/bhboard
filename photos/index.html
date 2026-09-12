@@ -151,7 +151,7 @@
   <!-- 上传区 -->
   <div class="card">
     <h2>上传照片</h2>
-    <div class="sub">每张不超过 1MB，每人每天最多 10 张。上传前会自动压缩，放心发。</div>
+    <div class="sub">每张不超过 10MB，每人每天最多 10 张。上传前会自动压缩，放心发。</div>
     <div class="upload-row">
       <input class="name-input" type="text" id="nameInput" placeholder="你的名字" maxlength="12" readonly />
       <label class="file-label" id="fileLabel">
@@ -207,8 +207,8 @@
   const PRESENCE_TTL = 90;
   const MEMBERS_KEY = 'bh_members';
   const DAILY_LIMIT = 10;                  // 每人每天最多 10 张
-  const MAX_FILE_SIZE = 1024 * 1024;       // 原图最大 1MB
-  const MAX_STORED = 500 * 1024;           // 压缩后目标上限（数据库单条安全线内）
+  const MAX_FILE_SIZE = 10 * 1024 * 1024;  // 原图最大 10MB
+  const MAX_STORED = 1024 * 1024;          // 压缩后目标上限 1MB（数据库单条 1.2MB 红线内）
   const MAX_PHOTOS = 40;                   // 照片墙总量上限，超了删最旧
   const ADMIN_PASSWORD = window.KeyGate.accessKey();
 
@@ -357,13 +357,20 @@
     return canvas.toDataURL('image/jpeg', quality);
   }
 
-  // 压缩完整图：最长边 900，质量逐步降到目标大小以内
+  // 压缩完整图：先降质量，质量到底仍超再逐步缩尺寸，直到目标大小以内
   function compressFull(img) {
-    let q = 0.82;
-    let data = canvasToJpeg(img, 900, q);
-    while (data.length > MAX_STORED && q > 0.45) {
+    let maxSide = 1280;
+    let q = 0.85;
+    let data = canvasToJpeg(img, maxSide, q);
+    // 第一轮：固定尺寸，逐步降质量
+    while (data.length > MAX_STORED && q > 0.5) {
       q -= 0.1;
-      data = canvasToJpeg(img, 900, q);
+      data = canvasToJpeg(img, maxSide, q);
+    }
+    // 第二轮：质量已到底仍超，逐步缩小最长边
+    while (data.length > MAX_STORED && maxSide > 480) {
+      maxSide -= 160;
+      data = canvasToJpeg(img, maxSide, 0.7);
     }
     return data;
   }
@@ -392,7 +399,7 @@
       return;
     }
     if (file.size > MAX_FILE_SIZE) {
-      setStatus('这张超过 1MB 了，换张小一点的', 'err');
+      setStatus('这张超过 10MB 了，换张小一点的', 'err');
       return;
     }
     if (todayCount(name) >= DAILY_LIMIT) {
