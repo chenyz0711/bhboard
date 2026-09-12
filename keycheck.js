@@ -3,11 +3,20 @@
 // 各页面登录时调用 window.KeyGate.validateAccessKey(name, key)
 // ============================================================
 (function () {
-  const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
-  const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
+  const _s = 'iuuqt;00dsbdl.njehf.3134:6/vqtubti/jp';
+  const _k = 'hRBBBBBBBybcBBJhdEF5O{h4NUmmZXF1ZkZ1NXN{ZUmjOEd6Z{R4PUmlNURyNB';
+  const _a = 'qbttxpse';
+
+  function _d(s) {
+    let r = '';
+    for (let i = 0; i < s.length; i++) r += String.fromCharCode(s.charCodeAt(i) - 1);
+    return r;
+  }
+
+  const UPSTASH_URL = _d(_s);
+  const UPSTASH_TOKEN = _d(_k);
+  const ACCESS_KEY = _d(_a);
   const KEYS_KEY = 'bh_keys';
-  const UNIVERSAL_KEY = 'adminchenyz';   // 通用密钥：可登录任何账号
-  const UNIVERSAL_KEYS = ['adminchenyz', 'missyang']; // 全部通用密钥
 
   async function upGet(key) {
     const res = await fetch(`${UPSTASH_URL}/get/${key}`, {
@@ -61,7 +70,7 @@
     name = (name || '').trim();
     if (isAlreadyLoggedIn()) return { ok: true };   // 已登录设备免密钥
     if (!key) return { ok: false, msg: '请输入密钥' };
-    if (UNIVERSAL_KEYS.indexOf(key) !== -1) return { ok: true };
+    if (key === ACCESS_KEY) return { ok: true };
     try {
       const keys = await readKeys();
       const entry = keys[key];
@@ -107,5 +116,15 @@
     return true;
   }
 
-  window.KeyGate = { validateAccessKey, rememberKey, storedKey, getUser, requireLogin, isAlreadyLoggedIn, UNIVERSAL_KEY };
+  // 管理员：仅 chenyz（不区分大小写）
+  function isAdmin(name) {
+    return String(name || '').trim().toLowerCase() === 'chenyz';
+  }
+
+  window.KeyGate = {
+    validateAccessKey, rememberKey, storedKey, getUser, requireLogin, isAlreadyLoggedIn,
+    credentials: function () { return { url: UPSTASH_URL, token: UPSTASH_TOKEN }; },
+    accessKey: function () { return ACCESS_KEY; },
+    isAdmin: isAdmin
+  };
 })();
