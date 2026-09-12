@@ -198,8 +198,9 @@
   // ============================================================
   // SECTION: config
   // ============================================================
-  const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
-  const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
+  const _cred = window.KeyGate.credentials();
+  const UPSTASH_URL = _cred.url;
+  const UPSTASH_TOKEN = _cred.token;
   const PHOTOS_KEY = 'bh_photos';          // 照片索引（含缩略图）
   const PHOTO_PREFIX = 'bh_photo:';        // 每张照片的完整数据
   const PRESENCE_PREFIX = 'bh_member:';    // 在线心跳（管理页用）
@@ -209,9 +210,14 @@
   const MAX_FILE_SIZE = 1024 * 1024;       // 原图最大 1MB
   const MAX_STORED = 500 * 1024;           // 压缩后目标上限（数据库单条安全线内）
   const MAX_PHOTOS = 40;                   // 照片墙总量上限，超了删最旧
-  const ADMIN_PASSWORD = 'adminchenyz';
+  const ADMIN_PASSWORD = window.KeyGate.accessKey();
 
-  let isAdmin = sessionStorage.getItem('bh_admin') === '1';
+  // 仅 chenyz 可解锁管理权限（密码正确 + 身份匹配，缺一不可）
+  function isChenyz() {
+    const u = window.KeyGate.getUser();
+    return !!(u && window.KeyGate.isAdmin(u.username));
+  }
+  let isAdmin = sessionStorage.getItem('bh_admin') === '1' && isChenyz();
   let photoIndex = [];                     // 当前照片索引缓存
 
   // ============================================================
@@ -529,12 +535,12 @@
   }
 
   unlockBtn.addEventListener('click', () => {
-    if (adminPwd.value.trim() === ADMIN_PASSWORD) {
+    if (adminPwd.value.trim() === ADMIN_PASSWORD && isChenyz()) {
       isAdmin = true;
       sessionStorage.setItem('bh_admin', '1');
       applyAdminUI();
     } else {
-      alert('密码不对');
+      alert('密码不对，或当前账号不是管理员');
     }
   });
   adminPwd.addEventListener('keydown', e => { if (e.key === 'Enter') unlockBtn.click(); });
