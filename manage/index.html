@@ -153,8 +153,9 @@
   // ============================================================
   // SECTION: config
   // ============================================================
-  const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
-  const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
+  const _cred = window.KeyGate.credentials();
+  const UPSTASH_URL = _cred.url;
+  const UPSTASH_TOKEN = _cred.token;
   const MEMBERS_KEY = 'bh_members';
   const REGISTRY_KEY = 'bh_registry';
   const PRESENCE_PREFIX = 'bh_member:';
@@ -162,10 +163,15 @@
   const ROOM_PREFIX = 'bh_room:';
   const ROOM_MAX_IDLE = 30 * 60 * 1000; // 超过 30 分钟无人活动的房间自动删除
   const KEYS_KEY = 'bh_keys';          // 密钥登记表：密钥 -> { owner, usedAt }
-  const ADMIN_PASSWORD = 'adminchenyz';
+  const ADMIN_PASSWORD = window.KeyGate.accessKey();
   const REFRESH_MS = 3000;
 
-  let isAdmin = sessionStorage.getItem('bh_admin') === '1';
+  // 仅 chenyz 可解锁管理权限（密码正确 + 身份匹配，缺一不可）
+  function isChenyz() {
+    const u = window.KeyGate.getUser();
+    return !!(u && window.KeyGate.isAdmin(u.username));
+  }
+  let isAdmin = sessionStorage.getItem('bh_admin') === '1' && isChenyz();
 
   // ============================================================
   // SECTION: dom
@@ -236,13 +242,13 @@
   }
 
   unlockBtn.addEventListener('click', () => {
-    if (adminPwd.value.trim() === ADMIN_PASSWORD) {
+    if (adminPwd.value.trim() === ADMIN_PASSWORD && isChenyz()) {
       isAdmin = true;
       sessionStorage.setItem('bh_admin', '1');
       applyAdminUI();
     } else {
-      unlockErr.textContent = '密码不对';
-      setTimeout(() => { if (unlockErr.textContent === '密码不对') unlockErr.textContent = ''; }, 3000);
+      unlockErr.textContent = '密码不对，或当前账号不是管理员';
+      setTimeout(() => { if (unlockErr.textContent.indexOf('不是管理员') !== -1) unlockErr.textContent = ''; }, 3000);
     }
   });
   adminPwd.addEventListener('keydown', e => { if (e.key === 'Enter') unlockBtn.click(); });
@@ -508,7 +514,7 @@
     try {
       const keys = await readKeys();
       let code;
-      do { code = genKeyCode(); } while (keys[code] || code === ADMIN_PASSWORD || code === 'missyang');
+      do { code = genKeyCode(); } while (keys[code] || code === ADMIN_PASSWORD);
       keys[code] = { owner: null, usedAt: null };
       await saveKeys(keys);
       await refreshKeys();
