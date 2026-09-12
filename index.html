@@ -180,12 +180,12 @@
         <div class="menu-title">兄弟广场</div>
         <div class="menu-desc">走动、说话、打架、求婚生娃</div>
       </a>
-      <a class="menu-card" href="/kick/">
+      <a class="menu-card" data-guest-ok="1" href="/kick/">
         <div class="menu-icon">⚽</div>
         <div class="menu-title">走廊瓶子赛</div>
         <div class="menu-desc">5v5 踢瓶子，选人、看规则，课间 30 秒</div>
       </a>
-      <a class="menu-card" href="/nfls/">
+      <a class="menu-card" data-guest-ok="1" href="/nfls/">
         <div class="menu-icon">🎓</div>
         <div class="menu-title">南外生存指南</div>
         <div class="menu-desc">开学第一周，撑到教师节就赢了</div>
@@ -200,36 +200,11 @@
         <div class="menu-title">兄弟管理</div>
         <div class="menu-desc">看谁在线、有哪些对局，管理员可操作</div>
       </a>
-    </div>
-
-    <!-- 公告栏 -->
-    <div class="board">
-      <div class="board-tabs">
-        <button class="btab active" data-tab="log">📝 修改日志</button>
-        <button class="btab" data-tab="notice">📢 公告</button>
-        <button class="btab" data-tab="docs">🗺️ 架构文档</button>
-      </div>
-
-      <div class="bpane" id="pane-log">
-        <div class="log-list" id="logList"></div>
-      </div>
-
-      <div class="bpane hidden" id="pane-notice">
-        <div class="notice-body" id="noticeBody">加载中…</div>
-        <div class="notice-edit hidden" id="noticeEdit">
-          <textarea id="noticeInput" rows="6" maxlength="2000" placeholder="写点公告…（支持换行）"></textarea>
-          <div class="notice-acts">
-            <button class="btn-main sm" id="noticeSave">保存公告</button>
-            <span class="notice-tip" id="noticeTip"></span>
-          </div>
-        </div>
-        <div class="notice-meta" id="noticeMeta"></div>
-      </div>
-
-      <div class="bpane hidden" id="pane-docs">
-        <iframe class="docs-frame" id="docsFrame" title="架构文档" loading="lazy"></iframe>
-        <div class="docs-note">也可以在新窗口打开：<a href="/docs/" target="_blank" rel="noopener">/docs/</a></div>
-      </div>
+      <a class="menu-card" data-guest-ok="1" href="/board/">
+        <div class="menu-icon">📋</div>
+        <div class="menu-title">兄弟公告</div>
+        <div class="menu-desc">修改日志、公告、架构文档</div>
+      </a>
     </div>
   </div>
 
@@ -262,17 +237,22 @@
     if (user) {
       loginBox.classList.add('hidden');
       menuBox.classList.remove('hidden');
-      welcomeText.textContent = `${user.username}，想去哪儿逛逛？`;
-      userInfo.textContent = user.username;
+      const guest = user.guest === true;
+      welcomeText.textContent = guest
+        ? `${user.username}，你正在访客模式（只能玩本地游戏，不会上传任何东西）`
+        : `${user.username}，想去哪儿逛逛？`;
+      userInfo.textContent = guest ? `${user.username} · 访客` : user.username;
       userInfo.classList.remove('hidden');
       logoutBtn.classList.remove('hidden');
-      loadNotice();            // 公告栏在登录后才可见，此时再拉取
+      // 访客只显示本地游戏入口，隐藏所有联机 / 写入类页面
+      document.querySelectorAll('.menu-card').forEach(card => {
+        card.classList.toggle('hidden', guest && card.dataset.guestOk !== '1');
+      });
     } else {
       loginBox.classList.remove('hidden');
       menuBox.classList.add('hidden');
       userInfo.classList.add('hidden');
       logoutBtn.classList.add('hidden');
-      resetNotice();
       loginName.focus();
     }
   }
@@ -296,7 +276,10 @@
       return;
     }
     window.KeyGate.rememberKey(key);
-    localStorage.setItem('bh_user', JSON.stringify({ username: name }));
+    const payload = result.guest
+      ? { username: result.username, guest: true }
+      : { username: name };
+    localStorage.setItem('bh_user', JSON.stringify(payload));
     render();
   }
 
@@ -312,186 +295,6 @@
     localStorage.removeItem('bh_user');
     render();
   });
-
-  // ============================================================
-  // 公告栏
-  // ============================================================
-  const boardTabs = document.querySelectorAll('.btab');
-  const logList = document.getElementById('logList');
-  const noticeBody = document.getElementById('noticeBody');
-  const noticeEdit = document.getElementById('noticeEdit');
-  const noticeInput = document.getElementById('noticeInput');
-  const noticeSave = document.getElementById('noticeSave');
-  const noticeTip = document.getElementById('noticeTip');
-  const noticeMeta = document.getElementById('noticeMeta');
-  const docsFrame = document.getElementById('docsFrame');
-
-  const NOTICE_KEY = 'bh_notice';
-  const _cred = window.KeyGate.credentials();
-  const UPSTASH_URL = _cred.url;
-  const UPSTASH_TOKEN = _cred.token;
-
-  // 修改日志：按实际改动历程记录，最新在最上
-  const CHANGELOG = [
-    { date: '2026-09-13', title: '踢瓶子大改 + 新增独立踢瓶页', items: [
-      '新增首页入口「走廊瓶子赛」/kick/：可任选球员、可选 30 秒 / 90 秒，规则完整列出',
-      '场上 10 个人头顶都显示名字，门将带 🧤 标记',
-      'AI 会传球：被贴身逼抢时倾向传给靠前、没人盯的队友，传球飞行途中可被拦截',
-      '断球记忆：某个对手成功断你一次后，整场不再专门追着你抢（进球重开也不重置）',
-      '门将接到球后：其他人不能靠近、抢不到，约 0.75 秒后大脚开到对面半场，空中谁都抢不到、也不会进门',
-      '持球移动速度 ×0.6，带球突破更难',
-      '球门加宽（60 → 96），更容易进球',
-      '生存内踢瓶子改为：不能选球员（固定当前人物）、只显示一行提示、按钮为「准备好了！」',
-      '踢瓶子拆成「自动」（按原胜率直接结算）与「手动」（进 5v5 比赛）两个入口',
-      '引擎抽成共享文件 kick.js，独立页与生存内共用，避免两份逻辑漂移'
-    ]},
-    { date: '2026-09-13', title: '大厅重名 bug 修复', items: [
-      '修掉「名字后面自动加哥」的 bug：根因是 NPC 名单里混进了真实玩家名（chenyz、徐悠然、朱凌初），真人进场撞上就被改名',
-      'NPC 名单换成纯虚拟名（路人甲、值日生、课代表等），不再包含任何真实玩家名',
-      '真人名字一律不改写，撞名改由 NPC 避让',
-      '广场不再回写全站登录态 —— 此前会把改名后的身份写回去，导致论坛署名、照片归属、密钥绑定全部错乱，chenyz 还会因此丢掉管理员权限'
-    ]},
-    { date: '2026-09-13', title: '首页公告栏', items: [
-      '新增公告栏，含三个标签页：修改日志 / 公告 / 架构文档',
-      '公告仅管理员（chenyz）可编辑，保存在数据库，所有人可见',
-      '架构文档整合进公告栏；同时给 /docs/ 补上了登录门禁（此前任何人可直接访问，等于公开数据库结构）'
-    ]},
-    { date: '2026-09-12', title: '论坛限流 + 管理页重构', items: [
-      '论坛：发送消息加 5 秒冷却，每人每天最多 20 条；修掉延迟期间连按重复发送的 bug（新增发送中锁）',
-      '管理页：密钥改为自己填写（不再随机生成）',
-      '管理页：每个密钥分别记录谁用过、用了几次、最近使用，可单独注销某个使用者',
-      '管理页：注销改为写入黑名单，被注销者无法登录，且不会释放他已用过的密钥；支持撤销注销',
-      '管理页：成员按最近上线时间排序，同时显示首次出现时间',
-      '管理页：列表刷新间隔从 3 秒放宽到 30 秒',
-      '通用密钥与管理员密码统一改为 password，且改为编码存放，代码中无任何注释提示',
-      '管理员权限收紧为「密码正确 + 账号是 chenyz」双重校验，非 chenyz 输对密码也无法解锁',
-      '架构文档中原本明文印出的通用密钥已移除',
-      '站点域名改为 j2k183.pages.dev'
-    ]},
-    { date: '2026-09-07', title: '南外生存：概率隐藏与新角色', items: [
-      '选项中的具体概率默认隐藏（显示为「？%」），输入密码后展开全部概率',
-      '新增胡凯宁：危险意识（上课聊天快乐 -1，但不被记违纪）、电教委（中午可打作业）',
-      '随机同桌最多只能换 3 次；可自选同桌的角色不受限',
-      '万天一作为同桌：踢瓶子饥饿消耗减半（-2 → -1）',
-      '刘敬熙作为同桌：答对问题时 +1 快乐',
-      '角色卡性别恢复为灰色小字写法，属性行不再显示快乐与饥饿上限',
-      '徐悠然颜值调整为 9',
-      '移除主页「南外生存·联机」入口，改由南外生存页内进入',
-      '页脚署名改为 made by j2k183 chenyz howiehw'
-    ]},
-    { date: '2026-09-07 之前', title: '站点基础与各模块', items: [
-      '全站密钥门禁与单点登录（未登录统一跳回主页）',
-      '南外生存指南：10 名可选角色、同桌系统、10 天日程、属性成长、多结局与隐藏成就',
-      '兄弟轮盘赌：房间制联机、观战、人机、多道具对战',
-      '兄弟掰手腕：绑键、20 秒倒计时、原子计数结算',
-      '兄弟广场：走动、说话、打架、求婚生娃',
-      '兄弟照片：每日 10 张限额、前端压缩、缩略图与大图预览',
-      '兄弟论坛：聊天式滚动留言',
-      '房间生命周期管理：每人每日限建 10 个、闲置 30 分钟自动销毁'
-    ]}
-  ];
-
-  function renderChangelog() {
-    logList.innerHTML = '';
-    CHANGELOG.forEach(entry => {
-      const item = document.createElement('div');
-      item.className = 'log-item';
-      const ul = document.createElement('ul');
-      entry.items.forEach(t => {
-        const li = document.createElement('li');
-        li.textContent = t;
-        ul.appendChild(li);
-      });
-      const head = document.createElement('div');
-      const d = document.createElement('span'); d.className = 'log-date'; d.textContent = entry.date;
-      const t = document.createElement('span'); t.className = 'log-title'; t.textContent = entry.title;
-      head.appendChild(d); head.appendChild(t);
-      const body = document.createElement('div'); body.className = 'log-body';
-      body.appendChild(ul);
-      item.appendChild(head); item.appendChild(body);
-      logList.appendChild(item);
-    });
-  }
-
-  function fmtTime(ts) {
-    if (!ts) return '';
-    const d = new Date(ts);
-    const pad = n => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  }
-
-  // 退出登录时重置公告区，避免下一位用户看到上一位的内容或编辑框残留
-  function resetNotice() {
-    noticeBody.textContent = '登录后显示公告';
-    noticeBody.classList.add('empty');
-    noticeMeta.textContent = '';
-    noticeInput.value = '';
-    noticeTip.textContent = '';
-    noticeEdit.classList.add('hidden');
-  }
-
-  async function loadNotice() {
-    let data = null;
-    try {
-      const res = await fetch(`${UPSTASH_URL}/get/${NOTICE_KEY}`, {
-        headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
-      });
-      const j = await res.json();
-      if (j.result) data = JSON.parse(j.result);
-    } catch (e) {}
-    const text = (data && data.text) ? data.text : '';
-    noticeBody.textContent = text || '还没有公告';
-    noticeBody.classList.toggle('empty', !text);
-    noticeMeta.textContent = (data && data.at)
-      ? `最后编辑：${data.by || '管理员'} · ${fmtTime(data.at)}`
-      : '';
-    const u = getUser();
-    const canEdit = !!(u && window.KeyGate.isAdmin(u.username));
-    noticeEdit.classList.toggle('hidden', !canEdit);
-    if (canEdit) noticeInput.value = text;
-  }
-
-  noticeSave.addEventListener('click', async () => {
-    const u = getUser();
-    if (!u || !window.KeyGate.isAdmin(u.username)) {
-      noticeTip.textContent = '只有管理员能编辑';
-      return;
-    }
-    noticeSave.disabled = true;
-    noticeTip.textContent = '保存中…';
-    try {
-      const payload = JSON.stringify({ text: noticeInput.value.trim(), by: u.username, at: Date.now() });
-      const res = await fetch(`${UPSTASH_URL}/set/${NOTICE_KEY}/${encodeURIComponent(payload)}`, {
-        method: 'POST', headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
-      });
-      if (!res.ok) throw new Error('写入失败');
-      noticeTip.textContent = '已保存';
-      await loadNotice();
-    } catch (e) {
-      noticeTip.textContent = '保存失败：' + e.message;
-    }
-    noticeSave.disabled = false;
-    setTimeout(() => { if (noticeTip.textContent === '已保存') noticeTip.textContent = ''; }, 2500);
-  });
-
-  // 标签切换（文档 iframe 延迟加载，避免一进主页就拉取）
-  let docsLoaded = false;
-  boardTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      boardTabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      const name = tab.dataset.tab;
-      document.getElementById('pane-log').classList.toggle('hidden', name !== 'log');
-      document.getElementById('pane-notice').classList.toggle('hidden', name !== 'notice');
-      document.getElementById('pane-docs').classList.toggle('hidden', name !== 'docs');
-      if (name === 'docs' && !docsLoaded) {
-        docsFrame.src = '/docs/';
-        docsLoaded = true;
-      }
-    });
-  });
-
-  renderChangelog();
 
   // 带出记住的密钥
   loginKey.value = window.KeyGate.storedKey();
