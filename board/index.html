@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>兄弟公告 · BHBoard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #f5f5f5;
+      font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+      display: flex; justify-content: center;
+      padding: 40px 20px; min-height: 100vh;
+    }
+    .container { max-width: 640px; width: 100%; }
+    .header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .header h1 { font-size: 26px; font-weight: 700; color: #1a1a1a; }
+    .header h1 span { color: #999; font-weight: 400; font-size: 14px; margin-left: 8px; }
+    .back {
+      font-size: 13px; color: #999; background: none; border: 1px solid #e0e0e0;
+      padding: 6px 14px; border-radius: 999px; text-decoration: none;
+    }
+    .back:hover { color: #1a1a1a; border-color: #1a1a1a; }
+
+    .board {
+      background: #fff; border: 1px solid #eee; border-radius: 12px;
+      padding: 18px 20px 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    .board-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .btab {
+      font-size: 13px; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+      background: #fafafa; border: 1px solid #e5e5e5; color: #777; transition: .15s;
+    }
+    .btab:hover { color: #1a1a1a; border-color: #ccc; }
+    .btab.active { background: #1a1a1a; border-color: #1a1a1a; color: #fff; }
+    .bpane { max-height: 66vh; overflow-y: auto; }
+
+    .log-list { font-size: 13px; color: #555; }
+    .log-item { padding: 12px 0; border-bottom: 1px solid #f2f2f2; }
+    .log-item:last-child { border-bottom: none; }
+    .log-date {
+      display: inline-block; font-size: 11px; color: #fff; background: #1a1a1a;
+      padding: 2px 8px; border-radius: 6px; margin-right: 8px;
+    }
+    .log-title { font-weight: 600; color: #1a1a1a; }
+    .log-body { margin: 6px 0 0; padding-left: 2px; line-height: 1.8; color: #666; }
+    .log-body li { margin-left: 16px; margin-bottom: 2px; }
+
+    .notice-body { font-size: 14px; color: #333; line-height: 1.85; white-space: pre-wrap; word-break: break-word; }
+    .notice-body.empty { color: #bbb; font-style: italic; }
+    .notice-edit { margin-top: 14px; padding-top: 14px; border-top: 1px dashed #e5e5e5; }
+    .notice-edit textarea {
+      width: 100%; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 8px;
+      font-size: 13px; font-family: inherit; outline: none; background: #fafafa; resize: vertical;
+    }
+    .notice-edit textarea:focus { border-color: #1a1a1a; background: #fff; }
+    .notice-acts { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+    .btn-main {
+      padding: 9px 20px; background: #1a1a1a; color: #fff; border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 600; cursor: pointer; transition: .15s;
+    }
+    .btn-main:hover { background: #333; }
+    .btn-main:disabled { background: #bbb; cursor: not-allowed; }
+    .notice-tip { font-size: 12px; color: #999; }
+    .notice-meta { font-size: 11px; color: #bbb; margin-top: 10px; }
+
+    .docs-frame { width: 100%; height: 60vh; border: 1px solid #eee; border-radius: 10px; background: #0f1626; }
+    .docs-note { font-size: 12px; color: #999; margin-top: 8px; }
+    .docs-note a { color: #1a1a1a; }
+
+    .footer { text-align: center; color: #ddd; font-size: 12px; margin-top: 20px; }
+    .hidden { display: none !important; }
+    @media (max-width: 480px) { body { padding: 20px 12px; } }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>📋 兄弟公告 <span># BHBoard</span></h1>
+    <a class="back" href="/">← 回主页</a>
+  </div>
+
+  <div class="board">
+    <div class="board-tabs">
+      <button class="btab active" data-tab="log">📝 修改日志</button>
+      <button class="btab" data-tab="notice">📢 公告</button>
+      <button class="btab" data-tab="docs">🗺️ 架构文档</button>
+    </div>
+
+    <div class="bpane" id="pane-log">
+      <div class="log-list" id="logList"></div>
+    </div>
+
+    <div class="bpane hidden" id="pane-notice">
+      <div class="notice-body" id="noticeBody">加载中…</div>
+      <div class="notice-edit hidden" id="noticeEdit">
+        <textarea id="noticeInput" rows="6" maxlength="2000" placeholder="写点公告…（支持换行）"></textarea>
+        <div class="notice-acts">
+          <button class="btn-main" id="noticeSave">保存公告</button>
+          <span class="notice-tip" id="noticeTip"></span>
+        </div>
+      </div>
+      <div class="notice-meta" id="noticeMeta"></div>
+    </div>
+
+    <div class="bpane hidden" id="pane-docs">
+      <iframe class="docs-frame" id="docsFrame" title="架构文档" loading="lazy"></iframe>
+      <div class="docs-note">也可以在新窗口打开：<a href="/docs/" target="_blank" rel="noopener">/docs/</a></div>
+    </div>
+  </div>
+
+  <div class="footer">BHBoard · 兄弟公告 · made by j2k183 chenyz howiehw</div>
+</div>
+
+<script src="/keycheck.js"></script>
+<script>
+  const logList = document.getElementById('logList');
+  const noticeBody = document.getElementById('noticeBody');
+  const noticeEdit = document.getElementById('noticeEdit');
+  const noticeInput = document.getElementById('noticeInput');
+  const noticeSave = document.getElementById('noticeSave');
+  const noticeTip = document.getElementById('noticeTip');
+  const noticeMeta = document.getElementById('noticeMeta');
+  const docsFrame = document.getElementById('docsFrame');
+  const boardTabs = document.querySelectorAll('.btab');
+
+  const NOTICE_KEY = 'bh_notice';
+  const _cred = window.KeyGate.credentials();
+  const UPSTASH_URL = _cred.url;
+  const UPSTASH_TOKEN = _cred.token;
+
+  function getUser() {
+    try {
+      const saved = localStorage.getItem('bh_user');
+      if (!saved) return null;
+      const user = JSON.parse(saved);
+      return user && user.username ? user : null;
+    } catch (e) { return null; }
+  }
+
+  // 修改日志：按实际改动历程记录，最新在最上
+  const CHANGELOG = [
+    { date: '2026-09-13', title: '角色扩充 + 自选角色徐锴锐', items: [
+      '新增蒋润霖（作孽双子 / 级委 / 强身健体）、李知行（肾虚 / 父亲）、李思憧（给给 / 憧憧）',
+      '新增徐锴锐：开局自选属性与特点，初始 10 点，按增减量表花点/返点，可用点数 ≥0 才能开始；作同桌可给一次复活机会',
+      '特点判定全面改为「按特点名」而非「按角色」，徐锴锐自选的特点因此真正生效',
+      '英语 A/B 班改为按名单查表确定（不再随机）',
+      '新增「加速模式」：上午 4→2 节、下午 5→2 节，全部数值增减 ×2；原「简单模式」保留，难度共四档',
+      '陈仰正 + 徐悠然：周四（9月3日）下午历史课后触发蝴蝶结事件，获得发卡（可复活一次）',
+      '被表白文案加入同桌名字',
+      '取消「继续 / 下课」这类无选项按钮，内容并入下一屏自动推进',
+      '除陈仰正（或自选「不要造谣」者）外，取消下课发呆选项'
+    ]},
+    { date: '2026-09-13', title: '踢瓶子 AI 大改', items: [
+      '场上 10 人头顶都显示名字，门将带 🧤 标记',
+      'AI 会传球：被贴身逼抢时传给靠前、没人盯的队友，传球飞行途中可被拦截',
+      '断球规则：你每次拿到球，对手都能抢你一次（换人拿球则重新计算）',
+      '门将接到球后其他人不能靠近、抢不到，约 0.75 秒后大脚开到对面半场，空中谁都抢不到、也不会进门',
+      '持球移动速度 ×0.6；球门加宽（60 → 96）',
+      '蒋润霖「强身健体」：踢瓶子胜率 ×2（手动赛对方门将扑救率 70%→30%）、获得的快乐 ×2'
+    ]},
+    { date: '2026-09-13', title: '独立踢瓶页 + 大厅 bug 修复 + 公告栏', items: [
+      '新增首页入口「走廊瓶子赛」/kick/：可任选球员、可选 30 秒 / 90 秒，规则完整列出',
+      '生存内踢瓶子：不能选球员（固定当前人物）、只显示一行提示、按钮为「准备好了！」',
+      '踢瓶子拆成「自动」（按原胜率直接结算）与「手动」（进 5v5 比赛）两个入口；引擎抽成共享文件 kick.js',
+      '修掉大厅「名字后面自动加哥」的 bug：根因是 NPC 名单混进了真实玩家名，真人进场撞上就被改名并回写全站身份，导致署名错乱、chenyz 丢管理员权限',
+      'NPC 名单换成纯虚拟名，真人名字一律不改写，广场不再回写全站登录态',
+      '新增「兄弟公告」页（本页）：修改日志 / 公告 / 架构文档三个标签',
+      '给 /docs/ 补上登录门禁（此前任何人可直接访问，等于公开数据库结构）'
+    ]},
+    { date: '2026-09-12', title: '论坛限流 + 管理页重构', items: [
+      '论坛：发送消息加 5 秒冷却，每人每天最多 20 条；修掉延迟期间连按重复发送的 bug（新增发送中锁）',
+      '管理页：密钥改为自己填写（不再随机生成）',
+      '管理页：每个密钥分别记录谁用过、用了几次、最近使用，可单独注销某个使用者',
+      '管理页：注销改为写入黑名单，被注销者无法登录，且不会释放他已用过的密钥；支持撤销注销',
+      '管理页：成员按最近上线时间排序，同时显示首次出现时间',
+      '管理页：列表刷新间隔从 3 秒放宽到 30 秒',
+      '通用密钥与管理员密码统一改为 password，且改为编码存放，代码中无任何注释提示',
+      '管理员权限收紧为「密码正确 + 账号是 chenyz」双重校验，非 chenyz 输对密码也无法解锁',
+      '站点域名改为 j2k183.pages.dev'
+    ]},
+    { date: '2026-09-07', title: '南外生存：概率隐藏与新角色', items: [
+      '选项中的具体概率默认隐藏（显示为「？%」），输入密码后展开全部概率',
+      '新增胡凯宁：危险意识（上课聊天快乐 -1，但不被记违纪）、电教委（中午可打作业）',
+      '随机同桌最多只能换 3 次；可自选同桌的角色不受限',
+      '万天一作为同桌：踢瓶子饥饿消耗减半（-2 → -1）',
+      '刘敬熙作为同桌：答对问题时 +1 快乐',
+      '角色卡性别恢复为灰色小字写法，属性行不再显示快乐与饥饿上限',
+      '徐悠然颜值调整为 9',
+      '移除主页「南外生存·联机」入口，改由南外生存页内进入',
+      '页脚署名改为 made by j2k183 chenyz howiehw'
+    ]},
+    { date: '2026-09-07 之前', title: '站点基础与各模块', items: [
+      '全站密钥门禁与单点登录（未登录统一跳回主页）',
+      '南外生存指南：多名可选角色、同桌系统、10 天日程、属性成长、多结局与隐藏成就',
+      '兄弟轮盘赌：房间制联机、观战、人机、多道具对战',
+      '兄弟掰手腕：绑键、20 秒倒计时、原子计数结算',
+      '兄弟广场：走动、说话、打架、求婚生娃',
+      '兄弟照片：每日限额上传、前端压缩、缩略图与大图预览',
+      '兄弟论坛：聊天式滚动留言',
+      '房间生命周期管理：每人每日限建 10 个、闲置 30 分钟自动销毁'
+    ]}
+  ];
+
+  function renderChangelog() {
+    logList.innerHTML = '';
+    CHANGELOG.forEach(entry => {
+      const item = document.createElement('div');
+      item.className = 'log-item';
+      const head = document.createElement('div');
+      const d = document.createElement('span'); d.className = 'log-date'; d.textContent = entry.date;
+      const t = document.createElement('span'); t.className = 'log-title'; t.textContent = entry.title;
+      head.appendChild(d); head.appendChild(t);
+      const body = document.createElement('div'); body.className = 'log-body';
+      const ul = document.createElement('ul');
+      entry.items.forEach(x => { const li = document.createElement('li'); li.textContent = x; ul.appendChild(li); });
+      body.appendChild(ul);
+      item.appendChild(head); item.appendChild(body);
+      logList.appendChild(item);
+    });
+  }
+
+  function fmtTime(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  async function loadNotice() {
+    let data = null;
+    try {
+      const res = await fetch(`${UPSTASH_URL}/get/${NOTICE_KEY}`, {
+        headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
+      });
+      const j = await res.json();
+      if (j.result) data = JSON.parse(j.result);
+    } catch (e) {}
+    const text = (data && data.text) ? data.text : '';
+    noticeBody.textContent = text || '还没有公告';
+    noticeBody.classList.toggle('empty', !text);
+    noticeMeta.textContent = (data && data.at)
+      ? `最后编辑：${data.by || '管理员'} · ${fmtTime(data.at)}`
+      : '';
+    const u = getUser();
+    const canEdit = !!(u && window.KeyGate.isAdmin(u.username));
+    noticeEdit.classList.toggle('hidden', !canEdit);
+    if (canEdit) noticeInput.value = text;
+  }
+
+  noticeSave.addEventListener('click', async () => {
+    const u = getUser();
+    if (!u || !window.KeyGate.isAdmin(u.username)) {
+      noticeTip.textContent = '只有管理员能编辑';
+      return;
+    }
+    noticeSave.disabled = true;
+    noticeTip.textContent = '保存中…';
+    try {
+      const payload = JSON.stringify({ text: noticeInput.value.trim(), by: u.username, at: Date.now() });
+      const res = await fetch(`${UPSTASH_URL}/set/${NOTICE_KEY}/${encodeURIComponent(payload)}`, {
+        method: 'POST', headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
+      });
+      if (!res.ok) throw new Error('写入失败');
+      noticeTip.textContent = '已保存';
+      await loadNotice();
+    } catch (e) {
+      noticeTip.textContent = '保存失败：' + e.message;
+    }
+    noticeSave.disabled = false;
+    setTimeout(() => { if (noticeTip.textContent === '已保存') noticeTip.textContent = ''; }, 2500);
+  });
+
+  // 标签切换（文档 iframe 延迟加载）
+  let docsLoaded = false;
+  boardTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      boardTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const name = tab.dataset.tab;
+      document.getElementById('pane-log').classList.toggle('hidden', name !== 'log');
+      document.getElementById('pane-notice').classList.toggle('hidden', name !== 'notice');
+      document.getElementById('pane-docs').classList.toggle('hidden', name !== 'docs');
+      if (name === 'docs' && !docsLoaded) { docsFrame.src = '/docs/'; docsLoaded = true; }
+    });
+  });
+
+  (function init(){
+    if (!window.KeyGate.requireLogin()) return;
+    renderChangelog();
+    loadNotice();
+  })();
+</script>
+</body>
+</html>
