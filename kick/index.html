@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>走廊瓶子赛 · BHBoard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #f5f5f5;
+      font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+      display: flex; justify-content: center;
+      padding: 40px 20px; min-height: 100vh;
+    }
+    .container { max-width: 680px; width: 100%; }
+    .header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .header h1 { font-size: 26px; font-weight: 700; color: #1a1a1a; }
+    .header h1 span { color: #999; font-weight: 400; font-size: 14px; margin-left: 8px; }
+    .back { font-size: 13px; color: #999; background: none; border: 1px solid #e0e0e0;
+      padding: 6px 14px; border-radius: 999px; text-decoration: none; }
+    .back:hover { color: #1a1a1a; border-color: #1a1a1a; }
+
+    .card { background: #fff; border-radius: 12px; padding: 20px;
+      border: 1px solid #eee; box-shadow: 0 1px 4px rgba(0,0,0,.04); margin-bottom: 14px; }
+    .card h2 { font-size: 16px; color: #1a1a1a; margin-bottom: 4px; }
+    .sub { font-size: 13px; color: #888; margin-bottom: 12px; line-height: 1.6; }
+
+    /* 选人 */
+    .pick-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+    .pc { background: #fafafa; border: 1px solid #e5e5e5; border-radius: 10px;
+      padding: 10px 4px; text-align: center; cursor: pointer; transition: .15s; }
+    .pc:hover { border-color: #1a1a1a; transform: translateY(-2px); }
+    .pc.sel { border-color: #1a1a1a; background: #f0f0f0; box-shadow: 0 0 0 1px #1a1a1a inset; }
+    .pc .n { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+    .pc .g { font-size: 11px; color: #aaa; margin-top: 2px; }
+    .pc .s { font-size: 11px; color: #666; margin-top: 3px; }
+
+    /* 时长 */
+    .dur-row { display: flex; gap: 10px; }
+    .dur { flex: 1; background: #fafafa; border: 1px solid #e5e5e5; border-radius: 10px;
+      padding: 12px; text-align: center; cursor: pointer; transition: .15s; }
+    .dur:hover { border-color: #1a1a1a; }
+    .dur.sel { border-color: #1a1a1a; background: #f0f0f0; box-shadow: 0 0 0 1px #1a1a1a inset; }
+    .dur .t { font-size: 16px; font-weight: 700; color: #1a1a1a; }
+    .dur .d { font-size: 12px; color: #999; margin-top: 3px; }
+
+    /* 规则 */
+    .rules { font-size: 13px; color: #555; line-height: 1.95; }
+    .rules b { color: #1a1a1a; }
+    .rules .hl { color: #c0392b; font-weight: 600; }
+    .rules ul { margin: 0; padding-left: 18px; }
+    .rules li { margin-bottom: 2px; }
+
+    .btn-main { width: 100%; padding: 13px; background: #1a1a1a; color: #fff;
+      border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: .15s; }
+    .btn-main:hover { background: #333; }
+    .btn-ghost { width: 100%; padding: 12px; background: #fff; color: #666;
+      border: 1px solid #ddd; border-radius: 10px; font-size: 14px; cursor: pointer; transition: .15s; }
+    .btn-ghost:hover { color: #1a1a1a; border-color: #1a1a1a; }
+
+    /* 比赛 */
+    .hud { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .score { font-size: 26px; font-weight: 800; color: #1a1a1a; letter-spacing: 2px; font-variant-numeric: tabular-nums; }
+    .time { font-size: 15px; color: #999; font-variant-numeric: tabular-nums; }
+    #cv { width: 100%; height: auto; display: block; background: #0d1422;
+      border: 1px solid #ddd; border-radius: 10px; }
+    .tip { text-align: center; font-size: 13px; color: #999; margin-top: 10px; }
+    .hidden { display: none !important; }
+
+    .res-emoji { font-size: 48px; text-align: center; }
+    .res-title { font-size: 22px; font-weight: 800; text-align: center; color: #1a1a1a; margin: 8px 0; }
+    .res-detail { font-size: 14px; color: #666; text-align: center; line-height: 1.9; }
+
+    .footer { text-align: center; color: #ccc; font-size: 12px; margin-top: 20px; }
+
+    @media (max-width: 560px) {
+      .pick-grid { grid-template-columns: repeat(2, 1fr); }
+      body { padding: 20px 12px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>⚽ 走廊瓶子赛 <span>5v5</span></h1>
+    <a class="back" href="/">← 回主页</a>
+  </div>
+
+  <!-- 设置 -->
+  <div id="setup">
+    <div class="card">
+      <h2>🧍 选你操控的球员</h2>
+      <div class="sub">你只操控这一个人，另外 9 人由系统随机分队（你方 4 人 + 对方 5 人）。体力越高跑得越快。</div>
+      <div class="pick-grid" id="pickGrid"></div>
+    </div>
+
+    <div class="card">
+      <h2>⏱️ 比赛时长</h2>
+      <div class="sub">课间只有 30 秒，大课间能踢满 1 分半。</div>
+      <div class="dur-row" id="durRow">
+        <div class="dur sel" data-sec="30"><div class="t">30 秒</div><div class="d">课间</div></div>
+        <div class="dur" data-sec="90"><div class="t">1 分 30 秒</div><div class="d">大课间</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📖 规则</h2>
+      <div class="sub">场地是学校走廊，比较窄，跑不开。</div>
+      <div class="rules">
+        <ul>
+          <li><b>5v5</b>，每边 1 个门将 + 4 个场上球员。你操控其中一人，其余全部随机。</li>
+          <li><b>场地</b>：上下两条边线是<span class="hl">栏杆</span>（球撞上去会弹回来，人过不去）；左右两条线是<span class="hl">球门</span>。</li>
+          <li><b>球</b>就是一个瓶子。碰到瓶子即持球，持球时瓶子跟着你走。</li>
+          <li><b>操作</b>：<b>W A S D</b> 移动，<b>空格</b> 射门（需持球）。</li>
+          <li><b>移动速度 = 标准速度 ×（1 + 体力 × 0.1）</b>。例：体力 9 → ×1.9，体力 4 → ×1.4。</li>
+          <li><b>射门</b>：球飞向对方球门，进门线且落在球门范围内才算进球；打在门柱 / 底线上会弹回来。</li>
+          <li><b>门将</b>：守在门线上跟着球上下移动，射正时 <span class="hl">70% 概率扑出来</span>（球被弹回场内）。</li>
+          <li><b>遇人对抗</b>：持球时碰到对方球员，<span class="hl">75% 过人</span>（保住球并把对方顶开）、<span class="hl">25% 被断</span>（球权易主）。一次对抗后双方短暂冷却，不会连续判定。</li>
+          <li><b>进球后</b>：中场重新开球，比分累加，比赛继续直到时间走完。</li>
+          <li><b>胜负</b>：时间结束时比分高者胜。这里只踢球，不影响生存数值（生存里踢瓶子才会扣饥饿、加快乐）。</li>
+        </ul>
+      </div>
+    </div>
+
+    <button class="btn-main" id="startBtn">⚽ 开始比赛</button>
+  </div>
+
+  <!-- 比赛 -->
+  <div id="arena" class="hidden">
+    <div class="card">
+      <div class="hud">
+        <span class="score" id="score">0 : 0</span>
+        <span class="time" id="time">--</span>
+      </div>
+      <canvas id="cv" width="640" height="220"></canvas>
+      <div class="tip">WASD 移动 · 空格射门 · 碰到瓶子自动持球</div>
+    </div>
+
+    <div class="card hidden" id="resCard">
+      <div class="res-emoji" id="resEmoji"></div>
+      <div class="res-title" id="resTitle"></div>
+      <div class="res-detail" id="resDetail"></div>
+      <button class="btn-main" id="againBtn" style="margin-top:14px;">再来一场</button>
+      <button class="btn-ghost" id="backBtn" style="margin-top:10px;">换个球员 / 改时长</button>
+    </div>
+  </div>
+
+  <div class="footer">BHBoard · 走廊瓶子赛 · made by j2k183 chenyz howiehw</div>
+</div>
+
+<script src="/keycheck.js"></script>
+<script src="/kick.js"></script>
+<script>
+  const $ = id => document.getElementById(id);
+
+  // 与南外生存同一批人物（独立页只需 id / name / gender / body）
+  const CHARS = [
+    { id:'chen',  name:'陈仰正', gender:'男', body:5 },
+    { id:'wang',  name:'王浩宇', gender:'男', body:6 },
+    { id:'hou',   name:'侯景瑞', gender:'男', body:9 },
+    { id:'xu',    name:'徐悠然', gender:'女', body:6 },
+    { id:'jia',   name:'贾子辰', gender:'男', body:8 },
+    { id:'zhu',   name:'朱凌初', gender:'女', body:4 },
+    { id:'chang', name:'常喆',   gender:'男', body:5 },
+    { id:'liu',   name:'刘敬熙', gender:'男', body:7 },
+    { id:'wan',   name:'万天一', gender:'男', body:7 },
+    { id:'hu',    name:'胡凯宁', gender:'男', body:7 }
+  ];
+
+  let selChar = CHARS[0].id;
+  let selSec = 30;
+  let ctrl = null;
+
+  // ---------- 选人 ----------
+  function renderPick(){
+    const grid = $('pickGrid');
+    grid.innerHTML = '';
+    CHARS.forEach(c => {
+      const cell = document.createElement('div');
+      cell.className = 'pc' + (c.id === selChar ? ' sel' : '');
+      cell.innerHTML =
+        `<div class="n">${c.name}</div>` +
+        `<div class="g">${c.gender}</div>` +
+        `<div class="s">体力 ${c.body} · ×${(1 + c.body * 0.1).toFixed(1)}</div>`;
+      cell.addEventListener('click', () => { selChar = c.id; renderPick(); });
+      grid.appendChild(cell);
+    });
+  }
+
+  // ---------- 时长 ----------
+  function bindDur(){
+    $('durRow').querySelectorAll('.dur').forEach(d => {
+      d.addEventListener('click', () => {
+        $('durRow').querySelectorAll('.dur').forEach(x => x.classList.remove('sel'));
+        d.classList.add('sel');
+        selSec = parseInt(d.dataset.sec, 10);
+      });
+    });
+  }
+
+  // ---------- 开始 / 结束 ----------
+  function startMatch(){
+    if (ctrl) { ctrl.stop(); ctrl = null; }
+    $('resCard').classList.add('hidden');
+    $('setup').classList.add('hidden');
+    $('arena').classList.remove('hidden');
+    $('score').textContent = '0 : 0';
+    $('time').textContent = selSec + ' 秒';
+    window.scrollTo(0, 0);
+
+    ctrl = KickEngine.start({
+      canvas: $('cv'),
+      scoreEl: $('score'),
+      timeEl: $('time'),
+      chars: CHARS,
+      meId: selChar,
+      seconds: selSec,
+      onEnd: endMatch
+    });
+  }
+
+  function endMatch(r){
+    ctrl = null;
+    const win = r.win, draw = r.draw;
+    $('resEmoji').textContent = win ? '🏆' : (draw ? '🤝' : '😮‍💨');
+    $('resTitle').textContent = win ? '你们赢了！' : (draw ? '打平' : '你们输了');
+    const me = CHARS.find(c => c.id === selChar) || { name: r.me.name };
+    $('resDetail').innerHTML =
+      `比分 <b>${r.scoreH} : ${r.scoreA}</b>（你队 : 对方）<br>` +
+      `你操控 <b>${me.name}</b> · 时长 ${selSec} 秒` +
+      (r.scoreH ? `<br>你队打进 ${r.scoreH} 球` : '<br>你队没能破门');
+    $('resCard').classList.remove('hidden');
+    $('resCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  $('startBtn').addEventListener('click', startMatch);
+  $('againBtn').addEventListener('click', startMatch);
+  $('backBtn').addEventListener('click', () => {
+    if (ctrl) { ctrl.stop(); ctrl = null; }
+    $('arena').classList.add('hidden');
+    $('setup').classList.remove('hidden');
+    window.scrollTo(0, 0);
+  });
+
+  (function init(){
+    if (!window.KeyGate.requireLogin()) return;
+    renderPick();
+    bindDur();
+  })();
+</script>
+</body>
+</html>
