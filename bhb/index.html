@@ -109,6 +109,9 @@
       font-size: 14px; font-weight: 500; cursor: pointer; transition: 0.15s;
     }
     .input-area .btn-send:hover { background: #333; }
+    .input-area .btn-send:disabled { background: #bbb; cursor: not-allowed; }
+    .input-area .send-tip { font-size: 12px; color: #999; margin-top: 8px; min-height: 16px; text-align: center; }
+    .input-area .send-tip.warn { color: #e74c3c; }
     .footer { text-align: center; color: #ddd; font-size: 12px; margin-top: 20px; }
     .hidden { display: none !important; }
     @media (max-width: 480px) {
@@ -144,6 +147,7 @@
     <div class="btn-row">
       <button class="btn-send" id="sendBtn">发送</button>
     </div>
+    <div class="send-tip" id="sendTip"></div>
   </div>
 
   <div class="footer">BHBoard · 兄弟们畅聊 · made by chenyz</div>
@@ -153,8 +157,9 @@
 <script>
   // ============================================================
   // 🔥 Upstash 配置
-  const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
-  const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
+  const _cred = window.KeyGate.credentials();
+  const UPSTASH_URL = _cred.url;
+  const UPSTASH_TOKEN = _cred.token;
   const MSG_KEY = 'bh_messages';      // 聊天记录
   const PENDING_KEY = 'bh_pending';   // 待处理消息（备份）
   const PRESENCE_PREFIX = 'bh_member:';   // 在线心跳键前缀（管理页用）
@@ -203,10 +208,53 @@
   const emptyPlaceholder = document.getElementById('emptyPlaceholder');
   const msgInput = document.getElementById('msgInput');
   const sendBtn = document.getElementById('sendBtn');
+  const sendTip = document.getElementById('sendTip');
   const statusText = document.getElementById('statusText');
   const userInfo = document.getElementById('userInfo');
   const logoutBtn = document.getElementById('logoutBtn');
   const inputArea = document.getElementById('inputArea');
+
+  // 发送限流：5 秒冷却 + 每人每天最多 20 条
+  const SEND_CD_MS = 5000;
+  const DAILY_LIMIT = 20;
+  let sending = false;        // 发送中锁，防止异步期间重复提交
+  let cdUntil = 0;            // 冷却结束时间戳
+  let cdTimer = null;
+
+  function todayKey() {
+    const d = new Date();
+    return `bh_send_${d.getFullYear()}_${d.getMonth()+1}_${d.getDate()}`;
+  }
+  function todaySent() {
+    try { return parseInt(localStorage.getItem(todayKey()) || '0', 10) || 0; }
+    catch (e) { return 0; }
+  }
+  function bumpTodaySent() {
+    try { localStorage.setItem(todayKey(), String(todaySent() + 1)); } catch (e) {}
+  }
+  function updateSendTip() {
+    if (!sendTip) return;
+    const left = DAILY_LIMIT - todaySent();
+    const cdLeft = Math.max(0, Math.ceil((cdUntil - Date.now()) / 1000));
+    if (left <= 0) {
+      sendTip.className = 'send-tip warn';
+      sendTip.textContent = `今天的 ${DAILY_LIMIT} 条留言已用完，明天再来吧`;
+    } else if (cdLeft > 0) {
+      sendTip.className = 'send-tip';
+      sendTip.textContent = `发送冷却中… ${cdLeft} 秒后可再发（今日剩余 ${left} 条）`;
+    } else {
+      sendTip.className = 'send-tip';
+      sendTip.textContent = `今日剩余 ${left} / ${DAILY_LIMIT} 条`;
+    }
+    sendBtn.disabled = sending || cdLeft > 0 || left <= 0;
+  }
+  function startCdTick() {
+    if (cdTimer) clearInterval(cdTimer);
+    cdTimer = setInterval(() => {
+      if (Date.now() >= cdUntil) { clearInterval(cdTimer); cdTimer = null; }
+      updateSendTip();
+    }, 500);
+  }
 
   function formatTime(ts) {
     const d = new Date(ts);
@@ -398,6 +446,7 @@
       userInfo.textContent = currentUser.username;
       userInfo.classList.remove('hidden');
       logoutBtn.classList.remove('hidden');
+      updateSendTip();
     } else {
       inputArea.classList.add('hidden');
       userInfo.classList.add('hidden');
@@ -412,11 +461,21 @@
   logoutBtn.addEventListener('click', () => {
     currentUser = null;
     localStorage.removeItem('bh_user');
-    location.replace('https://bhboard.pages.dev/');   // 退出后回主页重新登录
+    location.replace('https://j2k183.pages.dev/');   // 退出后回主页重新登录
   });
 
   sendBtn.addEventListener('click', async () => {
     if (!currentUser) return;
+
+    // 三层防护：发送中锁 / 冷却中 / 当日上限
+    if (sending) { updateSendTip(); return; }
+    if (Date.now() < cdUntil) { updateSendTip(); return; }
+    if (todaySent() >= DAILY_LIMIT) {
+      updateSendTip();
+      msgInput.focus();
+      return;
+    }
+
     const text = msgInput.value.trim();
     if (!text) {
       msgInput.focus();
@@ -424,8 +483,19 @@
       setTimeout(() => msgInput.style.borderColor = '', 500);
       return;
     }
-    await sendMessage(text);
-    msgInput.value = '';
+
+    sending = true;
+    updateSendTip();
+    const ok = await sendMessage(text);
+    sending = false;
+
+    if (ok) {
+      msgInput.value = '';
+      bumpTodaySent();          // 只在真正发送成功后计数
+      cdUntil = Date.now() + SEND_CD_MS;
+      startCdTick();
+    }
+    updateSendTip();
     msgInput.focus();
   });
 
