@@ -575,7 +575,6 @@
   const PRAISE_PER = 1;           // 一个表扬 = -1 点
   const LOOKS_CAP = 10, BODY_CAP = 10, INT_CAP = 15, HUNGER_CAP = 10;
   const MAIN_SUBJECTS = ['语文','数学','英语','物理','化学'];   // 主科才会布置作业
-  const PRAISE_BASE = 0.05;       // 答对后被表扬的基础概率；数学 ×10
   const HW_PLAY_CHANCE = 0.3;     // 胡凯宁"电教委"：中午打作业快乐 +3 的概率
   const MATE_REROLL_LIMIT = 3;    // 随机同桌最多可换的次数
   const WEEK2_DAY = 7;            // 第 7 天（9月7日 周一）= 第 2 周开始
@@ -603,14 +602,14 @@
   // 科目特性
   const SUBJECT_RULES = {
     '语文': { happyDelta:-2, askProbOverride:0.75, noRoll:true },
-    '数学': { happyDelta:-1, dragChance:0.5, praiseMult:10 },
+    '数学': { happyDelta:-1, dragChance:0.5 },
     '英语': { happyDelta:-1, noRoll:true, engRun:true },
     '物理': { happyDelta:-1, noRoll:true },
     '化学': { happyDelta:-1, expChance:0.5 },
-    '音乐': { happyRange:[0,4], praiseAlways:true },
+    '音乐': { happyRange:[0,4] },
     '美术': { happyRange:[0,4] },
     '体育': { genderHappy:true, hungerCost:3, fitnessChance:0.5 },
-    '历史': { happyDelta:-1, hungerCost:2, hwHalf:true },
+    '历史': { happyDelta:-1, hwHalf:true },
     '政治': { happyDelta:1, noKickNext:true, noRoll:true, hwHalf:true },
     '班会': { noKickNext:true }
   };
@@ -1002,9 +1001,13 @@
   // ============================================================
   // SECTION: 渲染
   // ============================================================
+  // 顶部栏用的难度短名：查表而非三元兜底，避免新增难度（如加速）被错标成"困难"
+  const DIFF_SHORT = { normal:'普通', easy:'简单', hard:'困难', speed:'加速' };
+
   function renderHeader(){
     const info = DAY_INFO[G.day-1];
-    $('g-day').textContent = `${info.date} ${info.week} · Day ${G.day} · ${G.diff==='normal'?'普通':G.diff==='easy'?'简单':'困难'}`;
+    const diffName = DIFF_SHORT[G.diff] || '';
+    $('g-day').textContent = `${info.date} ${info.week} · Day ${G.day} · ${diffName}`;
     $('g-mate').textContent = `同桌：${G.mate.name}`;
     $('g-mate-eff').innerHTML = `<b>同桌 ${G.mate.name} 的效果：</b>${maskText(G.mate.mateEffect.replace('作为同桌：',''))}`;
   }
@@ -1369,6 +1372,7 @@
   }
 
   // ---------- 上课 ----------
+  // 答对概率：rolled = 是否处于"不认真听课"状态（卷批或聊天），此时概率减半
   function answerProb(subj, rule, rolled){
     let p = clamp(G.intelligence/INT_CAP, 0, 1);
     if (rule.askProbOverride !== undefined) p = rule.askProbOverride;
@@ -1396,7 +1400,7 @@
     const askP = clamp(askChance() * (hasTrait('强壮') ? 2 : 1), 0, 1);
 
     const head = [
-      { t:`被点名概率 ${pct(askP)}${hasTrait('强壮')?'（强壮：翻倍）':''} · 答对概率 ${pct(answerProb(subj,rule,false))}`, c:'sys' }
+      { t:`被点名概率 ${pct(askP)}${hasTrait('强壮')?'（强壮：翻倍）':''} · 答对概率 ${pct(answerProb(subj,rule,false))}（不认真听课则减半，且答对无快乐、不减违纪）`, c:'sys' }
     ];
     if (G.noStudyNext) head.push({ t:'⚠️ 上节课间你聊嗨了，这节课没法认真听课、也没法卷批。', c:'bad' });
     if (noListen) head.push({ t:'⚠️ 同桌蒋润霖在旁边不停逗你（作孽），这节课没法认真听讲。', c:'bad' });
@@ -1421,7 +1425,7 @@
     btns.push({ text:'💬 上课聊天', cls:'',
       sub: hasTrait('危险意识') ? '危险意识：快乐 -1，但不会被记违纪；主科 50% 作业 +2'
          : hasTrait('风纪委员') ? '快乐 +2（风纪委员不会被记违纪）；主科 50% 作业 +2'
-                             : '快乐 +2，50% 违纪 +2 点；主科 50% 作业 +2',
+                             : '快乐 +2，25% 违纪 +2 点；主科 50% 作业 +2',
       onClick: ()=>resolveClass(i, raw, subj, rule, 'chat') });
 
     showStep(`📚 第 ${i+1} 节：${raw}`, head, btns);
@@ -1536,7 +1540,7 @@
           changeHappy(1, lines); G.stats.mateInteractions++;
           lines.push({ t:'· 同桌胡凯宁最会接话，快乐再 +1', c:'good' });
         }
-        if (chance(0.5)) addViolation(lines, '上课讲话');
+        if (chance(0.25)) addViolation(lines, '上课讲话');
       }
     }
 
@@ -1559,34 +1563,29 @@
     }
 
     // 提问
+    // 不认真听课（卷批 / 上课聊天）时：答对概率减半，且答对既不加快乐也不减违纪
+    const notListen = mode !== 'listen';
     const askP = clamp(askChance() * (hasTrait('强壮') ? 2 : 1), 0, 1);
     if (chance(askP)){
-      const cp = answerProb(subj, rule, mode==='roll');
+      const cp = answerProb(subj, rule, notListen);
       if (chance(cp)){
         G.stats.correct++;
-        lines.push({ t:`· 老师提问，你答上来了！（答对率 ${pct(cp)}）`, c:'good' });
-        changeHappy(1, lines);
-        lines.push({ t:'· 答对问题，快乐 +1', c:'good' });
-        if (hasTrait('强壮')){
-          changeHappy(2, lines);
-          lines.push({ t:'· 强壮：答对了让你很爽，快乐 +2', c:'good' });
-        }
-        if (G.mate.id==='liu'){
-          changeHappy(1, lines);
-          lines.push({ t:'· 同桌刘敬熙在旁边咧嘴笑：答对问题，快乐 +1', c:'good' });
-        }
-        if (rule.praiseAlways){
-          addPraise(lines, `${subj}课发言正确`);
-          lines.push({ t:'· 音乐课发言正确必被表扬', c:'sys' });
+        lines.push({ t:`· 老师提问，你答上来了！（答对率 ${pct(cp)}${notListen?'，不认真听课已减半':''}）`, c:'good' });
+        if (notListen){
+          lines.push({ t:'· 但这节课你没认真听：答对不加快乐、也不减违纪', c:'sys' });
         } else {
-          const pm = rule.praiseMult || 1;
-          const pp = clamp(PRAISE_BASE*pm, 0, 1);
-          if (chance(pp)){
-            addPraise(lines, `${subj}课积极发言`);
-            if (rule.praiseMult) lines.push({ t: probUnlocked
-              ? `· 数学积极发言：表扬概率 ${pct(PRAISE_BASE)}×10 = ${pct(pp)}`
-              : `· 数学积极发言：表扬概率大幅提升`, c:'sys' });
+          changeHappy(1, lines);
+          lines.push({ t:'· 答对问题，快乐 +1', c:'good' });
+          if (hasTrait('强壮')){
+            changeHappy(2, lines);
+            lines.push({ t:'· 强壮：答对了让你很爽，快乐 +2', c:'good' });
           }
+          if (G.mate.id==='liu'){
+            changeHappy(1, lines);
+            lines.push({ t:'· 同桌刘敬熙在旁边咧嘴笑：答对问题，快乐 +1', c:'good' });
+          }
+          // 答对必减 1 点违纪；addPraise 内已用 Math.max(0, ...) 保底，不会减到 0 以下
+          addPraise(lines, `答对${subj}课提问`);
         }
       } else {
         changeHappy(-1, lines);
@@ -1652,7 +1651,7 @@
     return m;
   }
   function tryConfession(stepName){
-    const p = clamp(G.looks*0.005*confessionMult(), 0, 1);
+    const p = clamp(G.looks*0.0075*confessionMult(), 0, 1);
     if (p<=0 || !chance(p)) return false;
     G.happy = G.happyCap;
     G.reduceBuffUntil = Math.min(10, G.day + 2);
@@ -1805,48 +1804,44 @@
       onDone(stepName, lines);
     };
   }
-  // 自动踢：沿用原来的胜率与流程，直接结算
-  function kickAutoButton(stepName){
+  // 蹴瓶子（合并入口）：主按钮 = 手动 5v5 走廊赛；下方子选项 = 自动按胜率结算
+  // 不能踢时：给一个置灰的主按钮并说明原因；贾子辰「反骨」在此课间可强行踢
+  function kickButtons(stepName, seconds){
     const why = kickBlock();
     const goalP = clamp(G.body*0.1,0,1);
     const cost = kickCost();
     const costTxt = `饥饿 -${cost}${cost===1?'（同桌万天一减半）':''}`;
+
     if (why){
       if (hasTrait('反骨') && G.noKickNextBreak){
-        const b = []; addRebel(b, 'kick'); return b[0];
+        const b = []; addRebel(b, 'kick'); return b;
       }
-      return { text:'🍾 蹴瓶子·自动', cls:'ghost', disabled:true, sub:`${why} · ${costTxt}，快乐 +2，${pct(goalP)} 进球再 +2` };
+      return [{ text:'⚽ 蹴瓶子', cls:'ghost', disabled:true,
+                sub:`${why} · ${costTxt}，快乐 +2，${pct(goalP)} 进球再 +2` }];
     }
-    return { text:`🍾 蹴瓶子·自动（${costTxt}，快乐 +2；${pct(goalP)} 进球 → 额外快乐 +2）`,
-             sub:`直接按胜率结算，跳过比赛 · 受伤概率 ${pct(injuryChance())}`,
+
+    // 主按钮：点击直接进手动比赛
+    const manual = { text:`⚽ 蹴瓶子（${seconds} 秒 5v5 走廊赛）`,
+             cls:'special',
+             sub:`自己操控踢一场 · ${costTxt}、快乐 +2，赢 +2 / 平 +1`,
+             onClick: ()=>{
+        startMatch(stepName, seconds, (sn, lines)=>{
+          showStep(sn, lines, [{ text:'继续 →', onClick: advance }]);
+        });
+    }};
+
+    // 子选项：自动蹴，沿用原来的胜率与流程，直接结算
+    const auto = { text:`🍾 自动蹴（${costTxt}，快乐 +2；${pct(goalP)} 进球 → 额外快乐 +2）`,
+             cls:'ghost',
+             sub:`不打比赛，直接按胜率结算 · 受伤概率 ${pct(injuryChance())}`,
              onClick: ()=>{
         const lines = [];
         doKick(lines);
         lines.forEach(l=>log(l.t,l.c));
         showStep(stepName, lines, [{ text:'继续 →', onClick: advance }]);
     }};
-  }
 
-  // 手动踢：进入走廊 5v5 比赛
-  function kickManualButton(stepName, seconds){
-    const why = kickBlock();
-    if (why) return null;   // 不能踢时不出现手动入口
-    const cost = kickCost();
-    return { text:`⚽ 蹴瓶子·手动（${seconds} 秒 5v5 走廊赛）`,
-             cls:'special',
-             sub:`自己操控踢一场 · 饥饿 -${cost}、快乐 +2，赢 +2 / 平 +1`,
-             onClick: ()=>{
-        startMatch(stepName, seconds, (sn, lines)=>{
-          showStep(sn, lines, [{ text:'继续 →', onClick: advance }]);
-        });
-    }};
-  }
-
-  // 两个入口一起返回；不能踢时只返回置灰的自动按钮
-  function kickButtons(stepName, seconds){
-    const auto = kickAutoButton(stepName);
-    const manual = kickManualButton(stepName, seconds);
-    return manual ? [auto, manual] : [auto];
+    return [manual, auto];
   }
 
   // ---------- 课间 ----------
@@ -2492,13 +2487,15 @@
 
     const P = (formula, plain) => probUnlocked ? `<b>${formula}</b>` : `<b>${plain}</b>`;
     s += H('📚 上课（每节）');
-    s += `· 固定 <span class="rb">饥饿 -1</span>（体育 -3、历史 -2、英语 A 班额外 -0.5）<br>`;
+    s += `· 固定 <span class="rb">饥饿 -1</span>（体育 -3、英语 A 班额外 -0.5）<br>`;
     s += `· 被点名基础概率 ${P('|颜值 - 5| × 0.15 + 0.2', '与颜值有关（越偏离 5 越容易被点名）')}（刘敬熙"强壮"→ <b>翻倍</b>）<br>`;
-    s += `· 答对概率 ${P('智力 / 15', '由智力决定')}（语文固定 <b>75%</b>；刘敬熙减半；卷批减半）<br>`;
-    s += `· 答对 <span class="rg">快乐 +1</span>（刘敬熙"强壮"额外 <span class="rg">+2</span>；同桌刘敬熙再 <span class="rg">+1</span>）；答不出 <span class="rb">快乐 -1</span><br>`;
+    s += `· 答对概率 ${P('智力 / 15', '由智力决定')}（语文固定 <b>75%</b>；刘敬熙减半；<b>不认真听课（卷批 / 聊天）减半</b>）<br>`;
+    s += `· <b>认真听课时</b>答对：<span class="rg">快乐 +1</span> 且 <span class="rg">违纪 -1</span>（刘敬熙"强壮"额外 <span class="rg">快乐 +2</span>；同桌刘敬熙再 <span class="rg">+1</span>）<br>`;
+    s += `· <b>不认真听课时</b>答对：不加快乐、也不减违纪（白答对）；答不出 <span class="rb">快乐 -1</span><br>`;
+    s += `· 违纪点数减到 0 就停，不会变成负数<br>`;
     s += `· <b>认真听课</b>：<b>5%</b> 智力永久 +1；<b>智力 &lt; 7 时为 10%</b><br>`;
-    s += `· <b>卷批</b>（语文 / 英语 / 物理 / 政治不让卷）：答对率<b>减半</b>，<span class="rb">快乐 -2</span>，<span class="rg">作业 -2~4</span><br>`;
-    s += `· <b>上课聊天</b>：<span class="rg">快乐 +2</span>，<b>50%</b> 违纪（+2 点）；<b>胡凯宁"危险意识"</b>→ <span class="rb">快乐 -1</span> 但<b>不会被记违纪</b><br>`;
+    s += `· <b>卷批</b>（语文 / 英语 / 物理 / 政治不让卷）：答对率<b>减半</b>、答对无奖励，<span class="rb">快乐 -2</span>，<span class="rg">作业 -2~4</span><br>`;
+    s += `· <b>上课聊天</b>：<span class="rg">快乐 +2</span>，<b>25%</b> 违纪（+2 点），答对率<b>减半</b>且答对无奖励；<b>胡凯宁"危险意识"</b>→ <span class="rb">快乐 -1</span> 但<b>不会被记违纪</b><br>`;
     s += `· <b>不听课（卷批或聊天）且该课是主科 → 50% 作业 +2</b><br>`;
     s += `· 主科（语数英物化）当天第一节布置作业 <span class="rb">+1~3</span>；<b>政治 / 历史作业量减半</b>（上取整）<br>`;
     s += `· 贾子辰"好饿"：额外 <span class="rb">饥饿 -1</span>；本人<b>每天智力永久 +1</b><br>`;
@@ -2507,20 +2504,20 @@
 
     s += H('📐 科目特性');
     s += `· <b>语文</b>：<span class="rb">快乐 -2</span>，答对概率增大到 <b>75%</b>，不能卷批<br>`;
-    s += `· <b>数学</b>：<span class="rb">快乐 -1</span>，<b>50%</b> 拖堂 → 取消下个课间；积极发言被表扬概率${probUnlocked ? `<b> ×10</b>（5% → 50%）` : `<b>大幅提升</b>`}<br>`;
+    s += `· <b>数学</b>：<span class="rb">快乐 -1</span>，<b>50%</b> 拖堂 → 取消下个课间<br>`;
     s += `· <b>英语</b>：A 班跑班 <span class="rb">额外饥饿 -0.5</span>；<span class="rb">快乐 -1</span>，不能卷批<br>`;
     s += `· <b>物理</b>：<span class="rb">快乐 -1</span>，不能卷批<br>`;
     s += `· <b>化学</b>：<span class="rb">快乐 -1</span>，<b>50%</b> 做实验 <span class="rg">快乐 +1~2</span><br>`;
-    s += `· <b>音乐</b>：<span class="rg">快乐 +0~4</span>，<b>发言正确必被表扬</b><br>`;
+    s += `· <b>音乐</b>：<span class="rg">快乐 +0~4</span><br>`;
     s += `· <b>美术</b>：<span class="rg">快乐 +0~4</span>（朱凌初额外 +1）<br>`;
     s += `· <b>体育</b>：男生 <span class="rg">+2~8</span>，女生 <span class="rb">-2~+1</span>；<span class="rb">饥饿 -3</span>；<b>50% 练体能</b>——此时若<b>认真听课</b>：<span class="rb">快乐 -2、饥饿 -2、体力永久 +2</span>，并按蹴瓶子同样的概率<b>受伤</b><br>`;
-    s += `· <b>历史</b>：<span class="rb">快乐 -1</span>，额外 <span class="rb">饥饿 -1</span>，作业减半<br>`;
+    s += `· <b>历史</b>：<span class="rb">快乐 -1</span>，作业减半<br>`;
     s += `· <b>政治</b>：<span class="rg">快乐 +1</span>，相邻课间<b>不能蹴瓶子</b>，不能卷批，作业减半<br>`;
     s += `· <b>班会</b>：相邻课间<b>不能蹴瓶子</b><br>`;
     s += `（"语辅 / 数辅 / 物辅 / 化辅 / 数学1 / 英语1"按对应主科处理）`;
 
     s += H('☕ 课间（每节课后）');
-    s += `· 被表白：概率 ${P('颜值 × 0.005 × 倍率', '由颜值决定，另有倍率加成')}（困难减半；朱凌初 ×4；徐悠然同桌 ×2）→ <span class="rg">快乐回满</span> + <b>今日起三天内快乐减小量减半</b>（下取整）<br>`;
+    s += `· 被表白：概率 ${P('颜值 × 0.0075 × 倍率', '由颜值决定，另有倍率加成')}（困难减半；朱凌初 ×4；徐悠然同桌 ×2）→ <span class="rg">快乐回满</span> + <b>今日起三天内快乐减小量减半</b>（下取整）<br>`;
     s += `· 被侮辱：概率 ${P('0.01 × (10 - 颜值)', '颜值越低越容易被侮辱')} → <span class="rb">快乐 -5</span><br>`;
     s += `· 发呆：无变化（陈仰正同桌徐悠然 → <span class="rg">快乐 +1</span>）<br>`;
     s += `· <b>游走</b>：<span class="rb">饥饿 -1</span>，并<b>分开独立判定</b>（可叠加）：<b>40%</b> 遇见同学 <span class="rg">快乐 +1</span>、<b>25%</b> 蹭吃蹭喝 <span class="rg">饥饿 +2</span>、<b>2%</b> 撞见表白 <span class="rg">快乐 +5</span><br>`;
