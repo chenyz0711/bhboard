@@ -1,30 +1,24 @@
 // ============================================================
 // BHBoard 共享主题模块（默认 / 浅色 / 深色）
 //
-// 设计原则：
-// 1. 默认模式（default）不注入任何样式，各页面严格保持原有配色
+// 设计原则（显式调色板版）：
+// 1. 不做任何"视觉反转"。浅色 / 深色都是直接写死的调色板，
+//    颜色是设计出来的、可预测的，不依赖各页原有 CSS 的具体取值。
+// 2. 默认模式（default）不注入任何样式，各页面严格保持原有配色
 //    （南外生存蓝、管理与轮盘赌深色等一律不变）。
-// 2. 只有当「目标模式」与「该页原本的深浅」不一致时才注入覆盖样式，
-//    一致时同样一行都不注入，把影响面降到最小。
-// 3. 不修改任何页面原有 CSS，而是读取现有样式表、按亮度反转生成
-//    一份覆盖表追加到 head 末尾（同特异性、后者胜出）。
-//    原样式表保持不动，因此来回切换主题不会累积误差。
-// 4. 半透明颜色（alpha < 0.9，如遮罩、阴影）保持原样，
-//    否则照片大图的黑遮罩会变成白遮罩。
+// 3. 页面渲染时读取用户当前模式：把 data-bh-theme 挂在 <html> 上，
+//    注入的覆盖样式全部以 html[data-bh-theme="x"] 为前缀。
+//    因此同一份样式表能让每页在加载 / 切换时都按当前模式取色。
+// 4. 选择器只用全站真实存在的结构类（.container/.card/.header/...
+//    及各页特有类），命中面广且不会误伤。
 //
 // 对外接口：window.BHTheme = { get, set, apply, MODES }
 // 用法：BHTheme.set('light') 立即生效并写入 localStorage，全站共享。
 // ============================================================
 (function () {
   const KEY = 'bh_theme';
-  const STYLE_ID = 'bh-theme-override';
+  const STYLE_ID = 'bh-theme-palette';
   const MODES = ['default', 'light', 'dark'];
-
-  // 当前是否需要反转（目标模式与该页原本深浅不一致）
-  let shouldInvert = false;
-  // 行内 style 的原始颜色备份：反转是有损操作，必须基于原值重算，
-  // 否则「默认 → 浅色 → 深色」来回切会累积反转、颜色越切越离谱
-  const origInline = new WeakMap();
 
   // ---------- 存取 ----------
   function get() {
@@ -39,228 +33,203 @@
     apply();
   }
 
-  // ---------- 颜色工具 ----------
-  // 匹配 CSS 里的颜色片段：#rgb / #rgba / #rrggbb / #rrggbbaa / rgb() / rgba()
-  const COLOR_RE = /#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b|rgba?\([^)]*\)/g;
-  // 只处理这些属性，避免动到布局（宽高、间距等）
-  const PROP_RE = /(color|background|border|shadow|outline|fill|stroke)/i;
-
-  function parseColor(tok) {
-    tok = String(tok).trim();
-    let m;
-    if ((m = /^#([0-9a-fA-F]{3,8})$/.exec(tok))) {
-      let h = m[1];
-      if (h.length === 3 || h.length === 4) {
-        h = h.split('').map(c => c + c).join('');
-      }
-      const r = parseInt(h.slice(0, 2), 16);
-      const g = parseInt(h.slice(2, 4), 16);
-      const b = parseInt(h.slice(4, 6), 16);
-      const a = h.length === 8 ? parseInt(h.slice(6, 8), 16) / 255 : 1;
-      if ([r, g, b].some(isNaN)) return null;
-      return { r, g, b, a };
+  // ============================================================
+  // 调色板：每种模式一套显式颜色。键是语义角色，值是 CSS 颜色。
+  // 想调整某个模式的整体观感，只改这里即可，不涉及任何算法。
+  // ============================================================
+  const PALETTES = {
+    light: {
+      scheme: 'light',
+      pageBg: '#f2f4f7',          // 页面底色
+      pageText: '#1f2430',        // 正文主色
+      cardBg: '#ffffff',          // 卡片 / 面板底
+      cardText: '#1f2430',
+      cardBorder: '#e2e6ee',
+      headerBg: '#ffffff',
+      headerText: '#1f2430',
+      footerText: '#98a0b3',
+      subText: '#6b7280',         // 次级说明文字
+      inputBg: '#ffffff',
+      inputText: '#1f2430',
+      inputBorder: '#d5dae4',
+      btnBg: '#2d3348',
+      btnText: '#ffffff',
+      btnBorder: 'transparent',
+      btnGhostBg: 'transparent',
+      btnGhostText: '#2d3348',
+      btnGhostBorder: '#c7cede',
+      accentBg: '#3b5bdb',        // 强调 / 选中
+      accentText: '#ffffff',
+      goldBg: '#c99a2e',
+      goldText: '#ffffff',
+      dangerBg: '#d6455b',
+      dangerText: '#ffffff',
+      rowHover: '#f5f7fb',
+      dotOn: '#37b24d',
+      dotOff: '#adb5bd',
+      iframeBg: '#ffffff'
+    },
+    dark: {
+      scheme: 'dark',
+      pageBg: '#0f1219',
+      pageText: '#e6e8ee',
+      cardBg: '#1a1f2b',
+      cardText: '#e6e8ee',
+      cardBorder: '#2a3140',
+      headerBg: '#141824',
+      headerText: '#e6e8ee',
+      footerText: '#6b7280',
+      subText: '#9aa3b2',
+      inputBg: '#0f1219',
+      inputText: '#e6e8ee',
+      inputBorder: '#2a3140',
+      btnBg: '#e6e8ee',
+      btnText: '#12151d',
+      btnBorder: 'transparent',
+      btnGhostBg: 'transparent',
+      btnGhostText: '#e6e8ee',
+      btnGhostBorder: '#3a4356',
+      accentBg: '#5c7cfa',
+      accentText: '#0b0e14',
+      goldBg: '#e0b458',
+      goldText: '#12151d',
+      dangerBg: '#f0657a',
+      dangerText: '#12151d',
+      rowHover: '#232a38',
+      dotOn: '#51cf66',
+      dotOff: '#495057',
+      iframeBg: '#0f1219'
     }
-    if ((m = /^rgba?\(([^)]*)\)$/.exec(tok))) {
-      const parts = m[1].split(/[\s,\/]+/).filter(x => x !== '');
-      if (parts.length < 3) return null;
-      const num = v => v.endsWith('%') ? Math.round(parseFloat(v) * 2.55) : Math.round(parseFloat(v));
-      const r = num(parts[0]), g = num(parts[1]), b = num(parts[2]);
-      const a = parts.length >= 4 ? parseFloat(parts[3]) : 1;
-      if ([r, g, b].some(isNaN) || isNaN(a)) return null;
-      return { r, g, b, a };
+  };
+
+  // ============================================================
+  // 由调色板生成一份完整覆盖样式表。
+  // 所有选择器都以 html[data-bh-theme="MODE"] 为前缀，
+  // 且用 !important 压过各页内联的硬编码颜色。
+  // ============================================================
+  function buildCss(mode) {
+    const p = PALETTES[mode];
+    if (!p) return '';
+    const R = `html[data-bh-theme="${mode}"]`;   // 前缀
+
+    // 结构选择器：全站真实存在的类（来自各页 class 词表提取）
+    const cardSel = [
+      '.card','.panel','.log-panel','.login-box','.auth-box','.overlay-card',
+      '.confirm-box','.rules-box','.unlock-box','.admin-unlock','.cu-box',
+      '.char-card','.diff-card','.mate-card','.menu-card','.mp-item',
+      '.msg-item','.log-item','.wall-item','.match-row','.notice-body','.node'
+    ].join(',');
+
+    const subSel = [
+      '.sub','.menu-desc','.msg-time','.log-date','.row-meta','.empty-tip',
+      '.empty','.tip','.send-tip','.quota-tip','.refresh-tip','.waiting-tip',
+      '.stale-tip','.notice-tip','.notice-meta','.docs-note','.subtitle',
+      '.auth-hint','.meta','.mp-item-meta','.mp-time','.desc','.choice-sub','.mp-sub'
+    ].join(',');
+
+    const btnSel = ['.btn-main','.btn','.btn-send','.btn-auth','.act-btn',
+      '.action-btn','.propose-btn','.punch-btn','.match-btn','.back-btn','.mp-add'].join(',');
+
+    const btnGhostSel = ['.btn-ghost','.link-btn','.logout-btn','.back','.btn-small'].join(',');
+
+    const inputSel = ['input','textarea','select','.name-input','.unlock-input'].join(',');
+
+    const goldSel = ['.btn-gold','.gold','.admin-tag','.title-badge'].join(',');
+    const dangerSel = ['.danger','.wall-del','.lightbox-del','.mp-del','.row-actions .del'].join(',');
+    const accentSel = ['.btab.active','.active','.theme-btn.on','.diff-card.sel','.char-card.sel','.on'].join(',');
+
+    return [
+      // --- 页面底色 / 正文 ---
+      `${R}{color-scheme:${p.scheme};}`,
+      `${R} body,${R} .container,${R} .wrap,${R} .stage-wrap{`,
+      `  background:${p.pageBg} !important;color:${p.pageText} !important;}`,
+      `${R}{background:${p.pageBg} !important;}`,   // html 元素本身，避免 overscroll 露出原色
+
+      // --- 页头 / 页脚 ---
+      `${R} .header,${R} .msg-top,${R} .chat-bar{`,
+      `  background:${p.headerBg} !important;color:${p.headerText} !important;`,
+      `  border-color:${p.cardBorder} !important;}`,
+      `${R} .header *,${R} .header-right *{color:inherit;}`,
+      `${R} .footer{color:${p.footerText} !important;}`,
+
+      // --- 卡片 / 面板 ---
+      `${R} ${cardSel}{`,
+      `  background:${p.cardBg} !important;color:${p.cardText} !important;`,
+      `  border-color:${p.cardBorder} !important;box-shadow:none !important;}`,
+
+      // --- 次级文字 ---
+      `${R} ${subSel}{color:${p.subText} !important;}`,
+
+      // --- 输入框 ---
+      `${R} ${inputSel}{`,
+      `  background:${p.inputBg} !important;color:${p.inputText} !important;`,
+      `  border-color:${p.inputBorder} !important;}`,
+      `${R} ${inputSel}::placeholder{color:${p.subText} !important;opacity:.8;}`,
+
+      // --- 按钮 ---
+      `${R} ${btnSel}{`,
+      `  background:${p.btnBg} !important;color:${p.btnText} !important;`,
+      `  border-color:${p.btnBorder} !important;}`,
+      `${R} ${btnGhostSel}{`,
+      `  background:${p.btnGhostBg} !important;color:${p.btnGhostText} !important;`,
+      `  border-color:${p.btnGhostBorder} !important;}`,
+      `${R} ${goldSel}{background:${p.goldBg} !important;color:${p.goldText} !important;`,
+      `  border-color:${p.goldBg} !important;}`,
+      `${R} ${dangerSel}{background:${p.dangerBg} !important;color:${p.dangerText} !important;`,
+      `  border-color:${p.dangerBg} !important;}`,
+      `${R} ${accentSel}{background:${p.accentBg} !important;color:${p.accentText} !important;`,
+      `  border-color:${p.accentBg} !important;}`,
+      `${R} .disabled,${R} [disabled]{opacity:.5 !important;}`,
+
+      // --- 列表行 / 表格 ---
+      `${R} .row:hover,${R} .mp-item:hover,${R} .log-item:hover,${R} .msg-item:hover{`,
+      `  background:${p.rowHover} !important;}`,
+      `${R} th{color:${p.subText} !important;border-color:${p.cardBorder} !important;}`,
+      `${R} td{border-color:${p.cardBorder} !important;color:${p.cardText} !important;}`,
+
+      // --- 状态点 ---
+      `${R} .dot.on,${R} .dot[style*="37b24d"]{background:${p.dotOn} !important;}`,
+      `${R} .dot.off{background:${p.dotOff} !important;}`,
+
+      // --- iframe 承载的架构文档：底色跟随，避免白块 ---
+      `${R} .docs-frame,${R} iframe{background:${p.iframeBg} !important;}`
+    ].join('\n');
+  }
+
+  // ============================================================
+  // 行内颜色：页面里有些颜色写在 style="..." 上（如状态点、进度条），
+  // CSS 覆盖不到。这里对常见的行内背景/边框色做定向替换。
+  // 备份原值，切回默认模式时还原，避免累积。
+  // ============================================================
+  const origInline = new WeakMap();
+
+  // 只重映射这些行内属性里的颜色
+  const INLINE_PROPS = ['background', 'background-color', 'border-color', 'color'];
+  // 简单色名/十六进制映射：深底↔浅底、深字↔浅字
+  // 注意：靠传入的属性名 prop 判断这是文字色还是背景/边框色，
+  // 不能用颜色值本身判断（颜色值里不含 "color" 字样）。
+  function inlineColorFor(v, mode, prop) {
+    if (!v) return v;
+    const p = PALETTES[mode];
+    if (!p) return v;
+    // 仅处理纯颜色值，不动渐变/多值（那些交给 CSS 层）
+    const hex = /^#([0-9a-fA-F]{3,8})$/.exec(v.trim());
+    if (!hex) return v;
+    let h = hex[1];
+    if (h.length === 3 || h.length === 4) h = h.split('').map(c => c + c).join('');
+    const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+    if ([r,g,b].some(isNaN)) return v;
+    const lum = (0.2126*r + 0.7152*g + 0.0722*b) / 255;
+    const isDark = lum < 0.5;
+    const isTextColor = (prop === 'color');
+    if (isTextColor) {
+      // 文字色：原本深字→浅模式用正文色，原本浅字→用卡片正文色
+      return isDark ? p.pageText : p.cardText;
     }
-    return null;
+    // 背景/边框色：深底→卡片底，浅底→页面底
+    return isDark ? p.cardBg : p.pageBg;
   }
 
-  function rgb2hsl(r, g, b) {
-    r /= 255; g /= 255; b /= 255;
-    const max = Math.max(r, g, b), min = Math.min(r, g, b);
-    const l = (max + min) / 2;
-    let h = 0, s = 0;
-    const d = max - min;
-    if (d > 1e-9) {
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-      if (max === r) h = ((g - b) / d + (g < b ? 6 : 0));
-      else if (max === g) h = ((b - r) / d + 2);
-      else h = ((r - g) / d + 4);
-      h /= 6;
-    }
-    return { h: h * 360, s, l: l * 100 };
-  }
-
-  function hsl2rgb(h, s, l) {
-    h = ((h % 360) + 360) % 360 / 360; s = Math.max(0, Math.min(1, s)); l = Math.max(0, Math.min(100, l)) / 100;
-    if (s < 1e-9) { const v = Math.round(l * 255); return { r: v, g: v, b: v }; }
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    const p = 2 * l - q;
-    const conv = t => {
-      if (t < 0) t += 1; if (t > 1) t -= 1;
-      if (t < 1 / 6) return p + (q - p) * 6 * t;
-      if (t < 1 / 2) return q;
-      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-      return p;
-    };
-    return { r: Math.round(conv(h + 1 / 3) * 255), g: Math.round(conv(h) * 255), b: Math.round(conv(h - 1 / 3) * 255) };
-  }
-
-  function toCss(c) {
-    const hex = v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
-    const dec = v => Math.max(0, Math.min(255, Math.round(v)));
-    if (c.a >= 1) return `#${hex(c.r)}${hex(c.g)}${hex(c.b)}`;
-    return `rgba(${dec(c.r)}, ${dec(c.g)}, ${dec(c.b)}, ${Math.round(c.a * 1000) / 1000})`;
-  }
-
-  // 亮度反转：保留色相与饱和度，只把明度 L 翻到对面，并按中性色 / 彩色分别限幅，
-  // 避免纯黑纯白过硬、或强调色反转后暗到看不清
-  function invertColor(c) {
-    if (c.a < 0.9) return c;              // 遮罩 / 阴影保持原样
-    const hsl = rgb2hsl(c.r, c.g, c.b);
-    const neutral = hsl.s < 0.12;
-    const lo = neutral ? 6 : 20;
-    const hi = neutral ? 96 : 80;
-    const nl = Math.max(lo, Math.min(hi, 100 - hsl.l));
-    const rgb = hsl2rgb(hsl.h, hsl.s, nl);
-    return { r: rgb.r, g: rgb.g, b: rgb.b, a: c.a };
-  }
-
-  function remapValue(v) {
-    return String(v).replace(COLOR_RE, tok => {
-      const c = parseColor(tok);
-      if (!c) return tok;
-      const n = invertColor(c);
-      if (n === c) return tok;
-      return toCss(n);
-    });
-  }
-
-  // 相对亮度（0~1），用于判断某页原本是深色还是浅色
-  function luminance(c) {
-    const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
-    return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b);
-  }
-
-  // 取颜色串里的第一个颜色算亮度。
-  // 必须用不带 g 标志的正则：COLOR_RE 带 g，exec 会受 lastIndex 残留影响而漏匹配。
-  const FIRST_COLOR_RE = /#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)/;
-  function valueLuminance(v) {
-    const m = FIRST_COLOR_RE.exec(String(v));
-    if (!m) return null;
-    const c = parseColor(m[0]);
-    return c ? luminance(c) : null;
-  }
-
-  // ---------- 识别本样式表是否是我们注入的 ----------
-  function isOwnSheet(ss) {
-    const node = ss.ownerNode;
-    return !!(node && node.id === STYLE_ID);
-  }
-
-  function eachSheet(fn) {
-    const sheets = document.styleSheets;
-    for (let i = 0; i < sheets.length; i++) {
-      const ss = sheets[i];
-      if (isOwnSheet(ss)) continue;
-      let rules;
-      try { rules = ss.cssRules; } catch (e) { continue; }   // 跨域样式表读不到就跳过
-      if (!rules) continue;
-      fn(rules);
-    }
-  }
-
-  // 命中 body / html,body / html body 这类选择器
-  const BODY_SEL_RE = /(^|,)\s*(html\s+)?body\s*(,|$)/;
-
-  // ---------- 判断该页原本是深色还是浅色 ----------
-  function detectNatural() {
-    let found = 'light';
-    eachSheet(rules => {
-      for (let i = 0; i < rules.length; i++) {
-        const r = rules[i];
-        if (!r.selectorText || !r.style) continue;
-        if (!BODY_SEL_RE.test(r.selectorText)) continue;
-        const v = r.style.getPropertyValue('background') || r.style.getPropertyValue('background-color');
-        if (!v) continue;
-        const lum = valueLuminance(v);
-        if (lum === null) continue;
-        found = lum < 0.5 ? 'dark' : 'light';
-        return;
-      }
-    });
-    return found;
-  }
-
-  // ---------- 生成覆盖样式表 ----------
-  // 还原 at-rule 前缀：@media / @supports / @keyframes / @layer 都适用。
-  // 优先取 cssText 里第一个 '{' 之前的部分（at-rule 前缀中不会含 '{'），
-  // 读不到 cssText 时再按类型回退，保证在各种环境下都能正确还原。
-  function atRuleHead(r) {
-    const t = r.cssText || '';
-    const i = t.indexOf('{');
-    if (i > 0) return t.slice(0, i).trim();
-    if (r.media && r.media.mediaText) return `@media ${r.media.mediaText}`;
-    if (r.name) return `@keyframes ${r.name}`;
-    if (r.conditionText) return `@supports ${r.conditionText}`;
-    return '';
-  }
-
-  // 递归收集规则文本并返回数组。分组规则保留外层前缀，
-  // 这样响应式断点与动画关键帧在主题模式下依然生效。
-  function walk(rules) {
-    const buf = [];
-    for (let i = 0; i < rules.length; i++) {
-      const r = rules[i];
-      // 普通规则用 selectorText，@keyframes 内部的关键帧用 keyText
-      const sel = r.selectorText || r.keyText;
-      if (sel && r.style) {
-        const decls = [];
-        for (let j = 0; j < r.style.length; j++) {
-          const p = r.style[j];
-          if (!PROP_RE.test(p)) continue;
-          const v = r.style.getPropertyValue(p);
-          if (!v) continue;
-          const nv = remapValue(v);
-          if (nv === v) continue;
-          const prio = r.style.getPropertyPriority(p);
-          decls.push(`${p}:${nv}${prio ? ' !' + prio : ''}`);
-        }
-        if (decls.length) buf.push(`${sel}{${decls.join(';')}}`);
-      } else if (r.cssRules && r.cssRules.length) {
-        const inner = walk(r.cssRules);
-        if (!inner.length) continue;
-        const head = atRuleHead(r);
-        if (head) buf.push(`${head}{${inner.join('')}}`);
-        else buf.push(inner.join(''));
-      }
-    }
-    return buf;
-  }
-
-  function buildOverride() {
-    const out = [];
-    eachSheet(rules => { out.push.apply(out, walk(rules)); });
-
-    // html 背景跟着 body 走，避免 overscroll 露出原色
-    let bodyBg = null;
-    eachSheet(rules => {
-      if (bodyBg) return;
-      for (let i = 0; i < rules.length; i++) {
-        const r = rules[i];
-        if (!r.selectorText || !r.style) continue;
-        if (!BODY_SEL_RE.test(r.selectorText)) continue;
-        const v = r.style.getPropertyValue('background-color') || r.style.getPropertyValue('background');
-        if (!v) continue;
-        const m = FIRST_COLOR_RE.exec(v);
-        if (m) { bodyBg = remapValue(m[0]); return; }
-      }
-    });
-
-    const mode = get();
-    const head = [`:root{color-scheme:${mode}}`];
-    if (bodyBg) head.push(`html{background-color:${bodyBg}}`);
-    return head.concat(out).join('\n');
-  }
-
-  // ---------- 行内 style 处理 ----------
   function captureInline(el) {
     if (origInline.has(el)) return origInline.get(el);
     const st = el.style;
@@ -268,11 +237,11 @@
     const saved = {};
     let any = false;
     for (let i = 0; i < st.length; i++) {
-      const p = st[i];
-      if (!PROP_RE.test(p)) continue;
-      const v = st.getPropertyValue(p);
-      if (!v || !FIRST_COLOR_RE.test(v)) continue;
-      saved[p] = { v: v, prio: st.getPropertyPriority(p) };
+      const pr = st[i];
+      if (INLINE_PROPS.indexOf(pr) < 0) continue;
+      const v = st.getPropertyValue(pr);
+      if (!v || !/^#[0-9a-fA-F]{3,8}$/.test(v.trim())) continue;
+      saved[pr] = { v: v, prio: st.getPropertyPriority(pr) };
       any = true;
     }
     if (!any) return null;
@@ -280,6 +249,7 @@
     return saved;
   }
 
+  let currentMode = 'default';
   function processInline(root) {
     if (!root || root.nodeType !== 1) return;
     const targets = [];
@@ -292,16 +262,17 @@
       const el = targets[i];
       const saved = captureInline(el);
       if (!saved) continue;
-      for (const p in saved) {
-        const orig = saved[p];
-        const next = shouldInvert ? remapValue(orig.v) : orig.v;
-        try { el.style.setProperty(p, next, orig.prio || ''); } catch (e) {}
+      for (const pr in saved) {
+        const orig = saved[pr];
+        const next = currentMode === 'default'
+          ? orig.v
+          : inlineColorFor(orig.v, currentMode, pr);
+        try { el.style.setProperty(pr, next, orig.prio || ''); } catch (e) {}
       }
     }
   }
 
-  let mo = null;
-  let queued = false;
+  let mo = null, queued = false;
   function observeInline() {
     if (mo || !document.body || typeof MutationObserver === 'undefined') return;
     mo = new MutationObserver(records => {
@@ -319,44 +290,38 @@
   }
 
   // ---------- 应用 ----------
-  function removeOverride() {
-    const old = document.getElementById(STYLE_ID);
-    if (old && old.parentNode) old.parentNode.removeChild(old);
+  function ensureStyleEl() {
+    let st = document.getElementById(STYLE_ID);
+    if (!st) {
+      st = document.createElement('style');
+      st.id = STYLE_ID;
+      (document.head || document.documentElement).appendChild(st);
+    }
+    return st;
   }
 
   function apply() {
     const mode = get();
+    currentMode = mode;
     const root = document.documentElement;
     if (root) root.setAttribute('data-bh-theme', mode);
 
-    removeOverride();
-
+    const st = ensureStyleEl();
     if (mode === 'default') {
-      shouldInvert = false;
-      processInline(document.body);      // 还原此前被反转过的行内颜色
+      st.textContent = '';                 // 默认：清空覆盖，各页恢复原样
       if (root) root.style.removeProperty('color-scheme');
-      return;
-    }
-
-    const natural = detectNatural();
-    shouldInvert = (natural !== mode);
-
-    if (shouldInvert) {
-      const css = buildOverride();
-      const st = document.createElement('style');
-      st.id = STYLE_ID;
-      st.appendChild(document.createTextNode(css));
-      (document.head || root).appendChild(st);
+    } else {
+      st.textContent = buildCss(mode);     // 浅色/深色：注入显式调色板
     }
     processInline(document.body);
-    observeInline();
+    if (mode !== 'default') observeInline();
   }
 
-  // 首次执行：head 内即可（样式表此时已解析），避免先闪一下原配色
+  // 首次执行：head 内即可，避免先闪一下原配色
   apply();
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => { apply(); });
   }
 
-  window.BHTheme = { get: get, set: set, apply: apply, MODES: MODES, detectNatural: detectNatural };
+  window.BHTheme = { get: get, set: set, apply: apply, MODES: MODES, PALETTES: PALETTES };
 })();
