@@ -192,6 +192,10 @@
   .cu-btn:disabled { opacity:.35; cursor:not-allowed; }
   .cu-sub { font-size:12.5px; color:#8892b0; margin:14px 0 8px; }
   .cu-cost { color:#ff9f9f; } .cu-refund { color:#7ee2a8; }
+  .cu-group-title { font-size:12.5px; font-weight:700; margin:12px 0 7px; padding-left:2px; }
+  .cu-group-title.pos { color:#7ee2a8; }
+  .cu-group-title.neg { color:#ff9f9f; }
+  .cu-group-title:first-of-type { margin-top:4px; }
   .cu-trait-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:7px; }
   .cu-trait { background:#0f1828; border:1px solid #2b3a52; border-radius:9px; padding:7px 9px;
     cursor:pointer; font-size:12px; color:#c8d3e8; line-height:1.5; transition:.12s; }
@@ -274,7 +278,10 @@
         <div class="cu-attr" id="cu-int"></div>
 
         <div class="cu-sub">已选特点（点击切换；<span class="cu-cost">负数=花点</span>，<span class="cu-refund">正数=返点</span>）</div>
-        <div class="cu-trait-grid" id="cu-traits"></div>
+        <div class="cu-group-title pos">✅ 正面特点 · 要花属性点</div>
+        <div class="cu-trait-grid" id="cu-traits-pos"></div>
+        <div class="cu-group-title neg">⚠️ 负面特点 · 返还属性点</div>
+        <div class="cu-trait-grid" id="cu-traits-neg"></div>
 
         <div class="cu-sum" id="cu-sum"></div>
       </div>
@@ -1558,6 +1565,8 @@
       if (chance(cp)){
         G.stats.correct++;
         lines.push({ t:`· 老师提问，你答上来了！（答对率 ${pct(cp)}）`, c:'good' });
+        changeHappy(1, lines);
+        lines.push({ t:'· 答对问题，快乐 +1', c:'good' });
         if (hasTrait('强壮')){
           changeHappy(2, lines);
           lines.push({ t:'· 强壮：答对了让你很爽，快乐 +2', c:'good' });
@@ -2339,8 +2348,13 @@
   }
 
   function cuRenderTraits(){
-    const grid = $('cu-traits');
-    grid.innerHTML = '';
+    // 正面特点 = 定价为负（buff，要花点）；负面特点 = 定价为正（debuff，返点）
+    // 两组分开渲染，组内保持特点池原有顺序，不做任何重排
+    const posGrid = $('cu-traits-pos');
+    const negGrid = $('cu-traits-neg');
+    posGrid.innerHTML = '';
+    negGrid.innerHTML = '';
+
     cu.pool.forEach(t=>{
       const cell = document.createElement('div');
       const on = cu.traits.has(t.name);
@@ -2365,7 +2379,7 @@
           cuRenderAttrs(); cuRenderTraits(); cuRenderSum();
         };
       }
-      grid.appendChild(cell);
+      (t.pts < 0 ? posGrid : negGrid).appendChild(cell);
     });
   }
 
@@ -2481,7 +2495,7 @@
     s += `· 固定 <span class="rb">饥饿 -1</span>（体育 -3、历史 -2、英语 A 班额外 -0.5）<br>`;
     s += `· 被点名基础概率 ${P('|颜值 - 5| × 0.15 + 0.2', '与颜值有关（越偏离 5 越容易被点名）')}（刘敬熙"强壮"→ <b>翻倍</b>）<br>`;
     s += `· 答对概率 ${P('智力 / 15', '由智力决定')}（语文固定 <b>75%</b>；刘敬熙减半；卷批减半）<br>`;
-    s += `· 答对<b>无快乐奖励</b>（刘敬熙例外：<span class="rg">+2</span>）；答不出 <span class="rb">快乐 -1</span><br>`;
+    s += `· 答对 <span class="rg">快乐 +1</span>（刘敬熙"强壮"额外 <span class="rg">+2</span>；同桌刘敬熙再 <span class="rg">+1</span>）；答不出 <span class="rb">快乐 -1</span><br>`;
     s += `· <b>认真听课</b>：<b>5%</b> 智力永久 +1；<b>智力 &lt; 7 时为 10%</b><br>`;
     s += `· <b>卷批</b>（语文 / 英语 / 物理 / 政治不让卷）：答对率<b>减半</b>，<span class="rb">快乐 -2</span>，<span class="rg">作业 -2~4</span><br>`;
     s += `· <b>上课聊天</b>：<span class="rg">快乐 +2</span>，<b>50%</b> 违纪（+2 点）；<b>胡凯宁"危险意识"</b>→ <span class="rb">快乐 -1</span> 但<b>不会被记违纪</b><br>`;
@@ -2615,6 +2629,23 @@
   $('unlock-input').addEventListener('keydown', e=>{ if (e.key === 'Enter') tryUnlockProb(); });
 
   $('btn-confirm-start').addEventListener('click', ()=>{ if (pendingMate) startGame(pickedChar.id, pendingMate); });
+
+  // ---------- 徐锴锐：自选完成 / 返回 ----------
+  // 这两个按钮此前漏了事件绑定，点了没反应；同时 customBuild 也从未被赋值
+  $('btn-custom-ok').addEventListener('click', ()=>{
+    if (!cu || cuPointsLeft() < 0) return;   // 点数为负不允许继续
+    customBuild = {
+      looks: cu.looks,
+      body: cu.body,
+      intelligence: cu.intelligence,
+      traits: [...cu.traits]                 // Set → 数组，startGame 读的是数组
+    };
+    mateRerolls = 0;
+    pendingMate = null;
+    if (pickedChar.canChooseMate){ renderMateSelect(); showScreen('scr-mate'); }
+    else { randomMateAndConfirm(); }          // 徐锴锐走随机分配 + 确认界面（可换 3 次）
+  });
+  $('btn-custom-back').addEventListener('click', ()=>{ renderCharSelect(); showScreen('scr-char'); });
   $('btn-confirm-back').addEventListener('click', ()=>{
     if (pickedChar.canChooseMate){ renderMateSelect(); showScreen('scr-mate'); }
     else { rerollMate(); }
