@@ -12,6 +12,7 @@
     GM_T: 62, GM_B: 158, GM_C: 110,   // 球门口上沿/下沿/中心（已加宽：原 80/140）
     PR: 11, BR: 7,                    // 球员 / 瓶子半径
     BASE_SPEED: 3.0,                  // 标准速度（原 2.0，基础移速提速 1.5 倍）
+    AI_SPEED_MUL: 0.75,               // 除玩家操控者外，其余角色移速 ×0.75
     SHOOT_POWER: 7.5,
     GK_SAVE_P: 0.7,                   // 门将守住概率
     STEAL_BASE: 0.25,                 // 抢断基础概率（体力 0 时的成功率）
@@ -52,7 +53,9 @@
   }
 
   function mkPlayer(c, team, isGK, isUser, x, y) {
-    return { c, team, isGK, isUser, x, y, speed: matchSpeed(c.body), cd: 0, hx: x, hy: y };
+    // 玩家操控者用标准速度，其余角色（含队友与对手）一律 ×0.75
+    const speed = matchSpeed(c.body) * (isUser ? 1 : CONST.AI_SPEED_MUL);
+    return { c, team, isGK, isUser, x, y, speed: speed, cd: 0, hx: x, hy: y };
   }
 
   function kickoff(m, dir) {
