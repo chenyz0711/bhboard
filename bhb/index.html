@@ -461,7 +461,7 @@
   logoutBtn.addEventListener('click', () => {
     currentUser = null;
     localStorage.removeItem('bh_user');
-    location.replace('https://j2k183.pages.dev/');   // 退出后回主页重新登录
+    location.replace('/');   // 退出后回主页重新登录（相对路径，换域名无需改）
   });
 
   sendBtn.addEventListener('click', async () => {
