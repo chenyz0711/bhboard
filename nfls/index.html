@@ -370,6 +370,7 @@
       <div class="match-pick" id="match-pick">
         <div class="mp-sub" id="mp-sub" style="font-size:15px;color:#e8eefc;text-align:center;"></div>
         <button class="btn warn block" id="btn-match-go" style="margin-top:14px;">准备好了！</button>
+        <button class="btn ghost block" id="btn-match-auto" style="margin-top:10px;">🍾 自动蹴</button>
       </div>
 
       <!-- 结果遮罩 -->
@@ -1731,7 +1732,13 @@
   // ============================================================
   // 生存内固定使用当前人物，不选球员、不展示额外规则
   function startMatch(stepName, seconds, onDone){
-    $('mp-sub').innerHTML = `5v5 · 比赛 <b>${seconds}</b> 秒 · WASD 移动 · 空格射门`;
+    const cost = kickCost();
+    const costTxt = `饥饿 -${cost}${cost===1?'（同桌万天一减半）':''}`;
+    const goalP = clamp(G.body*0.1*(hasTrait('强身健体')?2:1),0,1);
+    $('mp-sub').innerHTML =
+      `5v5 · 比赛 <b>${seconds}</b> 秒 · WASD 移动 · 空格射门<br>` +
+      `<span style="font-size:12.5px;color:#8892b0;">两种踢法都花 ${costTxt}、快乐 +2<br>` +
+      `自己踢：赢 +2 / 平 +1　·　自动蹴：${pct(goalP)} 进球再 +2（受伤概率 ${pct(injuryChance())}）</span>`;
     $('match-result').classList.add('hidden');
     $('match-pick').classList.remove('hidden');
     showScreen('scr-match');
@@ -1739,6 +1746,17 @@
     $('btn-match-go').onclick = ()=>{
       $('match-pick').classList.add('hidden');
       runMatch(G.char.id, stepName, seconds, onDone);
+    };
+
+    // 自动蹴：不打比赛，直接按胜率结算。showStep 不切界面，必须先切回游戏页
+    $('btn-match-auto').onclick = ()=>{
+      $('match-pick').classList.add('hidden');
+      showScreen('scr-game');
+      const lines = [];
+      doKick(lines);
+      lines.forEach(l=>log(l.t,l.c));
+      renderStats();
+      showStep(stepName, lines, [{ text:'继续 →', onClick: advance }]);
     };
   }
 
@@ -1804,11 +1822,11 @@
       onDone(stepName, lines);
     };
   }
-  // 蹴瓶子（合并入口）：主按钮 = 手动 5v5 走廊赛；下方子选项 = 自动按胜率结算
-  // 不能踢时：给一个置灰的主按钮并说明原因；贾子辰「反骨」在此课间可强行踢
+  // 蹴瓶子（单一入口）：点击先进比赛准备界面，在里面选「准备好了」自己踢或「自动蹴」
+  // 不能踢时：给一个置灰的按钮并说明原因；贾子辰「反骨」在此课间可强行踢
   function kickButtons(stepName, seconds){
     const why = kickBlock();
-    const goalP = clamp(G.body*0.1,0,1);
+    const goalP = clamp(G.body*0.1*(hasTrait('强身健体')?2:1),0,1);
     const cost = kickCost();
     const costTxt = `饥饿 -${cost}${cost===1?'（同桌万天一减半）':''}`;
 
@@ -1820,28 +1838,14 @@
                 sub:`${why} · ${costTxt}，快乐 +2，${pct(goalP)} 进球再 +2` }];
     }
 
-    // 主按钮：点击直接进手动比赛
-    const manual = { text:`⚽ 蹴瓶子（${seconds} 秒 5v5 走廊赛）`,
+    return [{ text:`⚽ 蹴瓶子（进去可选自己踢或自动蹴）`,
              cls:'special',
-             sub:`自己操控踢一场 · ${costTxt}、快乐 +2，赢 +2 / 平 +1`,
+             sub:`${costTxt}、快乐 +2 · 自己踢 ${seconds} 秒 5v5：赢 +2 / 平 +1；自动蹴：${pct(goalP)} 进球再 +2`,
              onClick: ()=>{
         startMatch(stepName, seconds, (sn, lines)=>{
           showStep(sn, lines, [{ text:'继续 →', onClick: advance }]);
         });
-    }};
-
-    // 子选项：自动蹴，沿用原来的胜率与流程，直接结算
-    const auto = { text:`🍾 自动蹴（${costTxt}，快乐 +2；${pct(goalP)} 进球 → 额外快乐 +2）`,
-             cls:'ghost',
-             sub:`不打比赛，直接按胜率结算 · 受伤概率 ${pct(injuryChance())}`,
-             onClick: ()=>{
-        const lines = [];
-        doKick(lines);
-        lines.forEach(l=>log(l.t,l.c));
-        showStep(stepName, lines, [{ text:'继续 →', onClick: advance }]);
-    }};
-
-    return [manual, auto];
+    }}];
   }
 
   // ---------- 课间 ----------
