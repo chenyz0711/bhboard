@@ -123,17 +123,19 @@
   <!-- 密钥管理（解锁后可见） -->
   <div class="card hidden" id="keysCard">
     <h2>🔑 密钥管理</h2>
-    <div class="sub">每个密钥第一次使用时自动绑定到那个兄弟，绑定后只有他能用；通用密钥可进任何账号</div>
+    <div class="sub">自己填一个密钥发出去。每个密钥会分别记录<b>谁用过、用了几次</b>，可单独注销某个使用者；注销不会释放密钥，别人仍然能用。</div>
     <div class="admin-tools" style="margin-bottom:10px;">
-      <button class="act-btn" id="genKeyBtn">➕ 生成新密钥</button>
+      <input type="text" id="newKeyInput" style="flex:1;padding:10px 13px;border:1px solid #4a3d3f;border-radius:9px;background:#171118;color:#f5ede2;font-size:14px;outline:none;" placeholder="自定义密钥，例如 341799" maxlength="32" />
+      <button class="act-btn" id="genKeyBtn">➕ 添加密钥</button>
     </div>
+    <div class="err" id="keyErr"></div>
     <div id="keyListBox"><div class="empty-tip">加载中…</div></div>
   </div>
 
   <!-- 成员列表 -->
   <div class="card">
     <h2>👥 兄弟们</h2>
-    <div class="sub">谁来过这个站都会登记在这里，绿点是在线（90 秒内有活跃），灰点是离线</div>
+    <div class="sub">按<b>最近上线时间</b>排序，绿点是在线（90 秒内有活跃），灰点是离线</div>
     <div id="memberListBox"><div class="empty-tip">加载中…</div></div>
   </div>
 
@@ -142,7 +144,7 @@
     <h2>⚔️ 当前对局</h2>
     <div class="sub">所有兄弟轮盘赌的对局都在这里，点「观战」可以去看</div>
     <div id="gameListBox"><div class="empty-tip">加载中…</div></div>
-    <div class="refresh-tip">列表每 3 秒自动刷新</div>
+    <div class="refresh-tip">列表每 30 秒自动刷新</div>
   </div>
 
   <div class="footer">BHBoard · 兄弟管理 · made by chenyz</div>
@@ -162,9 +164,10 @@
   const MSG_KEY = 'bh_messages';
   const ROOM_PREFIX = 'bh_room:';
   const ROOM_MAX_IDLE = 30 * 60 * 1000; // 超过 30 分钟无人活动的房间自动删除
-  const KEYS_KEY = 'bh_keys';          // 密钥登记表：密钥 -> { owner, usedAt }
+  const KEYS_KEY = 'bh_keys';          // 密钥登记表：密钥 -> { owner, usedAt, users:{名字:{count,lastAt}} }
+  const BANNED_KEY = 'bh_banned';      // 注销黑名单：用户名数组
   const ADMIN_PASSWORD = window.KeyGate.accessKey();
-  const REFRESH_MS = 3000;
+  const REFRESH_MS = 30000;            // 列表每 30 秒刷新一次
 
   // 仅 chenyz 可解锁管理权限（密码正确 + 身份匹配，缺一不可）
   function isChenyz() {
@@ -186,6 +189,8 @@
   const clearForumBtn = $('clearForumBtn');
   const keysCard = $('keysCard');
   const genKeyBtn = $('genKeyBtn');
+  const newKeyInput = $('newKeyInput');
+  const keyErr = $('keyErr');
   const keyListBox = $('keyListBox');
   const memberListBox = $('memberListBox');
   const gameListBox = $('gameListBox');
@@ -263,6 +268,13 @@
     return `${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
+  // 成员记录归一化：兼容旧格式（值直接是首次出现时间戳）与新格式 { firstSeen, lastSeen }
+  function normMember(v) {
+    if (v && typeof v === 'object') return { firstSeen: v.firstSeen || 0, lastSeen: v.lastSeen || v.firstSeen || 0 };
+    const ts = typeof v === 'number' ? v : 0;
+    return { firstSeen: ts, lastSeen: ts };
+  }
+
   async function refreshMembers() {
     try {
       const raw = await upGet(MEMBERS_KEY);
@@ -275,7 +287,10 @@
         }
         if (!members || typeof members !== 'object' || Array.isArray(members)) members = {};
       }
-      const names = Object.keys(members).sort((a, b) => (members[b] || 0) - (members[a] || 0));
+      const banned = await readBanned();
+      const bannedSet = new Set(banned.map(x => String(x).trim().toLowerCase()));
+      // 按最近上线时间倒序
+      const names = Object.keys(members).sort((a, b) => normMember(members[b]).lastSeen - normMember(members[a]).lastSeen);
       memberListBox.innerHTML = '';
       if (names.length === 0) {
         memberListBox.innerHTML = '<div class="empty-tip">还没有兄弟来过</div>';
@@ -289,6 +304,7 @@
           online = !!beat;
         } catch (e) {}
 
+        const mi = normMember(members[name]);
         const row = document.createElement('div');
         row.className = 'row';
 
@@ -298,10 +314,11 @@
         const dot = document.createElement('span');
         dot.className = 'dot ' + (online ? 'on' : 'off');
         main.appendChild(dot);
-        main.appendChild(document.createTextNode(name + (online ? '（在线）' : '（离线）')));
+        const isBanned = bannedSet.has(String(name).trim().toLowerCase());
+        main.appendChild(document.createTextNode(name + (isBanned ? '（已注销）' : online ? '（在线）' : '（离线）')));
         const meta = document.createElement('div');
         meta.className = 'row-meta';
-        meta.textContent = `首次出现：${fmtTime(members[name])}`;
+        meta.textContent = `最近上线：${fmtTime(mi.lastSeen)} · 首次出现：${fmtTime(mi.firstSeen)}`;
         left.appendChild(main);
         left.appendChild(meta);
         row.appendChild(left);
@@ -309,11 +326,19 @@
         if (isAdmin) {
           const acts = document.createElement('div');
           acts.className = 'row-actions';
-          const delBtn = document.createElement('button');
-          delBtn.className = 'act-btn danger';
-          delBtn.textContent = '注销账号';
-          delBtn.onclick = () => unregisterMember(name);
-          acts.appendChild(delBtn);
+          if (isBanned) {
+            const unBtn = document.createElement('button');
+            unBtn.className = 'act-btn';
+            unBtn.textContent = '撤销注销';
+            unBtn.onclick = () => unbanMember(name);
+            acts.appendChild(unBtn);
+          } else {
+            const delBtn = document.createElement('button');
+            delBtn.className = 'act-btn danger';
+            delBtn.textContent = '注销账号';
+            delBtn.onclick = () => unregisterMember(name);
+            acts.appendChild(delBtn);
+          }
           row.appendChild(acts);
         }
 
@@ -324,28 +349,43 @@
     }
   }
 
+  // ---------- 黑名单 ----------
+  async function readBanned() {
+    const raw = await upGet(BANNED_KEY);
+    if (!raw) return [];
+    try { const a = JSON.parse(raw); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+  }
+  async function writeBanned(list) {
+    await upSetPlain(BANNED_KEY, JSON.stringify(list));
+  }
+
   async function unregisterMember(name) {
     if (!isAdmin) return;
-    if (!confirm(`确定注销「${name}」吗？注销后他从成员名单里消失（他下次来还会重新登记）。`)) return;
+    if (!confirm(`确定注销「${name}」吗？注销后他无法再登录（密钥不会释放，别人仍能用同一密钥进来）。`)) return;
     try {
-      // 从成员表移除
-      const raw = await upGet(MEMBERS_KEY);
-      let members = {};
-      if (raw) {
-        try { members = JSON.parse(raw); } catch (e) {}
-        if (members && typeof members.value === 'string') {
-          try { members = JSON.parse(members.value); } catch (e) {}
-        }
+      const banned = await readBanned();
+      if (!banned.some(x => String(x).trim().toLowerCase() === String(name).trim().toLowerCase())) {
+        banned.push(name);
+        await writeBanned(banned);
       }
-      if (members[name]) {
-        delete members[name];
-        await upSetPlain(MEMBERS_KEY, JSON.stringify(members));
-      }
-      // 删除在线心跳键
+      // 删除在线心跳键，让他立即显示为离线
       await upDel(PRESENCE_PREFIX + encodeURIComponent(name));
       await refreshMembers();
     } catch (err) {
       alert('注销失败：' + err.message);
+    }
+  }
+
+  async function unbanMember(name) {
+    if (!isAdmin) return;
+    if (!confirm(`撤销「${name}」的注销？他将重新可以登录。`)) return;
+    try {
+      const banned = await readBanned();
+      const next = banned.filter(x => String(x).trim().toLowerCase() !== String(name).trim().toLowerCase());
+      await writeBanned(next);
+      await refreshMembers();
+    } catch (err) {
+      alert('撤销失败：' + err.message);
     }
   }
 
@@ -461,47 +501,68 @@
     await upSetPlain(KEYS_KEY, JSON.stringify(keys));
   }
 
-  function genKeyCode() {
-    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-    let s = '';
-    for (let i = 0; i < 8; i++) s += chars[Math.floor(Math.random() * chars.length)];
-    return s;
-  }
-
   async function refreshKeys() {
     try {
       const keys = await readKeys();
+      const banned = await readBanned();
+      const bannedSet = new Set(banned.map(x => String(x).trim().toLowerCase()));
       keyListBox.innerHTML = '';
       const entries = Object.entries(keys);
       if (entries.length === 0) {
-        keyListBox.innerHTML = '<div class="empty-tip">还没有密钥，点上面生成一个</div>';
+        keyListBox.innerHTML = '<div class="empty-tip">还没有密钥，在上面填一个添加</div>';
         return;
       }
       for (const [code, info] of entries) {
+        const users = (info && info.users && typeof info.users === 'object') ? info.users : {};
+        const names = Object.keys(users);
+
         const row = document.createElement('div');
         row.className = 'row';
         const left = document.createElement('div');
         const main = document.createElement('div');
         main.className = 'row-main';
         main.textContent = code;
-        const meta = document.createElement('div');
-        meta.className = 'row-meta';
-        if (info.owner) {
-          meta.textContent = `已绑定：${info.owner} · 首次使用 ${fmtTime(info.usedAt)}`;
-        } else {
-          meta.textContent = '未使用';
-        }
         left.appendChild(main);
-        left.appendChild(meta);
+
+        if (names.length === 0) {
+          // 兼容旧格式：只有 owner/usedAt 没有 users
+          const meta = document.createElement('div');
+          meta.className = 'row-meta';
+          meta.textContent = info && info.owner
+            ? `已使用：${info.owner} · ${fmtTime(info.usedAt)}`
+            : '还没有人用过';
+          left.appendChild(meta);
+        } else {
+          // 同一密钥的不同使用者分开显示
+          names.forEach(n => {
+            const u = users[n] || {};
+            const meta = document.createElement('div');
+            meta.className = 'row-meta';
+            const tag = bannedSet.has(String(n).trim().toLowerCase()) ? '（已注销）' : '';
+            meta.textContent = `${n}${tag} · 用了 ${u.count || 0} 次 · 最近 ${fmtTime(u.lastAt || 0)}`;
+            left.appendChild(meta);
+            if (isAdmin && !bannedSet.has(String(n).trim().toLowerCase())) {
+              const ub = document.createElement('button');
+              ub.className = 'act-btn danger';
+              ub.style.cssText = 'margin:2px 0 6px;padding:5px 10px;font-size:12px;';
+              ub.textContent = `注销 ${n}`;
+              ub.onclick = () => unregisterMember(n);
+              left.appendChild(ub);
+            }
+          });
+        }
         row.appendChild(left);
-        const acts = document.createElement('div');
-        acts.className = 'row-actions';
-        const delBtn = document.createElement('button');
-        delBtn.className = 'act-btn danger';
-        delBtn.textContent = '删除';
-        delBtn.onclick = () => deleteKey(code);
-        acts.appendChild(delBtn);
-        row.appendChild(acts);
+
+        if (isAdmin) {
+          const acts = document.createElement('div');
+          acts.className = 'row-actions';
+          const delBtn = document.createElement('button');
+          delBtn.className = 'act-btn danger';
+          delBtn.textContent = '删除密钥';
+          delBtn.onclick = () => deleteKey(code);
+          acts.appendChild(delBtn);
+          row.appendChild(acts);
+        }
         keyListBox.appendChild(row);
       }
     } catch (e) {
@@ -511,17 +572,28 @@
 
   genKeyBtn.addEventListener('click', async () => {
     if (!isAdmin) return;
+    const code = (newKeyInput.value || '').trim();
+    const showErr = msg => {
+      keyErr.textContent = msg;
+      setTimeout(() => { if (keyErr.textContent === msg) keyErr.textContent = ''; }, 3000);
+    };
+    if (!code) { showErr('密钥不能为空'); return; }
+    if (/\s/.test(code)) { showErr('密钥里不能有空格'); return; }
+    if (code.length < 3) { showErr('密钥至少 3 个字符'); return; }
+    if (code === ADMIN_PASSWORD) { showErr('这个值已被占用，换一个'); return; }
     try {
       const keys = await readKeys();
-      let code;
-      do { code = genKeyCode(); } while (keys[code] || code === ADMIN_PASSWORD);
-      keys[code] = { owner: null, usedAt: null };
+      if (keys[code]) { showErr(`密钥 ${code} 已经存在了`); return; }
+      keys[code] = { owner: null, usedAt: null, users: {} };
       await saveKeys(keys);
+      newKeyInput.value = '';
+      keyErr.textContent = '';
       await refreshKeys();
     } catch (err) {
-      alert('生成失败：' + err.message);
+      showErr('添加失败：' + err.message);
     }
   });
+  newKeyInput.addEventListener('keydown', e => { if (e.key === 'Enter') genKeyBtn.click(); });
 
   async function deleteKey(code) {
     if (!isAdmin) return;
