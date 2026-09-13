@@ -494,7 +494,7 @@
       mateEffect:'作为同桌：蹴瓶子的饥饿消耗减半（-2 → -1）', canChooseMate:false },
     { id:'hu', name:'胡凯宁', gender:'男', looks:6, body:7, intelligence:5, happyCap:10,
       traits:[
-        { name:'危险意识', desc:'上课聊天时快乐 -1（而不是 +2），但不会被记违纪' },
+        { name:'危险意识', desc:'上课聊天时快乐 +1（而不是 +2），但不会被记违纪' },
         { name:'电教委', desc:'中午可以"打作业"：30% 概率快乐 +3，否则没有变化' }
       ],
       mateEffect:'作为同桌：上课聊天时额外 +1 快乐', canChooseMate:false },
@@ -1425,9 +1425,9 @@
     }
 
     btns.push({ text:'💬 上课聊天', cls:'',
-      sub: hasTrait('危险意识') ? '危险意识：快乐 -1，但不会被记违纪；主科 50% 作业 +2'
-         : hasTrait('风纪委员') ? '快乐 +2（风纪委员不会被记违纪）；主科 50% 作业 +2'
-                             : '快乐 +2，25% 违纪 +2 点；主科 50% 作业 +2',
+      sub: hasTrait('危险意识') ? '危险意识：快乐 +1，但不会被记违纪；主科 50% 作业 +1'
+         : hasTrait('风纪委员') ? '快乐 +2（风纪委员不会被记违纪）；主科 50% 作业 +1'
+                             : '快乐 +2，25% 违纪 +2 点；主科 50% 作业 +1',
       onClick: ()=>resolveClass(i, raw, subj, rule, 'chat') });
 
     showStep(`📚 第 ${i+1} 节：${raw}`, head, btns);
@@ -1532,8 +1532,8 @@
     if (mode==='chat'){
       G.stats.chat++;
       if (hasTrait('危险意识')){
-        changeHappy(-1, lines);
-        lines.push({ t:'· 危险意识：你一边聊一边提心吊胆，快乐 -1', c:'bad' });
+        changeHappy(1, lines);
+        lines.push({ t:'· 危险意识：你一边聊一边留神老师，聊得挺开心，快乐 +1', c:'good' });
         lines.push({ t:'· 但你时刻注意着老师，没被记违纪', c:'good' });
       } else {
         changeHappy(2, lines);
@@ -1608,10 +1608,10 @@
       changeHomework(hw);
       lines.push({ t:`· ${subj}老师布置作业：作业 +${hw}（现 ${G.homework}）`, c:'bad' });
     }
-    // 不听课 + 主科 → 50% 作业 +2
+    // 不听课 + 主科 → 50% 作业 +1
     if (mode!=='listen' && MAIN_SUBJECTS.indexOf(subj)!==-1 && chance(0.5)){
-      changeHomework(2);
-      lines.push({ t:`· 你没认真听主科，作业堆积：作业 +2（现 ${G.homework}）`, c:'bad' });
+      changeHomework(1);
+      lines.push({ t:`· 你没认真听主科，作业堆积：作业 +1（现 ${G.homework}）`, c:'bad' });
     }
 
     if (rule.dragChance && chance(rule.dragChance)){
@@ -1903,13 +1903,17 @@
     }});
 
     btns.push({ text:'💬 聊天（快乐 +1）', cls:'warn',
-      sub:'代价：下节课无法认真听课，也无法卷批',
+      sub:'50% 代价：下节课无法认真听课，也无法卷批',
       onClick: ()=>{
         const lines = [];
         changeHappy(1, lines);
-        G.noStudyNext = true;
         lines.push({ t:'· 你和同学聊嗨了：快乐 +1', c:'good' });
-        lines.push({ t:'· 但聊得太投入，下节课没法认真听课、也没法卷批了', c:'bad' });
+        if (chance(0.5)){
+          G.noStudyNext = true;
+          lines.push({ t:'· 但聊得太投入，下节课没法认真听课、也没法卷批了', c:'bad' });
+        } else {
+          lines.push({ t:'· 好在收得住，下节课照样能认真听课、卷批', c:'good' });
+        }
         lines.forEach(l=>log(l.t,l.c));
         showStep(stepName, lines, [{ text:'继续 →', onClick: advance }]);
     }});
@@ -2105,24 +2109,36 @@
 
   // 晚上
   function stepEvening(){
+    // 进入晚上时的待写作业量（周一到周四晚些时候会清零，文案仍要用这个原值）
+    const hwBefore = G.homework;
     // 晚饭：先回满饥饿，再减去等同于剩余作业量的饥饿
     G.hunger = G.hungerCap;
-    const hwPen = Math.min(G.homework, G.hungerCap);
+    const hwPen = Math.min(hwBefore, G.hungerCap);
     G.hunger = clamp(G.hunger - hwPen, 0, G.hungerCap);
     renderStats();
 
-    const hwGain = G.homework > 0 ? Math.ceil(12 / G.homework) : 12;
+    const hwGain = hwBefore > 0 ? Math.ceil(12 / hwBefore) : 12;
     changeHappy(hwGain);
-    const hwLine = G.homework > 0
-      ? `· 你写了 ${G.homework} 份作业，累但踏实：快乐 +${hwGain}（= ⌈12 ÷ ${G.homework}⌉）`
+    const hwLine = hwBefore > 0
+      ? `· 你写了 ${hwBefore} 份作业，累但踏实：快乐 +${hwGain}（= ⌈12 ÷ ${hwBefore}⌉）`
       : `· 今天居然一份作业都没有！爽翻了：快乐 +${hwGain}`;
 
     const dinner = [
       { t:`· 晚饭：饥饿先回满（${fmt(G.hungerCap)}）`, c:'good' },
-      { t:`· 但还剩 ${G.homework} 份作业压着，吃饭都不香：饥饿 -${hwPen}（现 ${fmt(G.hunger)}）`, c:'bad' },
+      { t:`· 但还剩 ${hwBefore} 份作业压着，吃饭都不香：饥饿 -${hwPen}（现 ${fmt(G.hunger)}）`, c:'bad' },
       { t: hwLine, c:'good' }
     ];
-    log(`晚上：晚饭回满饥饿后被 ${G.homework} 份作业扣掉 ${hwPen}；${hwLine.replace('· ','')}`,'good');
+    log(`晚上：晚饭回满饥饿后被 ${hwBefore} 份作业扣掉 ${hwPen}；${hwLine.replace('· ','')}`,'good');
+
+    // 周一到周四：当晚把作业写完清零。
+    // 周五（sched 4）不清，作业带进周末；周末（sched -1）也不清，
+    // 周末只有在「在家写作业」那个选项里才会清空——所以这里必须严格限定范围。
+    const sched = DAY_INFO[G.day-1].sched;
+    if (sched >= 0 && sched <= 3 && hwBefore > 0){
+      changeHomework(-hwBefore);
+      dinner.push({ t:`· 写完了，作业清零（现 0 份）`, c:'good' });
+      log(`晚上：作业写完清零（清掉 ${hwBefore} 份）`,'good');
+    }
     renderStats();
 
     const noTakeoff = (G.char.gender==='女') ? '女生不能起飞'
@@ -2472,7 +2488,7 @@
     s += H('🗓️ 时间与胜负');
     s += `共 <b>10 天</b>（9月1日 - 9月10日），活到教师节即胜利。<br>`;
     s += `上学日：早晨 → 早自习 → <b>9 节课</b>（每节课后都有课间；第2节后是做操+第二节课间，第5节后午餐，第7节后大课间）→ 晚上。<br>`;
-    s += `周末（9/5、9/6）：睡到自然醒 + 自由活动，不上课。<br>`;
+    s += `周末（9/5、9/6）：睡到自然醒 + 自由活动，不上课。<b>作业不会自动清空</b>，只有选「在家写作业」才会清掉。<br>`;
     s += `<span class="rb">快乐归零 = 游戏结束。</span><br>`;
     s += `<span class="rb">违纪点数达到 ${VIO_LIMIT} = 游戏结束</span>（一个违纪 = <b>+${VIO_PER} 点</b>，一个表扬 = <b>-${PRAISE_PER} 点</b>）<br>`;
     s += `属性上限：颜值 / 体力 <b>10</b>，智力 <b>15</b>，饥饿 <b>10</b>（侯景瑞 <b>15</b>）。<br>`;
@@ -2500,8 +2516,8 @@
     s += `· 违纪点数减到 0 就停，不会变成负数<br>`;
     s += `· <b>认真听课</b>：<b>5%</b> 智力永久 +1；<b>智力 &lt; 7 时为 10%</b><br>`;
     s += `· <b>卷批</b>（语文 / 英语 / 物理 / 政治不让卷）：答对率<b>减半</b>、答对无奖励，<span class="rb">快乐 -2</span>，<span class="rg">作业 -2~4</span><br>`;
-    s += `· <b>上课聊天</b>：<span class="rg">快乐 +2</span>，<b>25%</b> 违纪（+2 点），答对率<b>减半</b>且答对无奖励；<b>胡凯宁"危险意识"</b>→ <span class="rb">快乐 -1</span> 但<b>不会被记违纪</b><br>`;
-    s += `· <b>不听课（卷批或聊天）且该课是主科 → 50% 作业 +2</b><br>`;
+    s += `· <b>上课聊天</b>：<span class="rg">快乐 +2</span>，<b>25%</b> 违纪（+2 点），答对率<b>减半</b>且答对无奖励；<b>胡凯宁"危险意识"</b>→ <span class="rg">快乐 +1</span> 但<b>不会被记违纪</b><br>`;
+    s += `· <b>不听课（卷批或聊天）且该课是主科 → 50% 作业 +1</b><br>`;
     s += `· 主科（语数英物化）当天第一节布置作业 <span class="rb">+1~3</span>；<b>政治 / 历史作业量减半</b>（上取整）<br>`;
     s += `· 贾子辰"好饿"：额外 <span class="rb">饥饿 -1</span>；本人<b>每天智力永久 +1</b><br>`;
     s += `· 朱凌初"厌学"：每节课 <span class="rb">快乐 -1</span><br>`;
@@ -2526,7 +2542,7 @@
     s += `· 被侮辱：概率 ${P('0.01 × (10 - 颜值)', '颜值越低越容易被侮辱')} → <span class="rb">快乐 -5</span><br>`;
     s += `· 发呆：无变化（陈仰正同桌徐悠然 → <span class="rg">快乐 +1</span>）<br>`;
     s += `· <b>游走</b>：<span class="rb">饥饿 -1</span>，并<b>分开独立判定</b>（可叠加）：<b>40%</b> 遇见同学 <span class="rg">快乐 +1</span>、<b>25%</b> 蹭吃蹭喝 <span class="rg">饥饿 +2</span>、<b>2%</b> 撞见表白 <span class="rg">快乐 +5</span><br>`;
-    s += `· <b>聊天</b>：<span class="rg">快乐 +1</span>，但<b>下节课无法认真听课、也无法卷批</b><br>`;
+    s += `· <b>聊天</b>：<span class="rg">快乐 +1</span>，<b>50%</b> 下节课无法认真听课、也无法卷批<br>`;
     s += `· <b>蹴瓶子</b>：<span class="rb">饥饿 -2</span>（同桌万天一 → <span class="rg">-1</span>），<span class="rg">快乐 +2</span>；${P('体力 × 10% 概率进球', '有一定概率进球（体力越高越容易）')} → 额外 <span class="rg">快乐 +2</span><br>`;
     s += `· 受伤概率 ${P('(100 - 体力²) × 0.002', '体力越低越容易受伤')} → 受伤则 <span class="rb">快乐 -3</span>、<b>当天不能蹴瓶子</b>、<b>当天体育课快乐增量减半</b><br>`;
     s += `· <b>女生不能蹴瓶子</b>；<b>女生不能起飞</b><br>`;
@@ -2557,6 +2573,8 @@
     s += H('🌙 晚上');
     s += `· <b>晚饭先回满饥饿，再减去等同于剩余作业量的饥饿</b>（作业越多，吃得越不香）<br>`;
     s += `· 然后获得 <b>⌈12 ÷ 作业量⌉</b> 的快乐（作业为 0 时按 <b>+12</b> 计）<br>`;
+    s += `· <b>周一到周四</b>：当晚把作业写完，<span class="rg">作业清零</span>（先按剩余作业量扣饥饿、算快乐，之后才清零）<br>`;
+    s += `· <b>周五不清</b>：作业带进周末；<b>周末也不清</b>，只有选「在家写作业」才会清空<br>`;
     s += `· 好好睡觉：<span class="rg">快乐 +上限的 20%</span><br>`;
     s += `· 玩《千恋万花》：陈仰正直接回满；其他人 <b>50%</b> <span class="rg">+5</span>，<b>50%</b> <span class="rb">-5</span><br>`;
     s += `· 起飞：<span class="rg">快乐 +5</span>，但明早吃不上早饭（常喆免疫；<b>女生、刘敬熙不能起飞</b>）`;
@@ -2572,7 +2590,7 @@
     s += `· <b>常喆</b>：起飞后次晨无早饭 debuff。作为同桌：周末每天各项属性永久 +1<br>`;
     s += `· <b>刘敬熙</b>（颜值1 体力7 智力9）：<b>去皮</b>——不能起飞；<b>强壮</b>——被点名概率翻倍、答对概率减半、但答对时 <span class="rg">快乐 +2</span>。作为同桌：答对问题时 <span class="rg">快乐 +1</span><br>`;
     s += `· <b>万天一</b>（颜值7 体力7 智力9）：<b>第2形态</b>——永远不会受伤；<b>不吃压力</b>——快乐减少时 <b>15%</b> 完全免疫；<b>小胃袋</b>——所有饥饿减少量 <b>×2</b>。作为同桌：蹴瓶子饥饿消耗 <span class="rb">-2</span> → <span class="rg">-1</span><br>`;
-    s += `· <b>胡凯宁</b>（颜值6 体力7 智力5）：<b>危险意识</b>——上课聊天时 <span class="rb">快乐 -1</span>（而不是 +2），但<b>不会被记违纪</b>；<b>电教委</b>——中午多一个"打作业"选项，${P('30% 概率', '有一定概率')} <span class="rg">快乐 +3</span>，否则毫无变化。作为同桌：无特殊效果`;
+    s += `· <b>胡凯宁</b>（颜值6 体力7 智力5）：<b>危险意识</b>——上课聊天时 <span class="rg">快乐 +1</span>（而不是 +2），但<b>不会被记违纪</b>；<b>电教委</b>——中午多一个"打作业"选项，${P('30% 概率', '有一定概率')} <span class="rg">快乐 +3</span>，否则毫无变化。作为同桌：无特殊效果`;
 
     s += H('🏆 隐藏成就（共 7 个，需获胜才结算）');
     s += `· <b>死气沉沉</b>：选择王浩宇，或与王浩宇同桌<br>`;
