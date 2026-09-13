@@ -189,7 +189,7 @@
   // 未登录强制跳转主页登录
   function requireLogin() {
     if (!getUser()) {
-      location.replace('https://j2k183.pages.dev/');
+      location.replace('/');   // 相对路径，换域名也无需改代码
       return false;
     }
     // 已登录者异步复核黑名单（不阻塞渲染；命中则清除本地态并踢回主页）
@@ -208,7 +208,7 @@
     if (!u) return false;
     if (await isBanned(u.username)) {
       clearLocalUser();
-      location.replace('https://j2k183.pages.dev/');
+      location.replace('/');   // 相对路径，换域名也无需改代码
       return true;
     }
     touchMember(u.username);   // 顺带刷新最近上线时间
