@@ -18,6 +18,8 @@
     STEAL_BASE: 0.25,                 // 抢断基础概率（体力 0 时的成功率）
     STEAL_PER_BODY: 0.075,            // 每点体力增加的抢断概率（体力 10 → 100%）
     TACKLE_CD: 30,                    // 对抗冷却（帧）
+    USER_SAFE_T: 90,                  // 玩家拿到球后的保护帧数（60fps 下 = 1.5 秒）
+    USER_SAFE_R: 64,                  // 保护期内对方球员的回避半径
 
     CARRY_MUL: 0.6,                   // 持球时移速 ×0.6
     GK_HOLD: 45,                      // 门将没收瓶子后持球帧数（约 0.75 秒）再大脚开出
@@ -73,6 +75,7 @@
     // 注意：m.triedUser 按持球回合重置（用户每次拿到球，对手都能再抢一次）
     m.ball = { x: CONST.MW / 2, y: CONST.GM_C, vx: 0, vy: 0, carrier: null, lock: 0, team: null, air: null };
     m.gkHold = null;
+    m.userSafe = null;
     m.flash = '';
     m.flashT = 0;
   }
@@ -145,6 +148,8 @@
     if (!p || !p.isUser) return;
     m.home.concat(m.away).forEach(c => { m.triedUser[c.id] = false; });
     m.stats.userPossessions++;
+    // 刚拿到球 → 开启 1.5 秒保护期：对方退开、期间谁都抢不到（防止刚拿到就被断回去）
+    m.userSafe = { timer: CONST.USER_SAFE_T };
   }
 
   function handleGoalLine(m, b, side) {
@@ -229,6 +234,24 @@
       return;
     }
 
+    // --- 玩家保护期：玩家刚拿到球，对方球员立刻退开，期间抢不到球 ---
+    // 只影响对方球员（队友照常跑位，否则这 1.5 秒没法传球）；门将已在上面 return，仍守门线不弃门
+    if (m.userSafe && b.carrier && b.carrier.isUser && p.team !== b.carrier.team) {
+      const u = b.carrier;
+      const d = Math.hypot(p.x - u.x, p.y - u.y);
+      if (d < CONST.USER_SAFE_R) {
+        // 优先退回自己的开球原位（合法布阵点，不会贴墙角）；
+        // 若原位也在圈内（极罕见），才用径向推挤，避免被墙壁 clamp 卡死
+        const hd = Math.hypot(p.hx - u.x, p.hy - u.y);
+        if (hd >= CONST.USER_SAFE_R) stepToward(m, p, p.hx, p.hy, dt, 1);
+        else stepAway(m, p, u.x, u.y, dt, 1);
+        return;
+      }
+      // 已退出回避圈：回防站位，不扑上去抢
+      stepToward(m, p, p.hx + (defendX - p.hx) * 0.22, p.hy, dt, 0.8);
+      return;
+    }
+
     // --- 自己持球：推进 / 射门 / 传球 ---
     if (b.carrier === p) {
       let threats = 0;
@@ -308,6 +331,16 @@
       if (m.gkHold.timer <= 0) gkPunt(m);
     }
 
+    // --- 玩家保护期倒计时 ---
+    if (m.userSafe) {
+      // 球已不在玩家脚下（射门 / 传球 / 被断）→ 保护期立即结束
+      if (!b.carrier || !b.carrier.isUser) m.userSafe = null;
+      else {
+        m.userSafe.timer -= dt;
+        if (m.userSafe.timer <= 0) m.userSafe = null;
+      }
+    }
+
     // --- AI ---
     m.players.forEach(p => {
       if (p.isUser) return;
@@ -363,8 +396,8 @@
       }
     }
 
-    // --- 对抗：过人 / 被断（门将持球时任何人都抢不到）---
-    if (b.carrier && !m.gkHold) {
+    // --- 对抗：过人 / 被断（门将持球、玩家保护期内都抢不到）---
+    if (b.carrier && !m.gkHold && !(m.userSafe && b.carrier.isUser)) {
       const c = b.carrier;
       for (const p of m.players) {
         if (p.team === c.team) continue;
@@ -434,6 +467,16 @@
       ctx.fillText(`${gk.c.name} 持球 · 抢不到`, gk.x, gk.y + CONST.GK_SAFE_R + 13);
     }
 
+    // 玩家保护期：画出保护圈与剩余秒数
+    if (m.userSafe && b.carrier && b.carrier.isUser) {
+      const u = b.carrier;
+      ctx.beginPath(); ctx.arc(u.x, u.y, CONST.USER_SAFE_R, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(79,195,247,0.5)'; ctx.lineWidth = 2; ctx.setLineDash([6, 5]); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(79,195,247,0.95)'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(`保护中 ${(m.userSafe.timer / 60).toFixed(1)}s · 抢不到`, u.x, u.y - CONST.USER_SAFE_R - 6);
+    }
+
     // 球员（全员显示名字）
     m.players.forEach(p => {
       ctx.beginPath();
@@ -491,6 +534,7 @@
       scoreH: 0, scoreA: 0, players: [], ball: null,
       left: cfg.seconds * 1000, over: false, flash: '', flashT: 0,
       gkHold: null,
+      userSafe: null,                                  // 玩家拿球保护期：{ timer } 帧数
       opts: cfg.opts || {},                              // 可覆盖项：gkSaveP（对方门将扑救率）等
       triedUser: {},                                     // 断球记忆：本次持球中谁已经抢过用户
       stats: { passes: 0, saves: 0, punts: 0, tacklesOnUser: 0, userTackles: 0, userPossessions: 0 }
