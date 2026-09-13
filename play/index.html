@@ -325,8 +325,9 @@
   // ============================================================
   // SECTION: config
   // ============================================================
-  const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
-  const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
+  const _cred = window.KeyGate.credentials();
+  const UPSTASH_URL = _cred.url;
+  const UPSTASH_TOKEN = _cred.token;
   const ROOM_PREFIX = 'bh_room:';
   const ROOM_TTL = 7 * 24 * 3600;      // 存储层兜底：7 天后自动消失
   const ROOM_MAX_WAIT = 3600 * 1000;   // 等待中超过 1 小时自动清除
