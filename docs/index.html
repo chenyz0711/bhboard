@@ -122,7 +122,7 @@
   <p class="note">主页是唯一的登录入口，登录后各模块直接读取本地登录态，不再重复验证。</p>
 
   <div class="flow">
-    <div class="node n-start"><b>用户访问 j2k183.pages.dev</b></div>
+    <div class="node n-start"><b>用户访问 bhboard.pages.dev</b></div>
     <div class="arr">↓</div>
     <div class="node n-dec"><b>主页：输入名字 + 密钥</b><span class="d">keycheck.js 统一校验（详见下节）</span></div>
     <div class="arr">↓</div>
@@ -165,7 +165,7 @@
       </div>
       <div class="branch">
         <span class="blabel">无 → 子页面</span>
-        <div class="node n-end"><b>强制跳转主页</b><span class="d">location.replace('https://j2k183.pages.dev/')</span></div>
+        <div class="node n-end"><b>强制跳转主页</b><span class="d">location.replace('/')</span></div>
       </div>
       <div class="branch">
         <span class="blabel">无 → 主页</span>
