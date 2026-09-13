@@ -86,9 +86,26 @@
 
     .admin-tools { display: flex; gap: 8px; flex-wrap: wrap; }
     .admin-tools .act-btn { padding: 10px 14px; font-size: 13px; }
+
+    /* 颜色模式切换 */
+    .theme-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .theme-btn {
+      flex: 1; min-width: 92px; padding: 11px 8px; border-radius: 10px; cursor: pointer;
+      border: 1px solid #3c2f3c; background: #1b141b; color: #c9bcae;
+      font-size: 13px; font-weight: 600; text-align: center; transition: .15s;
+    }
+    .theme-btn:hover { border-color: #6b5320; }
+    .theme-btn .tb-sub { display: block; font-size: 11px; font-weight: 400; color: #7d6e60; margin-top: 3px; }
+    .theme-btn.active {
+      background: #3a2d18; border-color: #d8b36a; color: #f0d9a8;
+      box-shadow: 0 0 0 1px #d8b36a inset;
+    }
+    .theme-btn.active .tb-sub { color: #c0a274; }
+
     .footer { text-align: center; color: #6f6156; font-size: 12px; margin-top: 18px; }
     .refresh-tip { font-size: 11px; color: #6f6156; text-align: right; margin-top: 6px; }
   </style>
+  <script src="/theme.js"></script>
 </head>
 <body>
 <div class="container">
@@ -109,6 +126,17 @@
       <button class="btn-gold" id="unlockBtn">解锁</button>
     </div>
     <div class="err" id="unlockErr"></div>
+  </div>
+
+  <!-- 颜色模式 -->
+  <div class="card" id="themeCard">
+    <h2>🎨 颜色模式</h2>
+    <div class="sub">切换后全站各页面同步生效，选择会记住在这台设备上</div>
+    <div class="theme-row" id="themeRow">
+      <button class="theme-btn" data-theme="default">默认<span class="tb-sub">各页原样配色</span></button>
+      <button class="theme-btn" data-theme="light">浅色<span class="tb-sub">全部变浅色</span></button>
+      <button class="theme-btn" data-theme="dark">深色<span class="tb-sub">全部变深色</span></button>
+    </div>
   </div>
 
   <!-- 管理员工具（解锁后可见） -->
@@ -194,6 +222,7 @@
   const keyListBox = $('keyListBox');
   const memberListBox = $('memberListBox');
   const gameListBox = $('gameListBox');
+  const themeRow = $('themeRow');
 
   // ============================================================
   // SECTION: upstash
@@ -611,6 +640,30 @@
   // ============================================================
   // SECTION: init
   // ============================================================
+  // 颜色模式：纯视觉偏好，不受登录门禁限制，未登录也能切换
+  // theme.js 万一没加载成功，绝不能连带搞挂下面的登录与列表刷新，所以整块包起来
+  function initThemeSwitcher() {
+    if (!window.BHTheme || typeof window.BHTheme.get !== 'function') {
+      const card = $('themeCard');
+      if (card) card.classList.add('hidden');   // 主题不可用就藏掉这块，不给坏按钮
+      return;
+    }
+    const renderThemeButtons = () => {
+      const cur = window.BHTheme.get();
+      themeRow.querySelectorAll('.theme-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.theme === cur);
+      });
+    };
+    themeRow.querySelectorAll('.theme-btn').forEach(b => {
+      b.addEventListener('click', () => {
+        try { window.BHTheme.set(b.dataset.theme); } catch (e) { return; }
+        renderThemeButtons();
+      });
+    });
+    renderThemeButtons();
+  }
+  try { initThemeSwitcher(); } catch (e) { console.warn('颜色模式初始化失败：', e); }
+
   // 全站单点登录：未登录强制跳主页登录
   if (!window.KeyGate.requireLogin()) {
     // 未登录时不再执行后续逻辑
