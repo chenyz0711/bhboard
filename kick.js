@@ -11,10 +11,11 @@
     GX_L: 12, GX_R: 640 - 12,         // 左右球门线
     GM_T: 62, GM_B: 158, GM_C: 110,   // 球门口上沿/下沿/中心（已加宽：原 80/140）
     PR: 11, BR: 7,                    // 球员 / 瓶子半径
-    BASE_SPEED: 2.0,                  // 标准速度
+    BASE_SPEED: 3.0,                  // 标准速度（原 2.0，基础移速提速 1.5 倍）
     SHOOT_POWER: 7.5,
     GK_SAVE_P: 0.7,                   // 门将守住概率
-    PAST_P: 0.75,                     // 遇人过人概率（被断 = 1 - 0.75）
+    STEAL_BASE: 0.25,                 // 抢断基础概率（体力 0 时的成功率）
+    STEAL_PER_BODY: 0.075,            // 每点体力增加的抢断概率（体力 10 → 100%）
     TACKLE_CD: 30,                    // 对抗冷却（帧）
 
     CARRY_MUL: 0.6,                   // 持球时移速 ×0.6
@@ -32,6 +33,12 @@
   function randRange(a, b) { return a + Math.random() * (b - a); }
   function matchSpeed(body) { return CONST.BASE_SPEED * (1 + body * 0.1); }
   function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+
+  // 抢断成功率由「抢断者」的体力决定：0.25 + 0.075 × 体力（钳到 0~1）
+  // 体力 0 → 25%（与旧的固定值衔接），体力 10 → 100%
+  function stealChance(body) {
+    return clamp(CONST.STEAL_BASE + (body || 0) * CONST.STEAL_PER_BODY, 0, 1);
+  }
 
   // 组队：你操控的 + 随机 4 人 = 我方；其余 5 人 = 对方。每队末位是门将
   function buildTeams(chars, meId) {
@@ -60,7 +67,7 @@
     for (let i = 0; i <= 3; i++) m.players.push(mkPlayer(as[i], 'away', false, false, CONST.MW - 130 - i * 45, CONST.GM_C + (i % 2 ? 50 : -50)));
 
     m.players.forEach(p => { p.hx = p.x; p.hy = p.y; });
-    // 注意：m.triedUser 是整场记忆，重新开球不重置
+    // 注意：m.triedUser 按持球回合重置（用户每次拿到球，对手都能再抢一次）
     m.ball = { x: CONST.MW / 2, y: CONST.GM_C, vx: 0, vy: 0, carrier: null, lock: 0, team: null, air: null };
     m.gkHold = null;
     m.flash = '';
@@ -130,6 +137,13 @@
 
   function flashMatch(m, txt) { m.flash = txt; m.flashT = 45; }
 
+  // 用户获得球权时重置断球记忆：每个对手在这次持球中都能抢一次
+  function userGainedBall(m, p) {
+    if (!p || !p.isUser) return;
+    m.home.concat(m.away).forEach(c => { m.triedUser[c.id] = false; });
+    m.stats.userPossessions++;
+  }
+
   function handleGoalLine(m, b, side) {
     // side = +1 右侧球门（我方向此进攻）；-1 左侧球门
     const line = side > 0 ? CONST.GX_R : CONST.GX_L;
@@ -138,7 +152,9 @@
     const inMouth = b.y > CONST.GM_T && b.y < CONST.GM_B;
     if (inMouth) {
       const gk = m.players.find(p => p.isGK && p.team === (side > 0 ? 'away' : 'home'));
-      if (gk && chance(CONST.GK_SAVE_P)) {
+      // 扑救率可被调用方覆盖（如蒋润霖「强身健体」：对方门将 70% → 30%）
+      const saveP = m.opts.gkSaveP === undefined ? CONST.GK_SAVE_P : m.opts.gkSaveP;
+      if (gk && chance(saveP)) {
         // 门将扑出：直接没收（进入门将持球状态）
         b.x = side > 0 ? line - CONST.BR - 20 : line + CONST.BR + 20;
         b.vx = b.vy = 0;
@@ -333,6 +349,7 @@
         for (const p of m.players) {
           if (Math.hypot(p.x - b.x, p.y - b.y) < CONST.PR + CONST.BR) {
             b.carrier = p; b.team = p.team; b.vx = b.vy = 0;
+            userGainedBall(m, p);                          // 用户捡到 → 对手可再抢一次
             if (p.isGK) {                                 // 门将捡到 → 进入持球状态
               m.gkHold = { gk: p, timer: CONST.GK_HOLD };
               flashMatch(m, `${p.c.name} 没收了瓶子！`);
@@ -356,7 +373,9 @@
             m.triedUser[p.c.id] = true;                     // 记录：他试过了，之后不再追用户
             m.stats.tacklesOnUser++;
           }
-          if (chance(CONST.PAST_P)) {
+          // 抢断成功率看来抢的人（p）的体力；过人成功率 = 1 − 抢断率
+          const stealP = stealChance(p.c.body);
+          if (!chance(stealP)) {
             // 过人：保住球，把对方顶到接触范围之外
             let ux = p.x - c.x, uy = p.y - c.y;
             let al = Math.hypot(ux, uy);
@@ -369,6 +388,7 @@
           } else {
             // 被断：球权易主
             b.carrier = p; b.team = p.team;
+            userGainedBall(m, p);                            // 用户断下球 → 对手可再抢一次
             if (c.isUser) flashMatch(m, `被 ${p.c.name} 断了！`);
             else if (p.isUser) { flashMatch(m, `你断下了 ${c.c.name} 的球！`); m.stats.userTackles++; }
           }
@@ -468,8 +488,9 @@
       scoreH: 0, scoreA: 0, players: [], ball: null,
       left: cfg.seconds * 1000, over: false, flash: '', flashT: 0,
       gkHold: null,
-      triedUser: {},                                   // 整场记忆：谁已经试过断用户
-      stats: { passes: 0, saves: 0, punts: 0, tacklesOnUser: 0, userTackles: 0 }
+      opts: cfg.opts || {},                              // 可覆盖项：gkSaveP（对方门将扑救率）等
+      triedUser: {},                                     // 断球记忆：本次持球中谁已经抢过用户
+      stats: { passes: 0, saves: 0, punts: 0, tacklesOnUser: 0, userTackles: 0, userPossessions: 0 }
     };
     m.home.concat(m.away).forEach(c => { m.triedUser[c.id] = false; });
 
@@ -521,5 +542,5 @@
     return { stop, state: m };
   }
 
-  window.KickEngine = { CONST, matchSpeed, buildTeams, start };
+  window.KickEngine = { CONST, matchSpeed, stealChance, buildTeams, start };
 })();
