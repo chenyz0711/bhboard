@@ -15,7 +15,7 @@
       justify-content: center;
       padding: 20px 14px 40px;
     }
-    .container { max-width: 680px; width: 100%; }
+    .container { max-width: 1040px; width: 100%; }
     .header {
       display: flex; justify-content: space-between; align-items: center;
       flex-wrap: wrap; gap: 8px; margin-bottom: 14px;
@@ -102,6 +102,51 @@
     }
     .theme-btn.active .tb-sub { color: #c0a274; }
 
+    /* 两栏布局：左栏固定比例，右栏自适应；窄屏回退单栏 */
+    .two-col { display: flex; gap: 14px; align-items: flex-start; }
+    .col-left { flex: 0 0 46%; min-width: 0; }
+    .col-right { flex: 1 1 auto; min-width: 0; }
+    @media (max-width: 860px) {
+      .two-col { display: block; }
+      .col-left, .col-right { width: 100%; }
+    }
+
+    /* 音乐播放器 */
+    .mp-now { font-size: 13px; color: #f0d9a8; font-weight: 600; margin: 4px 0 8px;
+              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mp-bar { position: relative; height: 8px; border-radius: 5px; background: #171118;
+              border: 1px solid #3c2f3c; cursor: pointer; overflow: hidden; }
+    .mp-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%;
+               background: linear-gradient(90deg, #b98a5a, #d8b36a); }
+    .mp-time { display: flex; justify-content: space-between; font-size: 11px;
+               color: #8a7a6a; margin-top: 5px; font-variant-numeric: tabular-nums; }
+    .mp-ctrl { display: flex; gap: 8px; margin: 10px 0; }
+    .mp-ctrl .btn-gold { flex: 1; padding: 9px 12px; }
+    .mp-ctrl .act-btn { flex: 0 0 auto; padding: 9px 12px; }
+    .mp-add { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+    .mp-add .act-btn { flex: 1; padding: 9px 12px; text-align: center; }
+    .mp-url-box { border: 1px solid #3c2f3c; border-radius: 10px; padding: 10px;
+                  background: #171118; margin-bottom: 8px; }
+    .mp-url-box input { width: 100%; padding: 9px 11px; border: 1px solid #4a3d3f;
+                  border-radius: 8px; background: #0f0b10; color: #f5ede2; font-size: 13px;
+                  outline: none; margin-bottom: 8px; }
+    .mp-url-box input:focus { border-color: #d8b36a; }
+    .mp-url-acts { display: flex; gap: 8px; }
+    .mp-url-acts .btn-gold, .mp-url-acts .act-btn { flex: 1; padding: 8px 12px; }
+    .mp-progress { height: 6px; border-radius: 4px; background: #171118; border: 1px solid #3c2f3c;
+                  overflow: hidden; margin-bottom: 8px; }
+    .mp-progress-bar { height: 100%; width: 0%; background: #6b5320; transition: width .2s; }
+    .mp-item { display: flex; justify-content: space-between; align-items: center; gap: 8px;
+              padding: 9px 11px; border: 1px solid #3c2f3c; border-radius: 9px;
+              margin-bottom: 7px; background: #1b141b; }
+    .mp-item.playing { border-color: #d8b36a; box-shadow: 0 0 0 1px #d8b36a inset; }
+    .mp-item-main { min-width: 0; flex: 1; cursor: pointer; }
+    .mp-item-name { font-size: 13px; color: #f5ede2; font-weight: 600;
+              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mp-item-meta { font-size: 11px; color: #8a7a6a; margin-top: 2px; }
+    .mp-badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 8px;
+              background: #3c2f3c; color: #c0a274; margin-left: 5px; }
+
     .footer { text-align: center; color: #6f6156; font-size: 12px; margin-top: 18px; }
     .refresh-tip { font-size: 11px; color: #6f6156; text-align: right; margin-top: 6px; }
   </style>
@@ -116,6 +161,9 @@
       <a class="link-btn" href="/">← 回主页</a>
     </div>
   </div>
+
+  <div class="two-col">
+  <div class="col-left">
 
   <!-- 管理员解锁 -->
   <div class="card" id="unlockCard">
@@ -139,6 +187,43 @@
     </div>
   </div>
 
+  <!-- 音乐播放 -->
+  <div class="card" id="musicCard">
+    <h2>🎵 音乐播放</h2>
+    <div class="sub">可以上传音频或添加外链网址，列表全站共享。<b>每人每天最多上传 10 首。</b></div>
+    <div class="sub" style="color:#b98a5a;">⚠️ 数据库单条上限约 1.2MB，上传的音频只能存<b>很短的片段</b>（低码率约 1~2 分钟），完整歌曲请<b>用外链</b>。压缩耗时较长，请耐心等待。</div>
+
+    <audio id="audioEl" preload="metadata"></audio>
+    <div class="mp-now" id="mpNow">未在播放</div>
+    <div class="mp-bar" id="mpBar" title="点击或拖动跳转进度">
+      <div class="mp-fill" id="mpFill"></div>
+    </div>
+    <div class="mp-time"><span id="mpCur">0:00</span> / <span id="mpDur">0:00</span></div>
+    <div class="mp-ctrl">
+      <button class="act-btn" id="mpPrev">⏮ 上一首</button>
+      <button class="btn-gold" id="mpPlay">▶ 播放</button>
+      <button class="act-btn" id="mpNext">下一首 ⏭</button>
+    </div>
+
+    <div class="mp-add">
+      <button class="act-btn" id="mpShowUrl">➕ 添加外链</button>
+      <label class="act-btn" id="mpUploadLabel">⬆️ 上传音频<input type="file" id="mpFile" accept="audio/*" class="hidden" /></label>
+    </div>
+    <div class="mp-url-box hidden" id="mpUrlBox">
+      <input type="text" id="mpUrlInput" placeholder="音频直链，例如 https://.../song.mp3" />
+      <input type="text" id="mpUrlName" placeholder="歌名（可选）" />
+      <div class="mp-url-acts">
+        <button class="btn-gold" id="mpUrlAdd">添加</button>
+        <button class="act-btn" id="mpUrlCancel">取消</button>
+      </div>
+    </div>
+    <div class="err" id="mpErr"></div>
+    <div class="mp-progress hidden" id="mpProgress"><div class="mp-progress-bar" id="mpProgressBar"></div></div>
+    <div class="sub" id="mpQuota" style="margin-top:8px;"></div>
+
+    <div id="mpListBox"><div class="empty-tip">还没有音乐</div></div>
+  </div>
+
   <!-- 管理员工具（解锁后可见） -->
   <div class="card hidden" id="adminToolsCard">
     <h2>⚙️ 管理操作</h2>
@@ -160,13 +245,6 @@
     <div id="keyListBox"><div class="empty-tip">加载中…</div></div>
   </div>
 
-  <!-- 成员列表 -->
-  <div class="card">
-    <h2>👥 兄弟们</h2>
-    <div class="sub">按<b>最近上线时间</b>排序，绿点是在线（90 秒内有活跃），灰点是离线</div>
-    <div id="memberListBox"><div class="empty-tip">加载中…</div></div>
-  </div>
-
   <!-- 对局列表 -->
   <div class="card">
     <h2>⚔️ 当前对局</h2>
@@ -174,6 +252,19 @@
     <div id="gameListBox"><div class="empty-tip">加载中…</div></div>
     <div class="refresh-tip">列表每 30 秒自动刷新</div>
   </div>
+
+  </div><!-- /col-left -->
+  <div class="col-right">
+
+  <!-- 成员列表 -->
+  <div class="card">
+    <h2>👥 兄弟们</h2>
+    <div class="sub">按<b>最近上线时间</b>排序，绿点是在线（90 秒内有活跃），灰点是离线</div>
+    <div id="memberListBox"><div class="empty-tip">加载中…</div></div>
+  </div>
+
+  </div><!-- /col-right -->
+  </div><!-- /two-col -->
 
   <div class="footer">BHBoard · 兄弟管理 · made by chenyz</div>
 </div>
@@ -196,6 +287,13 @@
   const BANNED_KEY = 'bh_banned';      // 注销黑名单：用户名数组
   const ADMIN_PASSWORD = window.KeyGate.accessKey();
   const REFRESH_MS = 30000;            // 列表每 30 秒刷新一次
+
+  // ---------- 音乐播放 ----------
+  const MUSIC_KEY = 'bh_music';            // 音乐索引数组
+  const MUSIC_PREFIX = 'bh_music:';        // 上传音频的独立数据键
+  const MUSIC_DAILY_LIMIT = 10;            // 每人每天最多上传 10 首（外链不计入）
+  const MUSIC_MAX_STORED = 800 * 1024;     // base64 后单条安全上限（数据库约 1.2MB 报 431）
+  const MUSIC_BITRATE = 32000;             // 重编码目标码率（32kbps，尽量塞进上限）
 
   // 仅 chenyz 可解锁管理权限（密码正确 + 身份匹配，缺一不可）
   function isChenyz() {
@@ -638,6 +736,456 @@
   }
 
   // ============================================================
+  // SECTION: music
+  // ============================================================
+  let musicList = [];        // 当前音乐索引缓存
+  let curMusicIdx = -1;      // 当前播放曲目在 musicList 中的索引，-1 表示未在播放
+  let isPlaying = false;
+
+  function todayStr() {
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  }
+  function fmtSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+  }
+  function fmtTime(sec) {
+    if (!isFinite(sec) || sec < 0) return '0:00';
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m}:${String(s).padStart(2,'0')}`;
+  }
+  function curUserName() {
+    const u = window.KeyGate.getUser();
+    return u && u.username ? u.username : '';
+  }
+  function musicTodayCount() {
+    const name = curUserName();
+    if (!name) return 0;
+    const today = todayStr();
+    return musicList.filter(m => m.type === 'upload' && m.by === name && m.date === today).length;
+  }
+
+  async function readMusic() {
+    const raw = await upGet(MUSIC_KEY);
+    if (!raw) return [];
+    try {
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) { return []; }
+  }
+  async function writeMusic(list) {
+    await upSetPlain(MUSIC_KEY, JSON.stringify(list));
+  }
+
+  function renderMusicQuota() {
+    const used = musicTodayCount();
+    const left = MUSIC_DAILY_LIMIT - used;
+    const el = $('mpQuota');
+    if (!el) return;
+    if (left <= 0) {
+      el.textContent = `今天的 ${MUSIC_DAILY_LIMIT} 首上传额度已用完，明天再来（外链不限）`;
+      el.style.color = '#e07a6a';
+    } else {
+      el.textContent = `今天已上传 ${used}/${MUSIC_DAILY_LIMIT} 首（外链不限）`;
+      el.style.color = '';
+    }
+  }
+
+  function renderMusicList() {
+    const box = $('mpListBox');
+    if (!box) return;
+    box.innerHTML = '';
+    if (musicList.length === 0) {
+      box.innerHTML = '<div class="empty-tip">还没有音乐</div>';
+      return;
+    }
+    musicList.forEach((m, idx) => {
+      const item = document.createElement('div');
+      item.className = 'mp-item' + (idx === curMusicIdx ? ' playing' : '');
+      const main = document.createElement('div');
+      main.className = 'mp-item-main';
+      const name = document.createElement('div');
+      name.className = 'mp-item-name';
+      name.textContent = m.name || (m.type === 'url' ? '外链音频' : '上传音频');
+      const meta = document.createElement('div');
+      meta.className = 'mp-item-meta';
+      const badge = m.type === 'url' ? '<span class="mp-badge">外链</span>' : '<span class="mp-badge">上传</span>';
+      const who = m.by ? ` · ${m.by}` : '';
+      const sz = m.size ? ` · ${fmtSize(m.size)}` : '';
+      meta.innerHTML = badge + who + sz;
+      main.appendChild(name); main.appendChild(meta);
+      main.onclick = () => playMusic(idx);
+      // 删除权限：上传者本人或已解锁管理员才能删（音乐列表全站共享，不能谁都能删）
+      if (canDeleteMusic(m)) {
+        const acts = document.createElement('div');
+        acts.className = 'row-actions';
+        const del = document.createElement('button');
+        del.className = 'act-btn danger';
+        del.textContent = '🗑️';
+        del.style.padding = '5px 9px';
+        del.title = '删除这首';
+        del.onclick = e => { e.stopPropagation(); deleteMusic(idx); };
+        acts.appendChild(del);
+        item.appendChild(main); item.appendChild(acts);
+      } else {
+        item.appendChild(main);
+      }
+      box.appendChild(item);
+    });
+  }
+
+  async function playMusic(idx) {
+    if (idx < 0 || idx >= musicList.length) return;
+    const m = musicList[idx];
+    curMusicIdx = idx;
+    const audio = $('audioEl');
+    const now = $('mpNow');
+    if (now) now.textContent = m.name || (m.type === 'url' ? '外链音频' : '上传音频');
+    if (m.type === 'url') {
+      audio.src = m.url;
+    } else {
+      // 上传的音频：从独立键读取 base64
+      try {
+        const raw = await upGet(MUSIC_PREFIX + m.id);
+        if (!raw) { alert('音频数据丢失'); return; }
+        const obj = JSON.parse(raw);
+        audio.src = obj.data;   // data:audio/xxx;base64,...
+      } catch (e) {
+        alert('加载失败：' + e.message);
+        return;
+      }
+    }
+    audio.play().then(() => {
+      isPlaying = true;
+      updatePlayBtn();
+      renderMusicList();
+    }).catch(e => {
+      console.error('播放失败:', e);
+      alert('播放失败：' + e.message);
+    });
+  }
+
+  function updatePlayBtn() {
+    const btn = $('mpPlay');
+    if (btn) btn.textContent = isPlaying ? '⏸ 暂停' : '▶ 播放';
+  }
+
+  function updateProgress() {
+    const audio = $('audioEl');
+    const fill = $('mpFill');
+    const cur = $('mpCur');
+    const dur = $('mpDur');
+    if (audio.duration && isFinite(audio.duration)) {
+      const pct = (audio.currentTime / audio.duration) * 100;
+      if (fill) fill.style.width = pct + '%';
+      if (cur) cur.textContent = fmtTime(audio.currentTime);
+      if (dur) dur.textContent = fmtTime(audio.duration);
+    }
+  }
+
+  // 删除权限：上传者本人 或 已解锁管理员
+  function canDeleteMusic(m) {
+    if (!m) return false;
+    if (isAdmin) return true;                       // 管理员可删任意曲目
+    const name = curUserName();
+    return !!(name && m.by && m.by === name);        // 本人上传/添加的可删
+  }
+
+  async function deleteMusic(idx) {
+    if (idx < 0 || idx >= musicList.length) return;
+    const m = musicList[idx];
+    if (!canDeleteMusic(m)) { alert('只能删除自己上传的音乐'); return; }   // 二次校验，防止绕过 UI
+    if (!confirm(`确定删除「${m.name || '未命名'}」吗？`)) return;
+    try {
+      if (m.type === 'upload' && m.id) {
+        await upDel(MUSIC_PREFIX + m.id);
+      }
+      musicList = musicList.filter((_, i) => i !== idx);
+      await writeMusic(musicList);
+      if (curMusicIdx === idx) {
+        curMusicIdx = -1;
+        isPlaying = false;
+        const audio = $('audioEl');
+        audio.pause(); audio.src = '';
+        updatePlayBtn();
+        $('mpNow').textContent = '未在播放';
+        $('mpFill').style.width = '0%';
+        $('mpCur').textContent = '0:00';
+        $('mpDur').textContent = '0:00';
+      } else if (curMusicIdx > idx) {
+        curMusicIdx--;
+      }
+      renderMusicList();
+      renderMusicQuota();
+    } catch (e) {
+      alert('删除失败：' + e.message);
+    }
+  }
+
+  async function addMusicUrl() {
+    const urlInput = $('mpUrlInput');
+    const nameInput = $('mpUrlName');
+    const url = urlInput.value.trim();
+    const name = nameInput.value.trim() || url.split('/').pop().split('?')[0] || '外链音频';
+    const err = $('mpErr');
+    if (!url) { err.textContent = '网址不能为空'; return; }
+    if (!/^https?:\/\//i.test(url)) { err.textContent = '网址必须以 http:// 或 https:// 开头'; return; }
+    err.textContent = '';
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    musicList.push({
+      id, type: 'url', name, url,
+      by: curUserName(), ts: Date.now(), date: todayStr()
+    });
+    try {
+      await writeMusic(musicList);
+      urlInput.value = ''; nameInput.value = '';
+      $('mpUrlBox').classList.add('hidden');
+      renderMusicList();
+    } catch (e) {
+      err.textContent = '添加失败：' + e.message;
+      musicList.pop();
+    }
+  }
+
+  // 压缩音频：浏览器没有内置 mp3 编码器，唯一能真正压缩的原生方案是
+  // MediaRecorder 把音频实时录制成 webm/opus（低码率）。
+  // 代价：录制是实时的，压一首 3 分钟的歌就得等约 3 分钟。进度条按播放进度走。
+  async function compressAudio(file) {
+    const err = $('mpErr');
+    const progBox = $('mpProgress');
+    const progBar = $('mpProgressBar');
+    err.textContent = '';
+    progBox.classList.remove('hidden');
+    progBar.style.width = '2%';
+
+    // 挑一个浏览器支持的、体积小的编码格式
+    const MIME_CANDIDATES = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/ogg;codecs=opus',
+      'audio/mp4'
+    ];
+    const mime = MIME_CANDIDATES.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
+    if (!window.MediaRecorder || !mime) {
+      progBox.classList.add('hidden');
+      throw new Error('当前浏览器不支持音频压缩，请改用外链');
+    }
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // 用一个隐藏 audio 元素播放文件，经 MediaElementSource 接入 MediaStream 供录制
+    const url = URL.createObjectURL(file);
+    const audio = new Audio();
+    audio.src = url;
+    audio.crossOrigin = 'anonymous';
+    await new Promise((res, rej) => {
+      audio.onloadedmetadata = res;
+      audio.onerror = () => rej(new Error('无法读取该音频文件'));
+    });
+    const duration = isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 0;
+
+    let source;
+    try {
+      source = audioCtx.createMediaElementSource(audio);
+    } catch (e) {
+      URL.revokeObjectURL(url);
+      audioCtx.close();
+      progBox.classList.add('hidden');
+      throw new Error('浏览器不支持压缩此文件，请改用外链');
+    }
+    const dest = audioCtx.createMediaStreamDestination();
+    source.connect(dest);          // 接入录制流（不接扬声器，避免录制时外放）
+
+    const rec = new MediaRecorder(dest.stream, { mimeType: mime, audioBitsPerSecond: MUSIC_BITRATE });
+    const chunks = [];
+    rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    const stopped = new Promise(res => { rec.onstop = res; });
+
+    // 进度：按播放时长估算
+    let raf = 0;
+    const tick = () => {
+      if (duration > 0) {
+        const pct = Math.max(2, Math.min(98, (audio.currentTime / duration) * 98));
+        progBar.style.width = pct + '%';
+      }
+      raf = requestAnimationFrame(tick);
+    };
+
+    try {
+      rec.start();
+      raf = requestAnimationFrame(tick);
+      await audio.play();
+      // 等播放结束（或音频无时长时兜底轮询）
+      await new Promise(res => {
+        audio.onended = res;
+        if (duration === 0) {
+          const guard = setInterval(() => { if (audio.ended || audio.paused) { clearInterval(guard); res(); } }, 200);
+        }
+      });
+      // 给编码器一点收尾时间，再停止
+      await new Promise(r => setTimeout(r, 150));
+      if (rec.state !== 'inactive') rec.stop();
+      await stopped;
+    } finally {
+      cancelAnimationFrame(raf);
+      try { audio.pause(); } catch (e) {}
+      URL.revokeObjectURL(url);
+      try { source.disconnect(); dest.disconnect(); } catch (e) {}
+      try { audioCtx.close(); } catch (e) {}
+    }
+
+    progBar.style.width = '100%';
+    const blob = new Blob(chunks, { type: mime });
+    if (!blob.size) throw new Error('压缩结果为空，请改用外链');
+
+    const reader = new FileReader();
+    const b64 = await new Promise((resolve, reject) => {
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('读取压缩结果失败'));
+      reader.readAsDataURL(blob);
+    });
+    // 记住编码格式，播放时用它构造 data URI（readAsDataURL 已带正确 MIME，这里保留 blob 大小）
+    return { dataUrl: b64, size: blob.size, mime: mime };
+  }
+
+  async function uploadMusic(file) {
+    const err = $('mpErr');
+    err.textContent = '';
+    const name = curUserName();
+    if (!name) { err.textContent = '未登录'; return; }
+    if (musicTodayCount() >= MUSIC_DAILY_LIMIT) {
+      err.textContent = `今天的 ${MUSIC_DAILY_LIMIT} 首上传额度已用完`;
+      return;
+    }
+    if (!file.type.startsWith('audio/')) {
+      err.textContent = '只能上传音频文件';
+      return;
+    }
+    try {
+      const enc = await compressAudio(file);   // { dataUrl, size, mime }
+      // 关键：写进数据库的是 dataUrl（base64 字符串），它才是决定 431 的大小
+      if (enc.dataUrl.length > MUSIC_MAX_STORED) {
+        err.textContent = `压缩后仍有 ${fmtSize(enc.dataUrl.length)}，超过数据库单条上限（约 ${fmtSize(MUSIC_MAX_STORED)}）。这首歌太长，请改用外链。`;
+        $('mpProgress').classList.add('hidden');
+        return;
+      }
+      const title = file.name.replace(/\.[^.]+$/, '');
+      const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      // 先写音频本体（独立键），再更新索引，避免索引指向不存在的数据
+      await upSetPlain(MUSIC_PREFIX + id, JSON.stringify({
+        id, by: name, ts: Date.now(), date: todayStr(),
+        name: title, mime: enc.mime, data: enc.dataUrl
+      }));
+      musicList.push({
+        id, type: 'upload', name: title, mime: enc.mime,
+        by: name, ts: Date.now(), date: todayStr(), size: enc.dataUrl.length
+      });
+      await writeMusic(musicList);
+      $('mpProgress').classList.add('hidden');
+      $('mpFile').value = '';
+      renderMusicList();
+      renderMusicQuota();
+    } catch (e) {
+      err.textContent = '上传失败：' + e.message;
+      $('mpProgress').classList.add('hidden');
+    }
+  }
+
+  function bindMusicEvents() {
+    const audio = $('audioEl');
+    audio.addEventListener('timeupdate', updateProgress);
+    audio.addEventListener('ended', () => {
+      isPlaying = false;
+      updatePlayBtn();
+      // 自动播放下一首
+      if (curMusicIdx >= 0 && curMusicIdx < musicList.length - 1) {
+        playMusic(curMusicIdx + 1);
+      } else {
+        curMusicIdx = -1;
+        $('mpNow').textContent = '未在播放';
+        renderMusicList();
+      }
+    });
+
+    $('mpPlay').addEventListener('click', () => {
+      if (curMusicIdx < 0) {
+        if (musicList.length > 0) playMusic(0);
+        else alert('列表为空');
+        return;
+      }
+      if (isPlaying) {
+        audio.pause();
+        isPlaying = false;
+      } else {
+        audio.play();
+        isPlaying = true;
+      }
+      updatePlayBtn();
+    });
+
+    $('mpPrev').addEventListener('click', () => {
+      if (curMusicIdx > 0) playMusic(curMusicIdx - 1);
+      else if (musicList.length > 0) playMusic(musicList.length - 1);
+    });
+    $('mpNext').addEventListener('click', () => {
+      if (curMusicIdx < musicList.length - 1) playMusic(curMusicIdx + 1);
+      else if (musicList.length > 0) playMusic(0);
+    });
+
+    $('mpShowUrl').addEventListener('click', () => {
+      $('mpUrlBox').classList.toggle('hidden');
+    });
+    $('mpUrlAdd').addEventListener('click', addMusicUrl);
+    $('mpUrlCancel').addEventListener('click', () => {
+      $('mpUrlBox').classList.add('hidden');
+      $('mpUrlInput').value = '';
+      $('mpUrlName').value = '';
+      $('mpErr').textContent = '';
+    });
+    $('mpUrlInput').addEventListener('keydown', e => { if (e.key === 'Enter') addMusicUrl(); });
+    $('mpUrlName').addEventListener('keydown', e => { if (e.key === 'Enter') addMusicUrl(); });
+
+    $('mpFile').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (file) uploadMusic(file);
+    });
+
+    // 进度条点击/拖动跳转
+    const bar = $('mpBar');
+    let dragging = false;
+    function seekTo(clientX) {
+      const rect = bar.getBoundingClientRect();
+      const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      const audio = $('audioEl');
+      if (audio.duration && isFinite(audio.duration)) {
+        audio.currentTime = pct * audio.duration;
+        updateProgress();
+      }
+    }
+    bar.addEventListener('mousedown', e => { dragging = true; seekTo(e.clientX); });
+    document.addEventListener('mousemove', e => { if (dragging) seekTo(e.clientX); });
+    document.addEventListener('mouseup', () => { dragging = false; });
+    bar.addEventListener('touchstart', e => { dragging = true; seekTo(e.touches[0].clientX); });
+    document.addEventListener('touchmove', e => { if (dragging) seekTo(e.touches[0].clientX); });
+    document.addEventListener('touchend', () => { dragging = false; });
+  }
+
+  async function initMusic() {
+    try {
+      musicList = await readMusic();
+    } catch (e) {
+      console.error('加载音乐列表失败:', e);
+      musicList = [];
+    }
+    renderMusicList();
+    renderMusicQuota();
+    bindMusicEvents();
+  }
+
+  // ============================================================
   // SECTION: init
   // ============================================================
   // 颜色模式：纯视觉偏好，不受登录门禁限制，未登录也能切换
@@ -671,6 +1219,7 @@
     applyAdminUI();
     refreshMembers();
     refreshGames();
+    initMusic();                       // 音乐列表与播放器（纯视觉/只读，失败也不影响上面）
     setInterval(() => {
       refreshMembers();
       refreshGames();

@@ -457,25 +457,7 @@
     ctx.strokeRect(1, CONST.GM_T, CONST.GX_L - 1, CONST.GM_B - CONST.GM_T);
     ctx.strokeRect(CONST.GX_R, CONST.GM_T, CONST.MW - CONST.GX_R - 1, CONST.GM_B - CONST.GM_T);
 
-    // 门将持球时画出回避圈
-    if (m.gkHold) {
-      const gk = m.gkHold.gk;
-      ctx.beginPath(); ctx.arc(gk.x, gk.y, CONST.GK_SAFE_R, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(255,215,106,0.45)'; ctx.lineWidth = 2; ctx.setLineDash([6, 5]); ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(255,215,106,0.9)'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText(`${gk.c.name} 持球 · 抢不到`, gk.x, gk.y + CONST.GK_SAFE_R + 13);
-    }
-
-    // 玩家保护期：画出保护圈与剩余秒数
-    if (m.userSafe && b.carrier && b.carrier.isUser) {
-      const u = b.carrier;
-      ctx.beginPath(); ctx.arc(u.x, u.y, CONST.USER_SAFE_R, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(79,195,247,0.5)'; ctx.lineWidth = 2; ctx.setLineDash([6, 5]); ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(79,195,247,0.95)'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText(`保护中 ${(m.userSafe.timer / 60).toFixed(1)}s · 抢不到`, u.x, u.y - CONST.USER_SAFE_R - 6);
-    }
+    // 门将回避圈与玩家保护圈按要求不再绘制（机制照常生效，仅去掉视觉提示）
 
     // 球员（全员显示名字）
     m.players.forEach(p => {

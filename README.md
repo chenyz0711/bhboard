@@ -97,6 +97,8 @@
 | `bh_nfls2_creates` | 联机生存建房计数 | 独立的每日 10 个额度 |
 | `bh_photos` | 照片索引 | 含缩略图，照片墙只读这一个键 |
 | `bh_photo:ID` | 单张照片 | 完整数据，点大图时才加载 |
+| `bh_music` | 音乐索引 | 数组，含外链与上传曲目的元数据 |
+| `bh_music:ID` | 单首上传音频 | 压缩后的 base64，播放时才加载；受 1.2MB 限制只能存短片段 |
 
 浏览器端 `localStorage`：`bh_user`（登录态）、`bh_access_key`（记住的密钥）、`bh_admin`（管理员解锁态，sessionStorage）、`nfls_prob_unlocked`（概率显示解锁）。
 
