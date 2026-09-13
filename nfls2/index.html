@@ -226,8 +226,9 @@
   // ============================================================
   // SECTION: config
   // ============================================================
-  const UPSTASH_URL = 'https://crack-midge-202395.upstash.io';
-  const UPSTASH_TOKEN = 'gQAAAAAAAxabAAIgcDFiMDlmMjYxN2JkZTQ0NjBiYWVlZWVkYjY2ZGQ0NzRmMQ';
+  const _cred = window.KeyGate.credentials();
+  const UPSTASH_URL = _cred.url;
+  const UPSTASH_TOKEN = _cred.token;
   const ROOM_PREFIX = 'bh_nfls2:';
   const CREATE_LIMIT_KEY = 'bh_nfls2_creates';
   const DAILY_CREATE_LIMIT = 10;
@@ -331,7 +332,7 @@
     '音乐': { happyRange:[0,4], praiseOnCorrect:true },
     '美术': { happyRange:[0,4] },
     '体育': { genderHappy:true, hungerCost:3 },
-    '历史': { happyDelta:-1, hungerCost:2 },
+    '历史': { happyDelta:-1 },
     '政治': { happyDelta:1, noKickNext:true, noRoll:true },
     '班会': { noKickNext:true }
   };
