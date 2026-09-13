@@ -35,9 +35,27 @@
     .pc .g { font-size: 11px; color: #aaa; margin-top: 2px; }
     .pc .s { font-size: 11px; color: #666; margin-top: 3px; }
 
+    /* 天赋 */
+    .talent-box { display: flex; flex-direction: column; gap: 8px; }
+    .talent {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: linear-gradient(135deg, #fffdf5, #fff7e6);
+      border: 1px solid #f0e2c0; border-radius: 10px; padding: 10px 12px;
+    }
+    .talent .ic { font-size: 18px; line-height: 1.3; }
+    .talent .tx .n { font-size: 14px; font-weight: 700; color: #1a1a1a; }
+    .talent .tx .d { font-size: 12px; color: #7a6a4a; margin-top: 2px; line-height: 1.6; }
+    .talent-empty { font-size: 13px; color: #999; }
+    .talent-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+    .talent-bar .cnt { font-size: 13px; color: #8a6a1f; font-weight: 700; }
+    .btn-reroll {
+      margin-left: auto; font-size: 12px; color: #666; background: #fff;
+      border: 1px solid #ddd; border-radius: 999px; padding: 5px 12px; cursor: pointer;
+    }
+    .btn-reroll:hover { color: #1a1a1a; border-color: #1a1a1a; }
+
     /* 时长 */
-    .dur-row { display: flex; gap: 10px; }
-    .dur { flex: 1; background: #fafafa; border: 1px solid #e5e5e5; border-radius: 10px;
+    .dur-row { display: flex; gap: 10px; }    .dur { flex: 1; background: #fafafa; border: 1px solid #e5e5e5; border-radius: 10px;
       padding: 12px; text-align: center; cursor: pointer; transition: .15s; }
     .dur:hover { border-color: #1a1a1a; }
     .dur.sel { border-color: #1a1a1a; background: #f0f0f0; box-shadow: 0 0 0 1px #1a1a1a inset; }
@@ -96,6 +114,16 @@
     </div>
 
     <div class="card">
+      <h2>🎁 本场天赋</h2>
+      <div class="sub">选人时随机获得 <b>1（60%）/ 2（30%）/ 3（10%）</b> 个天赋，只对你操控的球员生效。</div>
+      <div class="talent-bar">
+        <span class="cnt" id="talentCnt">— 个天赋</span>
+        <button class="btn-reroll" id="rerollBtn">🎲 重掷天赋</button>
+      </div>
+      <div class="talent-box" id="talentBox"></div>
+    </div>
+
+    <div class="card">
       <h2>⏱️ 比赛时长</h2>
       <div class="sub">课间只有 30 秒，大课间能踢满 1 分半。</div>
       <div class="dur-row" id="durRow">
@@ -112,17 +140,25 @@
           <li><b>5v5</b>，每边 1 个门将 + 4 个场上球员。你操控其中一人，其余全部随机。场上<b>每个人头顶都显示名字</b>，门将戴 🧤 标记。</li>
           <li><b>场地</b>：上下两条边线是<span class="hl">栏杆</span>（球撞上去会弹回来，人过不去）；左右两条线是<span class="hl">球门</span>（这版把球门加宽了，更好进）。</li>
           <li><b>球</b>就是一个瓶子。碰到瓶子即持球，持球时瓶子跟着你走。</li>
-          <li><b>操作</b>：<b>W A S D</b> 移动，<b>空格</b> 射门（需持球）。</li>
+          <li><b>操作</b>：<b>W A S D</b> 移动，<b>空格</b> 射门（需持球），<b>X</b> 传球（需持球，传给最合适的队友）。</li>
           <li><b>移动速度 = 标准速度 ×（1 + 体力 × 0.1）</b>。例：体力 9 → ×1.9，体力 4 → ×1.4。</li>
           <li><b>持球时会变慢</b>：拿着瓶子的球员移动速度 <span class="hl">×0.6</span>，所以带球突破更难，得多靠传球。</li>
           <li><b>射门</b>：球飞向对方球门，进门线且落在球门范围内才算进球；打在门柱 / 底线上会弹回来。</li>
           <li><b>AI 会传球</b>：持球的电脑球员被贴身逼抢时，更倾向把瓶子传给靠前、周围没人盯的队友。传球飞行途中可以被对方拦截。</li>
-          <li><b>门将</b>：守在门线上跟着球上下移动，射正时 <span class="hl">70% 概率没收</span>。没收后门将持球约 0.75 秒，<b>这期间没人能靠近抢他的球</b>，随后他<b>大脚开到对面半场</b>——瓶子在空中飞行时谁都抢不到、也不会进门，落地后才能争抢。</li>
-          <li><b>遇人对抗</b>：持球时碰到对方球员，<b>由来抢的那个人的体力决定</b>——抢断成功率 <span class="hl">25% + 体力 × 7.5%</span>（体力 0 → 25%，体力 10 → 100%），没抢下就是<span class="hl">过人</span>（保住球并把对方顶开）。一次对抗后双方短暂冷却，不会连续判定。</li>
+          <li><b>门将</b>：守在门线上跟着球上下移动，射正时 <span class="hl">45% 概率没收</span>（原来 70%，太难进了，已下调）。没收后门将持球约 0.75 秒，<b>这期间没人能靠近抢他的球</b>，随后他<b>大脚开到对面半场</b>——瓶子在空中飞行时谁都抢不到、也不会进门，落地后才能争抢。</li>
+          <li><b>遇人对抗</b>：持球时<span class="hl">必须和对方正面碰上</span>（两人朝向都对着对方，夹角 60° 以内）才进入抢断判定——<b>从背后追上、侧面擦肩都抢不到球</b>，可以绕到正面再抢。正面碰上后<b>由来抢的那个人的体力决定</b>：抢断成功率 <span class="hl">25% + 体力 × 7.5%</span>（体力 0 → 25%，体力 10 → 100%），没抢下就是<span class="hl">过人</span>（保住球并把对方顶开）。一次对抗后双方短暂冷却，不会连续判定。</li>
           <li><b>移速</b>：基础速度比原来快 <span class="hl">1.5 倍</span>，节奏更快；体力越高跑得越快（每点体力 +10%）。</li>
           <li><b>拿球保护</b>：你刚拿到瓶子（捡到或断下）后的 <span class="hl">1.5 秒</span>内，对方球员会立刻退开、<b>谁都抢不到你的球</b>（场上不再画圈，但保护照常生效）。<b>你的队友照常跑位</b>，所以这段时间可以自由传球；射门或传球后保护期立即结束。对方门将不会弃门，仍守在门线上。</li>
           <li><b>断球记忆</b>：你持球的这一回合里，某个对方球员抢过你一次后，<span class="hl">就不会再专门追着你抢</span>（避免你一直被同一人黏着）；换别人来防你仍会抢。<b>你重新拿到球时这个记忆会清零</b>，所以每次拿球对手都能再抢你一次。</li>
           <li><b>进球后</b>：中场重新开球，比分累加，比赛继续直到时间走完。断球记忆是整场有效的，进球重开不会重置。</li>
+          <li><b>传球（X）</b>：持球时按 <b>X</b> 把瓶子传给最合适的队友（靠前、周围没人盯的那个）。传球飞行途中<b>可以被对方拦截</b>。没人接应时会提示传不出去。</li>
+          <li><b>天赋</b>：选人时随机获得 <span class="hl">1（60%）/ 2（30%）/ 3（10%）</span> 个天赋，<b>只对你操控的球员生效</b>；不满意可以点「重掷天赋」，换个人也会重掷。
+            <ul>
+              <li>🥟 <b>油炸丸子</b>：过人概率大幅增加（对方抢断率 ×0.55，体力 10 的人也只剩 55% 抢断率）。</li>
+              <li>🔺 <b>Tiki-Taka</b>：按 X 传球时 <span class="hl">72%</span> 概率触发<b>三角传递</b>——球在我方队员之间快速倒脚（约每 0.25 秒一次），持续约 0.7 秒，<b>这期间对方谁都抢不到</b>；同时源自荷兰全攻全守理念的<b>高位逼抢</b>生效，我全队整体前压压缩对方空间（以抢代守）。球权一旦丢失，保护立即结束。</li>
+              <li>🛗 <b>电梯球</b>：进入射程（距对方球门 210 以内）后射门，<b>球速暴增 ×1.75</b>，且门将扑救率 <span class="hl">×0.45</span>，进球概率大增。</li>
+            </ul>
+          </li>
           <li><b>胜负</b>：时间结束时比分高者胜。这里只踢球，不影响生存数值（生存里踢瓶子才会扣饥饿、加快乐）。</li>
         </ul>
       </div>
@@ -139,7 +175,7 @@
         <span class="time" id="time">--</span>
       </div>
       <canvas id="cv" width="640" height="220"></canvas>
-      <div class="tip">WASD 移动 · 空格射门 · 碰到瓶子自动持球</div>
+      <div class="tip">WASD 移动 · 空格射门 · <b>X 传球</b> · 碰到瓶子自动持球 · 抢断必须正面碰上</div>
     </div>
 
     <div class="card hidden" id="resCard">
@@ -170,12 +206,43 @@
     { id:'chang', name:'常喆',   gender:'男', body:5 },
     { id:'liu',   name:'刘敬熙', gender:'男', body:7 },
     { id:'wan',   name:'万天一', gender:'男', body:7 },
-    { id:'hu',    name:'胡凯宁', gender:'男', body:7 }
+    { id:'hu',    name:'胡凯宁', gender:'男', body:7 },
+    { id:'jiang', name:'蒋润霖', gender:'男', body:9 },
+    { id:'lizx',  name:'李知行', gender:'男', body:5 },
+    { id:'lisc',  name:'李思憧', gender:'男', body:6 },
+    { id:'xukr',  name:'徐锴锐', gender:'男', body:5 }   // 自选角色体力未知，按中位数 5 计
   ];
 
   let selChar = CHARS[0].id;
   let selSec = 30;
   let ctrl = null;
+  let myTalents = [];              // 本场天赋（进页面时掷一次，可手动重掷）
+
+  const TALENT_ICONS = { '油炸丸子':'🥟', 'Tiki-Taka':'🔺', '电梯球':'🛗' };
+
+  // ---------- 天赋 ----------
+  function rollTalents(){
+    myTalents = KickEngine.rollTalents();
+    renderTalents();
+  }
+
+  function renderTalents(){
+    const box = $('talentBox');
+    $('talentCnt').textContent = myTalents.length + ' 个天赋';
+    box.innerHTML = '';
+    if (!myTalents.length) {
+      box.innerHTML = '<div class="talent-empty">这场没有天赋。</div>';
+      return;
+    }
+    myTalents.forEach(t => {
+      const row = document.createElement('div');
+      row.className = 'talent';
+      row.innerHTML =
+        `<div class="ic">${TALENT_ICONS[t.id] || '✨'}</div>` +
+        `<div class="tx"><div class="n">${t.id}</div><div class="d">${t.desc}</div></div>`;
+      box.appendChild(row);
+    });
+  }
 
   // ---------- 选人 ----------
   function renderPick(){
@@ -188,7 +255,7 @@
         `<div class="n">${c.name}</div>` +
         `<div class="g">${c.gender}</div>` +
         `<div class="s">体力 ${c.body} · ×${(1 + c.body * 0.1).toFixed(1)}</div>`;
-      cell.addEventListener('click', () => { selChar = c.id; renderPick(); });
+      cell.addEventListener('click', () => { selChar = c.id; rollTalents(); renderPick(); });
       grid.appendChild(cell);
     });
   }
@@ -221,6 +288,8 @@
       chars: CHARS,
       meId: selChar,
       seconds: selSec,
+      // 天赋只作用于玩家操控者；引擎内按名字判定
+      opts: { talents: myTalents.map(t => t.id) },
       onEnd: endMatch
     });
   }
@@ -241,6 +310,7 @@
 
   $('startBtn').addEventListener('click', startMatch);
   $('againBtn').addEventListener('click', startMatch);
+  $('rerollBtn').addEventListener('click', rollTalents);
   $('backBtn').addEventListener('click', () => {
     if (ctrl) { ctrl.stop(); ctrl = null; }
     $('arena').classList.add('hidden');
@@ -251,6 +321,7 @@
   (function init(){
     if (!window.KeyGate.requireLogin()) return;
     renderPick();
+    rollTalents();          // 进页面先掷一次天赋
     bindDur();
   })();
 </script>

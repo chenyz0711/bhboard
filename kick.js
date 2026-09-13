@@ -14,10 +14,11 @@
     BASE_SPEED: 3.0,                  // 标准速度（原 2.0，基础移速提速 1.5 倍）
     AI_SPEED_MUL: 0.75,               // 除玩家操控者外，其余角色移速 ×0.75
     SHOOT_POWER: 7.5,
-    GK_SAVE_P: 0.7,                   // 门将守住概率
+    GK_SAVE_P: 0.45,                  // 门将守住概率（原 0.7 太高，下调）
     STEAL_BASE: 0.25,                 // 抢断基础概率（体力 0 时的成功率）
     STEAL_PER_BODY: 0.075,            // 每点体力增加的抢断概率（体力 10 → 100%）
     TACKLE_CD: 30,                    // 对抗冷却（帧）
+    TACKLE_ANGLE: Math.PI / 3,        // 「正面碰到」的判定半角（60°）：背后追上不算正面
     USER_SAFE_T: 90,                  // 玩家拿到球后的保护帧数（60fps 下 = 1.5 秒）
     USER_SAFE_R: 64,                  // 保护期内对方球员的回避半径
 
@@ -28,7 +29,16 @@
     PASS_PANIC: 0.055,                // 被贴身逼抢时每帧传球概率
     PASS_CHANCE: 0.012,               // 无压力推进时每帧传球概率
     PASS_LOCK: 6,                     // 传球后的短暂拾取保护（防刚传出就被自己捡回）
-    THREAT_R: 72                      // 判定"被逼近"的距离
+    THREAT_R: 72,                     // 判定"被逼近"的距离
+
+    // ---- 天赋（选人时随机 1 / 2 / 3 个，只作用于玩家操控的球员）----
+    DRIBBLE_STEAL_MUL: 0.55,          // 油炸丸子：对方抢断率 ×0.55（即过人概率大增）
+    TIKI_PASS_P: 0.72,                // Tiki-Taka：按传球键触发三角传递的概率
+    TIKI_CHAIN_LOCK: 42,              // 三角传递期间的控球保护帧数（约 0.7 秒）
+    TIKI_PRESS_R: 132,                // 高位逼抢：我方球员主动压上抢球的距离
+    ELEVATOR_RANGE: 210,              // 电梯球：进入此射程后球速加快
+    ELEVATOR_POWER_MUL: 1.75,         // 电梯球：射程内射门力量倍率
+    ELEVATOR_SAVE_MUL: 0.45           // 电梯球：射程内射门时门将扑救率 ×0.45
   };
 
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -41,6 +51,23 @@
   // 体力 0 → 25%（与旧的固定值衔接），体力 10 → 100%
   function stealChance(body) {
     return clamp(CONST.STEAL_BASE + (body || 0) * CONST.STEAL_PER_BODY, 0, 1);
+  }
+
+  // 天赋只对玩家操控的球员生效，由调用方经 opts.talents 注入
+  function hasTalent(m, name) {
+    return !!(m && m.opts && m.opts.talents && m.opts.talents.indexOf(name) !== -1);
+  }
+
+  // 「正面碰到」：双方朝向都指向对方（在 TACKLE_ANGLE 半角内）才算。
+  // 背后追上、侧面擦肩都不触发抢断判定。
+  function isHeadOn(a, b) {
+    const dx = b.x - a.x, dy = b.y - a.y, l = Math.hypot(dx, dy);
+    if (l < 0.001) return true;                        // 完全重叠，视为正面
+    const ux = dx / l, uy = dy / l;
+    const lim = Math.cos(CONST.TACKLE_ANGLE);
+    const dotA = (a.fx || 0) * ux + (a.fy || 0) * uy;   // a 是否朝向 b
+    const dotB = (b.fx || 0) * -ux + (b.fy || 0) * -uy; // b 是否朝向 a
+    return dotA >= lim && dotB >= lim;
   }
 
   // 组队：你操控的 + 随机 4 人 = 我方；其余 5 人 = 对方。每队末位是门将
@@ -57,7 +84,9 @@
   function mkPlayer(c, team, isGK, isUser, x, y) {
     // 玩家操控者用标准速度，其余角色（含队友与对手）一律 ×0.75
     const speed = matchSpeed(c.body) * (isUser ? 1 : CONST.AI_SPEED_MUL);
-    return { c, team, isGK, isUser, x, y, speed: speed, cd: 0, hx: x, hy: y };
+    // 初始朝向对方球门（home 攻右、away 攻左），保证开局就能正常参与对抗
+    const fx = team === 'home' ? 1 : -1;
+    return { c, team, isGK, isUser, x, y, speed: speed, cd: 0, hx: x, hy: y, fx: fx, fy: 0 };
   }
 
   function kickoff(m, dir) {
@@ -73,14 +102,23 @@
 
     m.players.forEach(p => { p.hx = p.x; p.hy = p.y; });
     // 注意：m.triedUser 按持球回合重置（用户每次拿到球，对手都能再抢一次）
-    m.ball = { x: CONST.MW / 2, y: CONST.GM_C, vx: 0, vy: 0, carrier: null, lock: 0, team: null, air: null };
+    m.ball = { x: CONST.MW / 2, y: CONST.GM_C, vx: 0, vy: 0, carrier: null, lock: 0, team: null, air: null, elevator: false };
     m.gkHold = null;
     m.userSafe = null;
+    m.chainLock = null; m.chainTeam = null; m.chainTick = 0;   // 进球重开时结束三角传递
     m.flash = '';
     m.flashT = 0;
   }
 
+  // 记录朝向：只有真正移动了才更新，站着不动时保留原朝向（正面碰撞判定要用）
+  function setFacing(p, dx, dy) {
+    const l = Math.hypot(dx, dy);
+    if (l < 0.001) return;
+    p.fx = dx / l; p.fy = dy / l;
+  }
+
   function movePlayer(p, dx, dy) {
+    setFacing(p, dx, dy);
     p.x = clamp(p.x + dx, CONST.GX_L + CONST.PR, CONST.GX_R - CONST.PR);
     p.y = clamp(p.y + dy, CONST.RAIL_T + CONST.PR, CONST.RAIL_B - CONST.PR);
   }
@@ -106,9 +144,19 @@
     const tx = p.team === 'home' ? CONST.GX_R : CONST.GX_L;
     const ty = CONST.GM_C + (Math.random() - 0.5) * 52;   // 球门加宽，射门角度范围同步放大
     const dx = tx - p.x, dy = ty - p.y, len = Math.hypot(dx, dy) || 1;
+
+    // 电梯球：玩家有此天赋且已进入射程 → 球速加快，门将扑救率下降
+    let power = CONST.SHOOT_POWER;
+    b.elevator = false;
+    if (p.isUser && hasTalent(m, '电梯球') && Math.abs(tx - p.x) <= CONST.ELEVATOR_RANGE) {
+      power *= CONST.ELEVATOR_POWER_MUL;
+      b.elevator = true;
+    }
+
     b.carrier = null; b.team = p.team; b.air = null;
-    b.vx = dx / len * CONST.SHOOT_POWER; b.vy = dy / len * CONST.SHOOT_POWER;
+    b.vx = dx / len * power; b.vy = dy / len * power;
     b.lock = 10;
+    if (b.elevator) flashMatch(m, '电梯球！球速暴增！');
   }
 
   // 传球：把瓶子踢向队友，飞行途中可被对方拦截
@@ -141,6 +189,30 @@
     return bestScore > -70 ? best : null;
   }
 
+  // 玩家按 X 传球：
+  // · 有 Tiki-Taka 天赋且判定成功 → 触发「三角传递」：球在我方连续快速传递，
+  //   期间进入控球保护（对方抢不到），我方球员同时高位逼抢对方持球者。
+  // · 否则 → 普通传球，传给最合适的队友。
+  function userPass(m, p) {
+    const b = m.ball;
+    if (hasTalent(m, 'Tiki-Taka') && chance(CONST.TIKI_PASS_P)) {
+      const mate = bestPassTarget(m, p);
+      if (!mate) { flashMatch(m, '没人接应，传不出去！'); return; }
+      passBall(m, p, mate);
+      // 三角传递：球权仍算我方，开启控球保护 + 高位逼抢
+      m.chainLock = CONST.TIKI_CHAIN_LOCK;
+      m.chainTeam = p.team;
+      m.stats.tiki++;
+      flashMatch(m, `Tiki-Taka！${p.c.name} → ${mate.c.name} 三角传递`);
+      return;
+    }
+    const mate = bestPassTarget(m, p);
+    if (!mate) { flashMatch(m, '没人接应，传不出去！'); return; }
+    passBall(m, p, mate);
+    // 玩家传球后保护期结束（球已不在脚下），与射门一致
+    m.userSafe = null;
+  }
+
   function flashMatch(m, txt) { m.flash = txt; m.flashT = 45; }
 
   // 用户获得球权时重置断球记忆：每个对手在这次持球中都能抢一次
@@ -160,8 +232,10 @@
     const inMouth = b.y > CONST.GM_T && b.y < CONST.GM_B;
     if (inMouth) {
       const gk = m.players.find(p => p.isGK && p.team === (side > 0 ? 'away' : 'home'));
-      // 扑救率可被调用方覆盖（如蒋润霖「强身健体」：对方门将 70% → 30%）
-      const saveP = m.opts.gkSaveP === undefined ? CONST.GK_SAVE_P : m.opts.gkSaveP;
+      // 扑救率可被调用方覆盖（如蒋润霖「强身健体」：对方门将 70% → 20%）
+      let saveP = m.opts.gkSaveP === undefined ? CONST.GK_SAVE_P : m.opts.gkSaveP;
+      // 电梯球：射程内的快速射门更难扑
+      if (b.elevator) saveP *= CONST.ELEVATOR_SAVE_MUL;
       if (gk && chance(saveP)) {
         // 门将扑出：直接没收（进入门将持球状态）
         b.x = side > 0 ? line - CONST.BR - 20 : line + CONST.BR + 20;
@@ -279,6 +353,8 @@
     }
 
     const myTeamHas = b.carrier && b.carrier.team === p.team;
+    // Tiki-Taka 高位逼抢：我方正在三角传递时，全队整体前压，压缩对方空间
+    const pressing = !!(m.chainLock && m.chainTeam === p.team);
 
     if (!b.carrier) {
       // 自由球：最近的队友去抢，其余回位
@@ -287,8 +363,9 @@
       if (nearest === p) stepToward(m, p, b.x, b.y, dt, 1);
       else stepToward(m, p, p.hx + (b.x - CONST.MW / 2) * 0.25, p.hy + (b.y - CONST.GM_C) * 0.3, dt, 0.8);
     } else if (myTeamHas) {
-      // 队友持球：往前插跑位
-      stepToward(m, p, p.hx + (attackX - p.hx) * 0.35, p.hy + (b.y - CONST.GM_C) * 0.25, dt, 0.85);
+      // 队友持球：往前插跑位（三角传递期间压得更靠前）
+      const adv = pressing ? 0.62 : 0.35;
+      stepToward(m, p, p.hx + (attackX - p.hx) * adv, p.hy + (b.y - CONST.GM_C) * 0.25, dt, 0.85);
     } else {
       // 对方持球
       const carrierIsUser = !!b.carrier.isUser;
@@ -323,6 +400,10 @@
         movePlayer(me, dx / len * sp, dy / len * sp);
       }
       if (keys[' '] && b.carrier === me && !m.gkHold) shoot(m, me);
+      // 传球键 X：边沿触发（按住不会连发，否则 Tiki-Taka 每帧判定必触发）
+      const xNow = !!keys['x'];
+      if (xNow && !m.lastX && b.carrier === me && !m.gkHold) userPass(m, me);
+      m.lastX = xNow;
     }
 
     // --- 门将持球倒计时 → 大脚开出 ---
@@ -338,6 +419,24 @@
       else {
         m.userSafe.timer -= dt;
         if (m.userSafe.timer <= 0) m.userSafe = null;
+      }
+    }
+
+    // --- Tiki-Taka 控球保护倒计时 ---
+    // 球权一旦离开我方（被断 / 出界 / 射门），保护立即结束
+    if (m.chainLock) {
+      if (!b.carrier || b.carrier.team !== m.chainTeam) {
+        m.chainLock = null; m.chainTeam = null;
+      } else {
+        m.chainLock -= dt;
+        // 链式倒脚：每约 0.25 秒在队友之间快速传一次，让对方来不及抢
+        m.chainTick = (m.chainTick || 0) - dt;
+        if (m.chainTick <= 0) {
+          m.chainTick = 15;
+          const mate = bestPassTarget(m, b.carrier);
+          if (mate) passBall(m, b.carrier, mate);
+        }
+        if (m.chainLock <= 0) { m.chainLock = null; m.chainTeam = null; }
       }
     }
 
@@ -396,21 +495,27 @@
       }
     }
 
-    // --- 对抗：过人 / 被断（门将持球、玩家保护期内都抢不到）---
-    if (b.carrier && !m.gkHold && !(m.userSafe && b.carrier.isUser)) {
+    // --- 对抗：过人 / 被断 ---
+    // 前提：门将持球、玩家保护期、Tiki-Taka 控球保护期内都抢不到；
+    // 且必须「正面碰到」（双方朝向都对着对方）才进入抢断判定，背后追上不算。
+    if (b.carrier && !m.gkHold && !m.chainLock && !(m.userSafe && b.carrier.isUser)) {
       const c = b.carrier;
       for (const p of m.players) {
         if (p.team === c.team) continue;
         if (c.cd > 0 || p.cd > 0) continue;
         if (c.isUser && m.triedUser[p.c.id]) continue;      // 此人已断过用户一次，不再抢
         if (Math.hypot(p.x - c.x, p.y - c.y) < CONST.PR * 2) {
+          // 不是正面碰撞 → 不触发对抗，也不进冷却（可以绕到正面再抢）
+          if (!isHeadOn(c, p)) continue;
           c.cd = CONST.TACKLE_CD; p.cd = CONST.TACKLE_CD;
           if (c.isUser) {
             m.triedUser[p.c.id] = true;                     // 记录：他试过了，之后不再追用户
             m.stats.tacklesOnUser++;
           }
           // 抢断成功率看来抢的人（p）的体力；过人成功率 = 1 − 抢断率
-          const stealP = stealChance(p.c.body);
+          let stealP = stealChance(p.c.body);
+          // 油炸丸子：玩家持球时对方抢断率大幅下降
+          if (c.isUser && hasTalent(m, '油炸丸子')) stealP *= CONST.DRIBBLE_STEAL_MUL;
           if (!chance(stealP)) {
             // 过人：保住球，把对方顶到接触范围之外
             let ux = p.x - c.x, uy = p.y - c.y;
@@ -517,9 +622,11 @@
       left: cfg.seconds * 1000, over: false, flash: '', flashT: 0,
       gkHold: null,
       userSafe: null,                                  // 玩家拿球保护期：{ timer } 帧数
-      opts: cfg.opts || {},                              // 可覆盖项：gkSaveP（对方门将扑救率）等
+      chainLock: null, chainTeam: null, chainTick: 0,   // Tiki-Taka 三角传递：控球保护与倒脚节拍
+      lastX: false,                                    // 传球键 X 的上一帧状态（边沿触发用）
+      opts: cfg.opts || {},                              // 可覆盖项：gkSaveP（对方门将扑救率）、talents（玩家天赋）等
       triedUser: {},                                     // 断球记忆：本次持球中谁已经抢过用户
-      stats: { passes: 0, saves: 0, punts: 0, tacklesOnUser: 0, userTackles: 0, userPossessions: 0 }
+      stats: { passes: 0, saves: 0, punts: 0, tacklesOnUser: 0, userTackles: 0, userPossessions: 0, tiki: 0 }
     };
     m.home.concat(m.away).forEach(c => { m.triedUser[c.id] = false; });
 
@@ -534,7 +641,7 @@
     const keys = {};
     function down(e) {
       const k = e.key.toLowerCase();
-      if (['w', 'a', 's', 'd', ' '].indexOf(k) !== -1) { keys[k] = true; e.preventDefault(); }
+      if (['w', 'a', 's', 'd', ' ', 'x'].indexOf(k) !== -1) { keys[k] = true; e.preventDefault(); }
     }
     function up(e) { keys[e.key.toLowerCase()] = false; }
     window.addEventListener('keydown', down);
@@ -571,5 +678,34 @@
     return { stop, state: m };
   }
 
-  window.KickEngine = { CONST, matchSpeed, stealChance, buildTeams, start };
+  // ------------------------------------------------------------
+  // 天赋：选人时随机获得 1 / 2 / 3 个（60% / 30% / 10%），只作用于玩家操控者
+  // ------------------------------------------------------------
+  const TALENTS = [
+    { id:'油炸丸子', desc:'过人概率大幅增加（对方抢断率 ×0.55）' },
+    { id:'Tiki-Taka', desc:'按 X 传球有概率触发三角传递：球在我方之间快速倒脚、期间对方抢不到，同时全队高位逼抢' },
+    { id:'电梯球', desc:'进入射程后射门球速暴增，门将更难扑出' }
+  ];
+
+  // 掷天赋数量：60% → 1 个，30% → 2 个，10% → 3 个
+  function rollTalentCount() {
+    const r = Math.random();
+    if (r < 0.60) return 1;
+    if (r < 0.90) return 2;
+    return 3;
+  }
+
+  // 抽取天赋（不重复）。返回 [{ id, desc }, ...]
+  function rollTalents() {
+    const n = Math.min(rollTalentCount(), TALENTS.length);
+    const pool = TALENTS.slice();
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const j = Math.floor(Math.random() * pool.length);
+      out.push(pool.splice(j, 1)[0]);
+    }
+    return out;
+  }
+
+  window.KickEngine = { CONST, TALENTS, matchSpeed, stealChance, buildTeams, rollTalents, rollTalentCount, start };
 })();

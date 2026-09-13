@@ -502,7 +502,7 @@
       traits:[
         { name:'作孽双子', desc:'被记违纪时，违纪点数 ×2' },
         { name:'级委', desc:'被记违纪的概率减半' },
-        { name:'强身健体', desc:'踢瓶子胜率 ×2（手动赛门将扑救率 70%→30%），获得的快乐 ×2' }
+        { name:'强身健体', desc:'踢瓶子胜率 ×2（手动赛门将扑救率 45%→20%），获得的快乐 ×2' }
       ],
       mateEffect:'作为同桌：作孽——上课不能认真听讲，但聊天时快乐 ×2', canChooseMate:false },
     { id:'lizx', name:'李知行', gender:'男', looks:5, body:5, intelligence:5, happyCap:10,
@@ -1737,7 +1737,7 @@
     const costTxt = `饥饿 -${cost}${cost===1?'（同桌万天一减半）':''}`;
     const goalP = clamp(G.body*0.1*(hasTrait('强身健体')?2:1),0,1);
     $('mp-sub').innerHTML =
-      `5v5 · 比赛 <b>${seconds}</b> 秒 · WASD 移动 · 空格射门<br>` +
+      `5v5 · 比赛 <b>${seconds}</b> 秒 · WASD 移动 · 空格射门 · X 传球<br>` +
       `<span style="font-size:12.5px;color:#8892b0;">两种踢法都花 ${costTxt}、快乐 +2<br>` +
       `自己踢：赢 +2 / 平 +1　·　自动蹴：${pct(goalP)} 进球再 +2（受伤概率 ${pct(injuryChance())}）</span>`;
     $('match-result').classList.add('hidden');
@@ -1769,8 +1769,8 @@
       chars: CHARACTERS,
       meId: meId,
       seconds: seconds,
-      // 蒋润霖「强身健体」：对方门将扑救率 70% → 30%（射门更容易进）
-      opts: { gkSaveP: hasTrait('强身健体') ? 0.3 : undefined },
+      // 蒋润霖「强身健体」：对方门将扑救率按基线比例下调（基线 0.7→0.45，这里 0.3→0.2）
+      opts: { gkSaveP: hasTrait('强身健体') ? 0.2 : undefined },
       onEnd: (r)=> endMatch(r, meId, stepName, onDone)
     });
     matchCtrl = ctrl;
